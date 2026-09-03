@@ -220,6 +220,10 @@ Tersun/
 - **Hệ thống kiểu tĩnh & Generic**: Bắt lỗi kiểu tại thời điểm biên dịch, tự động suy luận kiểu cho `let`, hỗ trợ hàm và struct generic `<T>`.
 - **Đầy đủ công cụ**: Có IDE Setun Studio, Visual Debugger, Language Server Protocol (LSP), và hỗ trợ biên dịch trực tiếp sang mã máy C++20 / LLVM / Verilog FPGA.
 
+📚 **Tài liệu học tập & Hướng dẫn toàn diện**:  
+Xem chi tiết giáo trình từ căn bản đến chuyên sâu kèm toàn bộ 15 lệnh CLI tại:  
+👉 **[GIÁO TRÌNH & CẨM NANG TOÀN DIỆN NGÔN NGỮ TERSUN 1.0.0](Compiler/Doc/GIAO_TRINH_VA_CAM_NANG_TERSUN.md)**
+
 ---
 
 ## 📜 License
