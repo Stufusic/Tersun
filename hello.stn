@@ -1,0 +1,16 @@
+// Setun 2.0 - Native Balanced Ternary & TAFPU Program
+fn main() -> int {
+    let u1: taf3 = [2, 1, 0];   // 2 + 1*sqrt(3)
+    let u2: taf3 = [2, -1, 0];  // 2 - 1*sqrt(3)
+    let identity = u1 * u2;     // Exactly [1, 0, 0] = 1.0 (0% error)
+
+    println("Chao mung ban den voi Setun Studio!");
+    println("Ket qua phep nhan dai so trong Q(sqrt(3)) la:");
+    println(identity);
+
+    branch3(identity) {
+        negative => return -1;
+        zero     => return 0;
+        positive => return 42;
+    }
+}

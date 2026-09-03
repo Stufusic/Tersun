@@ -1,0 +1,116 @@
+// =============================================================================
+// 06_space_combat_simulation.taf: Mo phong Chien dau Khong gian & AI Tam phan
+// Trinh dien suc manh toan dien cua Ngon ngu Setun-70 & TAFPU Q(sqrt(3))
+// =============================================================================
+
+println("===================================================================");
+println("  HE THONG MO PHONG CHIEN DAU KHONG GIAN SETUN-70 DEEP SPACE AI   ");
+println("  Tinh toan Toa do 3D & AI Mang no-ron Tam phan Chinh xac 0% Sai so");
+println("===================================================================");
+println("");
+
+// 1. HAM TINH NANG LUONG LA CHAN DAI SO (1 + sqrt(3))^n
+fn calc_shield_energy(base: taf3, power: int) -> taf3 {
+    if (power <= 0) {
+        return [1, 0, 0]; // (1 + 0*sqrt(3)) = 1.0
+    }
+    return base * calc_shield_energy(base, power - 1);
+}
+
+// 2. HAM TINH KHOANG CACH 3D BINH PHUONG KHONG TROI TOA DO
+fn calc_dist_sq(x1: taf3, y1: taf3, z1: taf3, x2: taf3, y2: taf3, z2: taf3) -> taf3 {
+    let dx = x1 - x2;
+    let dy = y1 - y2;
+    let dz = z1 - z2;
+    return (dx * dx) + (dy * dy) + (dz * dz);
+}
+
+// 3. LAYER QUYET DINH AI MANG NO-RON TAM PHAN (BitNet Activation)
+fn ai_neural_decision(signal: taf3) -> int {
+    let threshold: taf3 = [0, 0, 0];
+    let cmp = signal <=> threshold;
+    branch (cmp) {
+        -1 -> { return -1; } // Thu dich / Tan cong
+         0 -> { return  0; } // Trung lap / Quan sat
+        +1 -> { return  1; } // Dong minh / Tiep te
+    }
+}
+
+// 4. HAM TINH SAT THUONG COMBAT DAI SO VO TY
+fn calc_exact_damage(base_dmg: taf3, armor: taf3, crit: taf3) -> taf3 {
+    let half_armor = armor / [2, 0, 0];
+    let net_dmg = base_dmg - half_armor;
+    if (net_dmg < [1, 0, 0]) {
+        net_dmg = [1, 0, 0];
+    }
+    return net_dmg * crit;
+}
+
+// -----------------------------------------------------------------------------
+// KHOI TAO THUC THE CHIEN DAU
+// -----------------------------------------------------------------------------
+
+// Tau Me (Mothership) tai toa do goc (0, 0, 0)
+let ms_x: taf3 = [0, 0, 0];
+let ms_y: taf3 = [0, 0, 0];
+let ms_z: taf3 = [0, 0, 0];
+
+// Tinh nang luong la chan bac 3 voi he so vo ty (1 + sqrt(3))^3 = 10 + 6*sqrt(3)
+let shield_base: taf3 = [1, 1, 0];
+let mothership_shield = calc_shield_energy(shield_base, 3);
+print("[Tau Me]: Nang luong La chan Dai so = ");
+println(mothership_shield);
+
+// Phi Thuyen Droid 1 (Chi doi Alpha)
+let d1_x: taf3 = [30, 0, 0];
+let d1_y: taf3 = [40, 0, 0];
+let d1_z: taf3 = [0, 0, 0];
+let d1_signal: taf3 = [1, 1, 0]; // Tin hieu AI duong
+
+// Phi Thuyen Droid 2 (Chi doi Beta)
+let d2_x: taf3 = [-50, 0, 0];
+let d2_y: taf3 = [120, 0, 0];
+let d2_z: taf3 = [0, 0, 0];
+let d2_signal: taf3 = [-5, 2, 0]; // Tin hieu AI am (-5 + 2*sqrt(3) ≈ -1.536 < 0)
+
+println("");
+println("--- TIEN TRINH QUAN SAT RADAR & RA QUYET DINH AI ---");
+
+// Danh gia Droid 1
+let dist1_sq = calc_dist_sq(ms_x, ms_y, ms_z, d1_x, d1_y, d1_z);
+print("Droid 1: Khoang cach binh phuong d^2 = ");
+println(dist1_sq); // (30^2 + 40^2 = 2500) -> [2500, 0, 0]
+
+let decision1 = ai_neural_decision(d1_signal);
+branch (decision1) {
+    -1 -> { println("-> AI Droid 1: Muc tieu Thu dich! Kich hoat phao Laser."); }
+     0 -> { println("-> AI Droid 1: Tin hieu Trung lap. Duy tri quan sat."); }
+    +1 -> { println("-> AI Droid 1: Phi thuyen Dong minh! Mo cong tiep te nang luong."); }
+}
+
+// Danh gia Droid 2
+let dist2_sq = calc_dist_sq(ms_x, ms_y, ms_z, d2_x, d2_y, d2_z);
+print("Droid 2: Khoang cach binh phuong d^2 = ");
+println(dist2_sq); // (50^2 + 120^2 = 16900 = 130^2) -> [16900, 0, 0]
+
+let decision2 = ai_neural_decision(d2_signal);
+branch (decision2) {
+    -1 -> { 
+        println("-> AI Droid 2: Phat hien Tau Chien Ke dich! Tinh toan hoa luc tan cong...");
+        // Tinh sat thuong ban pha vo tau ke dich
+        let laser_base: taf3 = [80, 0, 0];
+        let enemy_armor: taf3 = [30, 0, 0];
+        let crit_factor: taf3 = [1, 1, 0]; // Chi mang (1 + sqrt(3))
+        let final_dmg = calc_exact_damage(laser_base, enemy_armor, crit_factor);
+        // (80 - 15) * (1 + sqrt(3)) = 65 + 65*sqrt(3)
+        print("   Sat thuong Laser xuyen pha = ");
+        println(final_dmg);
+    }
+     0 -> { println("-> AI Droid 2: Tin hieu Trung lap."); }
+    +1 -> { println("-> AI Droid 2: Phi thuyen Dong minh."); }
+}
+
+println("");
+println("===================================================================");
+println("  MO PHONG HOAN TAT: TOAN BO HE THONG HOAT DONG VOI 0% SAI SO!    ");
+println("===================================================================");

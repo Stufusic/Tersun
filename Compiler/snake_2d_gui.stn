@@ -1,0 +1,148 @@
+// ============================================================================
+// SETUN 2.0 - NATIVE 2D GRAPHICAL SNAKE GAME (Setun2D Triad Engine)
+// Trò chơi đồ họa 2D thuần túy viết bằng mã Setun (.stn)
+// Chạy trên tầng đồ họa Java 25 GPU Canvas kết nối qua C++ Core Bridge
+// ============================================================================
+
+fn main() -> int {
+    println("==================================================");
+    println("   KHOI DONG SETUN2D GRAPHICAL ENGINE (TRIAD)     ");
+    println("   C++ Core Bridge  +  Java 25 GPU Canvas         ");
+    println("==================================================");
+
+    // 1. Khởi tạo cửa sổ đồ họa 2D của Setun
+    let width: int = 700;
+    let height: int = 500;
+    setun2d_init(width, height, "Setun 2.0 - [ Ⅲ ] Native 2D Snake Game (Setun2D Engine)");
+
+    // Tọa độ đầu rắn và các đốt thân
+    let mut snake_x: int = 10;
+    let mut snake_y: int = 12;
+    let mut b1_x: int = 9;
+    let mut b1_y: int = 12;
+    let mut b2_x: int = 8;
+    let mut b2_y: int = 12;
+    let mut b3_x: int = 7;
+    let mut b3_y: int = 12;
+
+    let mut food_x: int = 24;
+    let mut food_y: int = 12;
+
+    let mut dir_x: int = 1;
+    let mut dir_y: int = 0;
+
+    let mut score: int = 0;
+    let mut tick: int = 0;
+
+    println("Cua so do hoa 2D da khoi dong thanh cong!");
+
+    // 2. Vòng lặp đồ họa 60 FPS
+    while (setun2d_is_running()) {
+        tick = tick + 1;
+
+        // Xóa màn hình với màu nền Cyberpunk (0x070b14 = 461588)
+        setun2d_clear(461588);
+
+        // Vẽ đường viền bàn cờ (0x111e38 = 1121848)
+        setun2d_draw_rect(20, 70, 660, 410, 1121848);
+
+        // Vẽ mồi phát sáng (Màu hồng Neon: 0xff007f = 16711807)
+        setun2d_draw_circle(food_x * 20 + 10, food_y * 20 + 10, 8, 16711807);
+
+        // Vẽ thân rắn (Màu xanh dương Neon: 0x0099cc = 39372)
+        setun2d_draw_rect(b3_x * 20 + 2, b3_y * 20 + 2, 14, 14, 39372);
+        setun2d_draw_rect(b2_x * 20 + 2, b2_y * 20 + 2, 14, 14, 39372);
+        setun2d_draw_rect(b1_x * 20 + 2, b1_y * 20 + 2, 14, 14, 39372);
+
+        // Vẽ đầu rắn (Màu Cyan Neon: 0x00f0ff = 61695)
+        setun2d_draw_rect(snake_x * 20, snake_y * 20, 18, 18, 61695);
+
+        // Vẽ thông số trên HUD (Trắng: 0xffffff = 16777215)
+        setun2d_draw_text(24, 32, "SETUN2D ENGINE: ACTIVE (60 FPS GPU - ZERO FLICKER)", 61695);
+        setun2d_draw_text(24, 54, "Controls: Arrow Keys | Arrow Space to Play | AI Auto-Pilot Active", 16777215);
+
+        // Đọc sự kiện bàn phím:
+        let key: int = setun2d_get_key();
+
+        branch3(key) {
+            negative => {
+                dir_x = -1;
+                dir_y = 0;
+            }
+            zero => {
+                // Giữ nguyên hướng
+            }
+            positive => {
+                dir_x = 1;
+                dir_y = 0;
+            }
+        }
+
+        if (key == 2) {
+            dir_x = 0;
+            dir_y = -1;
+        }
+        if (key == -2) {
+            dir_x = 0;
+            dir_y = 1;
+        }
+
+        // Tự động săn mồi nếu không bấm phím (AI Tam Phân)
+        if (key == 0) {
+            let dist_x: int = food_x - snake_x;
+            let dist_y: int = food_y - snake_y;
+
+            if (dist_x == 0) {
+                branch3(dist_y) {
+                    negative => { dir_x = 0; dir_y = -1; }
+                    zero => {}
+                    positive => { dir_x = 0; dir_y = 1; }
+                }
+            } else {
+                branch3(dist_x) {
+                    negative => { dir_x = -1; dir_y = 0; }
+                    zero => {}
+                    positive => { dir_x = 1; dir_y = 0; }
+                }
+            }
+        }
+
+        // Cập nhật bước đi của rắn mỗi 5 ticks (Tốc độ game mượt mà, dễ quan sát)
+        if (tick > 5) {
+            tick = 0;
+
+            // Di chuyển thân rắn theo đầu
+            b3_x = b2_x; b3_y = b2_y;
+            b2_x = b1_x; b2_y = b1_y;
+            b1_x = snake_x; b1_y = snake_y;
+
+            // Di chuyển đầu rắn
+            snake_x = snake_x + dir_x;
+            snake_y = snake_y + dir_y;
+
+            // Xử lý xuyên tường bàn cờ
+            if (snake_x > 32) { snake_x = 2; }
+            if (snake_x < 2) { snake_x = 32; }
+            if (snake_y > 23) { snake_y = 5; }
+            if (snake_y < 5) { snake_y = 23; }
+
+            // Kiểm tra ăn mồi
+            if (snake_x == food_x) {
+                if (snake_y == food_y) {
+                    score = score + 10;
+                    food_x = food_x + 5;
+                    if (food_x > 30) { food_x = 5; }
+                    food_y = food_y + 4;
+                    if (food_y > 20) { food_y = 7; }
+                }
+            }
+        }
+
+        // Đẩy khung hình lên GPU (V-Sync 60 FPS)
+        setun2d_flip();
+    }
+
+    setun2d_close();
+    println("Cua so do hoa 2D da dong. Tro choi ket thuc!");
+    return score;
+}

@@ -1,0 +1,76 @@
+// test_hybrid_oop.stn
+// Kiểm thử tổng hợp các tính năng lai ghép Python + C++ và OOP trên Setun 2.0
+
+class Hero {
+    pub name: string;
+    pub hp: int;
+    pub atk: int;
+
+    def take_damage(self, dmg: int) {
+        self.hp = self.hp - dmg;
+    }
+
+    def heal(self, amt: int) {
+        self.hp = self.hp + amt;
+    }
+
+    def is_alive(self) -> bool {
+        if (self.hp > 0) {
+            return true;
+        }
+        return false;
+    }
+}
+
+def create_hero(name: string, hp: int, atk: int) -> Hero {
+    let h = Hero(name, hp, atk);
+    h.name = name;
+    h.hp = hp;
+    h.atk = atk;
+    return h;
+}
+
+fn main() {
+    println("[1] Khoi tao Doi tuong Hero (OOP Class + Dynamic Dispatch):");
+    let arthur = create_hero("Arthur", 100, 25);
+    println(arthur.name);
+    println(arthur.hp);
+
+    println("[2] Goi method OOP qua V-Table (take_damage & heal):");
+    arthur.take_damage(35);
+    println(arthur.hp);
+    assert_eq(arthur.hp, 65);
+
+    arthur.heal(15);
+    println(arthur.hp);
+    assert_eq(arthur.hp, 80);
+
+    println("[3] Mang dong [T] va phuong thuc kieu Python (append, len, index):");
+    let inventory = ["Excalibur", "Wooden Shield", "Health Potion"];
+    println(len(inventory));
+    assert_eq(len(inventory), 3);
+
+    inventory.append("Magic Ring");
+    println(len(inventory));
+    assert_eq(len(inventory), 4);
+    println(inventory[-1]);
+    println(inventory[0]);
+
+    println("[4] Mang so nguyen & chi muc am arr[-1]:");
+    let scores = [10, 25, 50, 75, 100];
+    println(scores[-1]);
+    assert_eq(scores[-1], 100);
+    println(scores[0]);
+    assert_eq(scores[0], 10);
+
+    println("[5] Vector dai so 3D tvec3 (khong gian 3 chieu):");
+    let pos = tvec3(10, 20, 30);
+    println(pos.x);
+    println(pos.y);
+    println(pos.z);
+    assert_eq(pos.x, 10);
+    assert_eq(pos.y, 20);
+    assert_eq(pos.z, 30);
+
+    println("=== HOAN TAT KIEM THU HYBRID PYTHON + C++ VA OOP THANH CONG! ===");
+}

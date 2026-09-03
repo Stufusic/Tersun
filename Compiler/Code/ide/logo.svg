@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0f1d"/>
+      <stop offset="50%" stop-color="#051726"/>
+      <stop offset="100%" stop-color="#020813"/>
+    </linearGradient>
+
+    <!-- Neon Emerald & Cyan Gradient -->
+    <linearGradient id="neonGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f5d4"/>
+      <stop offset="50%" stop-color="#00bbf9"/>
+      <stop offset="100%" stop-color="#7000ff"/>
+    </linearGradient>
+
+    <!-- Pillar 1 Gradient (-1: Negative / Trit -) -->
+    <linearGradient id="pillarNeg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ff007f"/>
+      <stop offset="100%" stop-color="#7928ca"/>
+    </linearGradient>
+
+    <!-- Pillar 2 Gradient (0: Zero / Trit 0) -->
+    <linearGradient id="pillarZero" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#00f5d4"/>
+      <stop offset="100%" stop-color="#00bbf9"/>
+    </linearGradient>
+
+    <!-- Pillar 3 Gradient (+1: Positive / Trit +) -->
+    <linearGradient id="pillarPos" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#00bbf9"/>
+      <stop offset="100%" stop-color="#4361ee"/>
+    </linearGradient>
+
+    <!-- Glow Filter -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="12" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background Rounded Hexagon / Shield -->
+  <rect width="512" height="512" rx="128" fill="url(#bgGrad)" stroke="#00f5d4" stroke-width="6" stroke-opacity="0.3"/>
+
+  <!-- Circuit Background Grid Elements -->
+  <circle cx="256" cy="256" r="200" fill="none" stroke="#00f5d4" stroke-width="1.5" stroke-opacity="0.15" stroke-dasharray="12 8"/>
+  <circle cx="256" cy="256" r="160" fill="none" stroke="#7000ff" stroke-width="1.5" stroke-opacity="0.2"/>
+
+  <!-- Top Roman Numeral Bar -->
+  <path d="M 120 120 L 392 120" stroke="url(#neonGlow)" stroke-width="18" stroke-linecap="round" filter="url(#glow)"/>
+  
+  <!-- Central Roman Numeral III (3 Pillars: -1, 0, +1) -->
+  <!-- Left Pillar I (Trit -1) -->
+  <g filter="url(#glow)">
+    <line x1="176" y1="145" x2="176" y2="367" stroke="url(#pillarNeg)" stroke-width="26" stroke-linecap="round"/>
+    <circle cx="176" cy="390" r="6" fill="#ff007f"/>
+  </g>
+
+  <!-- Middle Pillar I (Trit 0 - Core Quantum Weyl Axis) -->
+  <g filter="url(#glow)">
+    <line x1="256" y1="135" x2="256" y2="377" stroke="url(#pillarZero)" stroke-width="32" stroke-linecap="round"/>
+    <circle cx="256" cy="256" r="10" fill="#ffffff"/>
+    <circle cx="256" cy="405" r="7" fill="#00f5d4"/>
+  </g>
+
+  <!-- Right Pillar I (Trit +1) -->
+  <g filter="url(#glow)">
+    <line x1="336" y1="145" x2="336" y2="367" stroke="url(#pillarPos)" stroke-width="26" stroke-linecap="round"/>
+    <circle cx="336" cy="390" r="6" fill="#00bbf9"/>
+  </g>
+
+  <!-- Bottom Roman Numeral Bar -->
+  <path d="M 120 392 L 392 392" stroke="url(#neonGlow)" stroke-width="18" stroke-linecap="round" filter="url(#glow)"/>
+
+  <!-- Subtitle Emblem: Q(√3) -->
+  <text x="256" y="455" font-family="'Segoe UI', -apple-system, sans-serif" font-weight="900" font-size="28" fill="#00f5d4" text-anchor="middle" letter-spacing="4" opacity="0.9">SETUN 2.0</text>
+</svg>

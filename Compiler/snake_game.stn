@@ -1,0 +1,89 @@
+// ============================================================================
+// SETUN 2.0 - TERNARY SNAKE GAME (Trò Chơi Con Rắn Tam Phân 2D)
+// Điện toán tam phân: Điều khiển hướng rẽ 3 trạng thái {-1, 0, +1}
+// ============================================================================
+
+fn main() -> int {
+    println("==================================================");
+    println("   TRO CHOI CON RAN TAM PHAN (SETUN 2.0 SNAKE)   ");
+    println("      Toa do dai so chinh xac trong Q(sqrt(3))     ");
+    println("==================================================");
+    println("");
+
+    // Khởi tạo trạng thái đầu rắn và mồi 2D
+    let mut snake_x: int = 10;
+    let mut snake_y: int = 5;
+    let mut food_x: int = 15;
+    let mut food_y: int = 5;
+    let mut score: int = 0;
+    let mut step: int = 0;
+
+    // Hướng di chuyển: Trit tam phân {-1, 0, +1}
+    let mut dir_x: int = 1; // +1: Sang phải
+    let mut dir_y: int = 0;
+
+    println("Khoi tao: Ran tai (10, 5), Thuc an tai (15, 5)");
+    println("");
+
+    // Vòng lặp mô phỏng trò chơi con rắn qua 7 bước
+    while (step < 7) {
+        step = step + 1;
+        snake_x = snake_x + dir_x;
+        snake_y = snake_y + dir_y;
+
+        println("--------------------------------------------------");
+        println("Buoc di thu:");
+        println(step);
+        println("Toa do dau ran X:");
+        println(snake_x);
+        println("Toa do dau ran Y:");
+        println(snake_y);
+
+        // Kiểm tra vị trí rắn so với mồi qua bộ rẽ nhánh tam phân branch3
+        let dist_x: int = food_x - snake_x;
+        let dist_y: int = food_y - snake_y;
+
+        if (dist_x == 0) {
+            if (dist_y == 0) {
+                println(">>> CHUC MUNG! Ran da an duoc moi! <<<");
+                score = score + 10;
+                println("Diem so tang len:");
+                println(score);
+                // Đổi hướng di chuyển xuống dưới và đặt mồi mới tại (15, 7)
+                dir_x = 0;
+                dir_y = 1;
+                food_x = 15;
+                food_y = 7;
+            } else {
+                branch3(dist_y) {
+                    negative => {
+                        println("Moi o phia Tren (Huong Y = -1)!");
+                    }
+                    zero => {}
+                    positive => {
+                        println("Ran dang tien xuong phia Moi (Huong Y = +1)!");
+                    }
+                }
+            }
+        } else {
+            branch3(dist_x) {
+                negative => {
+                    println("Moi o phia ben Trai (Huong X = -1)!");
+                }
+                zero => {}
+                positive => {
+                    println("Ran dang tien sang phai ve phia Moi (Huong X = +1)!");
+                }
+            }
+        }
+    }
+
+    println("");
+    println("==================================================");
+    println("TRO CHOI HOAN THANH!");
+    println("Diem so cuoi cung:");
+    println(score);
+    println("==================================================");
+
+    return score;
+}

@@ -1,0 +1,9 @@
+[package]
+name = "game_engine"
+version = "1.0.0"
+author = "Developer"
+main = "src/main.taf"
+output = "bin/game_engine.tbc"
+
+[dependencies]
+# stdtaf = "1.0.0"

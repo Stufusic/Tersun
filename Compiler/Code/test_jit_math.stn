@@ -1,0 +1,11 @@
+// test_jit_math.stn
+// Kiểm thử JIT Engine x86-64 sinh mã máy trực tiếp trên RAM
+
+fn main() -> int {
+    let a: int = 10;
+    let b: int = 20;
+    let c: int = 3;
+    let d: int = 15;
+    let res: int = (a + b) * c - d;
+    return res;
+}

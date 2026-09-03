@@ -1,0 +1,32 @@
+// Example 2: Setun-70 3-Way Branching Demo
+// Testing -1, 0, +1 conditions
+
+println("=== Setun-70 3-Way Branching Demo ===");
+
+let i = 0;
+
+while (i < 3) {
+    let current_val = 0;
+    if (i == 0) { current_val = -5; }
+    if (i == 1) { current_val = 0; }
+    if (i == 2) { current_val = 7; }
+
+    print("Evaluating value: ");
+    println(current_val);
+
+    branch (current_val) {
+        case -1: {
+            println("  -> [Branch -1]: Value is Negative!");
+        }
+        case 0: {
+            println("  -> [Branch  0]: Value is Zero!");
+        }
+        case 1: {
+            println("  -> [Branch +1]: Value is Positive!");
+        }
+    }
+
+    i = i + 1;
+}
+
+println("=== 3-Way Branching demo finished ===");

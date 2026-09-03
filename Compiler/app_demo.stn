@@ -1,0 +1,16 @@
+// Demo App in Setun 2.0
+fn main() -> int {
+    let u1: taf3 = [2, 1, 0];
+    let u2: taf3 = [2, -1, 0];
+    let identity = u1 * u2; // [1, 0, 0] = 1.0 (0% error)
+
+    println("Chao mung ban den voi Ngon Ngu Setun 2.0 (Tam Phan & TAFPU)!");
+    println("Gia tri dai so trong Q(sqrt(3)) la:");
+    println(identity);
+
+    branch3(identity) {
+        negative => return -1;
+        zero => return 0;
+        positive => return 42;
+    }
+}

@@ -1,0 +1,5 @@
+// game_engine - Entry Point
+fn main() -> int {
+    println("Hello from Setun 2.0!");
+    return 0;
+}

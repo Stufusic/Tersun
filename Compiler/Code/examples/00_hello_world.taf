@@ -1,0 +1,18 @@
+// =============================================================================
+// 00_hello_world.taf: Chuong trinh Hello World kinh dien tren Setun-70
+// =============================================================================
+
+// 1. In chuoi Hello World co ban
+println("Hello, World!");
+println("Chao mung ban den voi Trinh bien dich Tam phan Setun-70!");
+
+// 2. Su dung bien va kieu du lieu
+let message: string = "Hello from Balanced Ternary Computing!";
+println(message);
+
+// 3. Hello World voi So hoc Dai so Tam phan TAFPU Q(sqrt(3))
+let x: taf3 = [1, 1, 0]; // (1 + sqrt(3))
+print("TAFPU Constant (1 + sqrt(3)): ");
+println(x);
+
+println("Setun-70: Ready to compute with 0% intermediate error!");

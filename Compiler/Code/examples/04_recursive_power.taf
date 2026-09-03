@@ -1,0 +1,33 @@
+// Example 4: Recursive TAFPU Power Calculation in Q(sqrt(3))
+// Computing (1 + sqrt(3))^n exactly without floating-point error
+
+println("=== Recursive TAFPU Function in Q(sqrt(3)) ===");
+
+fn power(base: taf3, exp: int) -> taf3 {
+    if (exp <= 0) {
+        return [1, 0, 0];
+    }
+    return base * power(base, exp - 1);
+}
+
+let x: taf3 = [1, 1, 0];
+print("Base x = ");
+println(x);
+
+let p1 = power(x, 1);
+print("x^1 = ");
+println(p1);
+
+let p2 = power(x, 2);
+print("x^2 = (1 + sqrt(3))^2 = (4 + 2*sqrt(3)) = ");
+println(p2);
+
+let p3 = power(x, 3);
+print("x^3 = (1 + sqrt(3))^3 = (10 + 6*sqrt(3)) = ");
+println(p3);
+
+let p4 = power(x, 4);
+print("x^4 = (1 + sqrt(3))^4 = (28 + 16*sqrt(3)) = ");
+println(p4);
+
+println("=== Recursive calculation finished with 0% error ===");

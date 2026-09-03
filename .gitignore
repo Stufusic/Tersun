@@ -1,0 +1,59 @@
+# ==============================================================================
+# Tersun 1.0.0 - .gitignore
+# ==============================================================================
+
+# Executables & Native Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+*.bin
+*.out
+*.app
+
+# Compiled Bytecode & Object Files
+*.o
+*.obj
+*.tbc
+*.class
+*.a
+*.lib
+
+# Temporary compiler generated files
+*.tmp.cpp
+*.tmp
+*.log
+*.bak
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# IDE & Editor specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# CMake and build system artifacts
+build/
+bin/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.ninja
+.ninja_*
+
+# Crash dumps & core files
+*.dmp
+core

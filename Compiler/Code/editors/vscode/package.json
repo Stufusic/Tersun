@@ -1,0 +1,30 @@
+{
+  "name": "setun-language-support",
+  "displayName": "Setun 2.0 Language Support",
+  "description": "Rich Language Server, Syntax Highlighting and Tooling for Setun 2.0 Balanced Ternary & TAFPU",
+  "version": "2.0.0",
+  "publisher": "setun-core-team",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "setun",
+        "aliases": ["Setun 2.0", "setun"],
+        "extensions": [".stn", ".setun"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "setun",
+        "scopeName": "source.setun",
+        "path": "./syntaxes/setun.tmLanguage.json"
+      }
+    ]
+  }
+}

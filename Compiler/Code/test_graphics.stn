@@ -1,0 +1,28 @@
+// test_graphics.stn
+// Kiểm thử đồ họa Native 60 FPS Engine (Setun2D Native GDI/Double-buffered)
+
+fn main() {
+    println("Khoi dong Native 2D Graphics Engine...");
+    setun2d_init(640, 480, "Setun 2.0 Native 2D Graphics Test");
+
+    let mut frame: int = 0;
+    while (frame < 10) {
+        frame = frame + 1;
+        // Xoa man hinh
+        setun2d_clear(16777215); // Trang
+
+        // Ve hinh chu nhat
+        setun2d_draw_rect(50, 50, 200, 100, 255); // Xanh duong
+
+        // Ve hinh tron
+        setun2d_draw_circle(300, 200, 40, 16711680); // Do
+
+        // Ve van ban HUD
+        setun2d_draw_text(60, 60, "Setun 2.0 Native 60 FPS Engine!", 0);
+
+        setun2d_flip();
+    }
+
+    setun2d_close();
+    println("=== HOAN TAT KIEM THU DO HOA NATIVE 2D THANH CONG! ===");
+}

@@ -1,0 +1,9 @@
+[package]
+name = "my_game"
+version = "1.0.0"
+author = "Developer"
+main = "src/main.taf"
+output = "bin/my_game.tbc"
+
+[dependencies]
+# stdtaf = "1.0.0"

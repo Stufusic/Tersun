@@ -1,0 +1,117 @@
+// ============================================================================
+// SETUN 2.0 - 2D ASCII TERMINAL SNAKE GAME (Khung Hình 2D Console)
+// Dựng ma trận 2D trực tiếp trong cửa sổ dòng lệnh bằng mã Setun
+// ============================================================================
+
+fn main() -> int {
+    println("==================================================");
+    println("   SETUN 2.0 - 2D CONSOLE MATRIX SNAKE GAME       ");
+    println("   Toa do dai so trong Q(sqrt(3)) & Logic branch3 ");
+    println("==================================================");
+
+    let mut snake_x: int = 2;
+    let mut snake_y: int = 2;
+    let mut food_x: int = 7;
+    let mut food_y: int = 4;
+    let mut score: int = 0;
+    let mut step: int = 0;
+
+    let width: int = 10;
+    let height: int = 6;
+
+    while (step < 6) {
+        step = step + 1;
+        println("");
+        println("--------------------------------------------------");
+        println("FRAME / BUOC DI THU:");
+        println(step);
+        println("Dau ran tai (X, Y):");
+        println(snake_x);
+        println(snake_y);
+        println("Bản đồ 2D (Grid 10x6):");
+        println("+----------+");
+
+        // Vẽ từng dòng của ma trận 2D
+        let mut y: int = 0;
+        while (y < height) {
+            // Xác định ký tự cho từng ô theo trục X
+            let mut x: int = 0;
+            while (x < width) {
+                if (x == snake_x) {
+                    if (y == snake_y) {
+                        print("@"); // Đầu rắn
+                    } else {
+                        if (x == food_x) {
+                            if (y == food_y) {
+                                print("*"); // Mồi
+                            } else {
+                                print("."); // Ô trống
+                            }
+                        } else {
+                            print(".");
+                        }
+                    }
+                } else {
+                    if (x == food_x) {
+                        if (y == food_y) {
+                            print("*"); // Mồi
+                        } else {
+                            print(".");
+                        }
+                    } else {
+                        print(".");
+                    }
+                }
+                x = x + 1;
+            }
+            println("");
+            y = y + 1;
+        }
+        println("+----------+");
+
+        // Điều khiển hướng đi bằng branch3
+        let dist_x: int = food_x - snake_x;
+        let dist_y: int = food_y - snake_y;
+
+        if (dist_x == 0) {
+            if (dist_y == 0) {
+                println(">>> DA AN DUOC MOI TAI TOA DO NAY! <<<");
+                score = score + 10;
+                food_x = 3;
+                food_y = 1;
+            } else {
+                branch3(dist_y) {
+                    negative => {
+                        println("AI branch3(dist_y): Di chuyen Len (-1)");
+                        snake_y = snake_y - 1;
+                    }
+                    zero => {}
+                    positive => {
+                        println("AI branch3(dist_y): Di chuyen Xuong (+1)");
+                        snake_y = snake_y + 1;
+                    }
+                }
+            }
+        } else {
+            branch3(dist_x) {
+                negative => {
+                    println("AI branch3(dist_x): Di chuyen Sang Trai (-1)");
+                    snake_x = snake_x - 1;
+                }
+                zero => {}
+                positive => {
+                    println("AI branch3(dist_x): Di chuyen Sang Phai (+1)");
+                    snake_x = snake_x + 1;
+                }
+            }
+        }
+    }
+
+    println("");
+    println("==================================================");
+    println("KHOA MO PHONG 2D HOAN TAT! DIEM:");
+    println(score);
+    println("==================================================");
+
+    return score;
+}

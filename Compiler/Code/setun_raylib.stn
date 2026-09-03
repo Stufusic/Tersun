@@ -1,0 +1,30 @@
+// Auto-generated Setun 2.0 FFI Wrapper via 'setunc bindgen'
+// DO NOT EDIT MANUALLY
+
+struct Vector2 {
+    x: taf3,
+    y: taf3,
+}
+
+struct Vector3 {
+    x: taf3,
+    y: taf3,
+    z: taf3,
+}
+
+struct Color {
+    r: int,
+    g: int,
+    b: int,
+    a: int,
+}
+
+extern "C" fn InitWindow(width: int, height: int, title: string) -> void;
+extern "C" fn CloseWindow() -> void;
+extern "C" fn WindowShouldClose() -> bool;
+extern "C" fn BeginDrawing() -> void;
+extern "C" fn EndDrawing() -> void;
+extern "C" fn ClearBackground(color: Color) -> void;
+extern "C" fn DrawText(text: string, posX: int, posY: int, fontSize: int, color: Color) -> void;
+extern "C" fn DrawCircleV(center: Vector2, radius: taf3, color: Color) -> void;
+extern "C" fn GetFrameTime() -> taf3;

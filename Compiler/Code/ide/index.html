@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Setun Studio - Balanced Ternary & TAFPU Q(√3) IDE</title>
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- 1. Header Toolbar -->
+  <header>
+    <div class="brand">
+      <img src="logo.svg" alt="Setun 3 Roman Logo">
+      <div>
+        <span class="brand-title">SETUN STUDIO</span>
+        <span class="brand-badge">v2.0 AOT</span>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn" id="btnNewFile" title="Create a new Setun source file">
+        <span>+ New File</span>
+      </button>
+      <button class="btn" id="btnSaveFile" title="Save current document">
+        <span>💾 Save</span>
+      </button>
+      <button class="btn" id="btnFormat" title="Auto-format Setun source code">
+        <span>🪄 Format</span>
+      </button>
+      <button class="btn btn-primary" id="btnRun" title="Execute script via Setun VM">
+        <span>▶ Run</span>
+      </button>
+      <button class="btn btn-aot" id="btnCompileAOT" title="Compile to Native AOT Binary (.exe)">
+        <span>⚡ Native AOT</span>
+      </button>
+      <button class="btn" id="btnBindgen" title="Generate C/C++ FFI Bindings">
+        <span>🔌 C Bindgen</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 2. Main Workspace -->
+  <div class="workspace">
+
+    <!-- Left Sidebar: Project & Files -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <span>Explorer</span>
+        <div class="sidebar-actions">
+          <button class="icon-btn" id="btnSidebarNew" title="New File">+</button>
+        </div>
+      </div>
+
+      <div class="file-tree" id="fileTree">
+        <div class="file-item active" data-filename="main.stn">
+          <span>📄</span> main.stn
+        </div>
+        <div class="file-item" data-filename="physics.stn">
+          <span>📄</span> physics.stn
+        </div>
+        <div class="file-item" data-filename="bitnet.stn">
+          <span>📄</span> bitnet.stn
+        </div>
+      </div>
+
+      <div class="template-section">
+        <h4>Starter Templates</h4>
+        <div class="template-pill" data-template="hello">
+          <span>Hello World</span> <span>→</span>
+        </div>
+        <div class="template-pill" data-template="physics">
+          <span>3D Physics Zero-Drift</span> <span>→</span>
+        </div>
+        <div class="template-pill" data-template="bitnet">
+          <span>AI BitNet 1.58 GEMM</span> <span>→</span>
+        </div>
+        <div class="template-pill" data-template="math">
+          <span>TAFPU Algebraic Math</span> <span>→</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center: Editor & Console -->
+    <div class="editor-container">
+      <div class="tab-bar" id="tabBar">
+        <div class="tab active" id="activeTabTitle">
+          <span>📄</span> <span id="currentFileName">main.stn</span>
+        </div>
+      </div>
+
+      <div class="editor-main">
+        <div class="line-numbers" id="lineNumbers">1</div>
+        <textarea class="code-area" id="codeEditor" spellcheck="false" placeholder="Write Setun 2.0 code here..."></textarea>
+      </div>
+
+      <div class="console-container">
+        <div class="console-header">
+          <div class="console-tabs">
+            <div class="console-tab active" data-tab="output">Terminal Output</div>
+            <div class="console-tab" data-tab="repl">Interactive REPL</div>
+            <div class="console-tab" data-tab="llvm">LLVM IR & C20</div>
+          </div>
+          <button class="icon-btn" id="btnClearConsole" title="Clear Console">🧹 Clear</button>
+        </div>
+
+        <div class="console-body" id="consoleBody">
+          Welcome to Setun Studio v2.0 (Balanced Ternary & TAFPU Q(√3) IDE)
+          Ready. Press [▶ Run] or [⚡ Native AOT] to execute your program.
+        </div>
+
+        <div class="repl-input-line" id="replInputContainer" style="display: none;">
+          <span class="repl-prompt">setun&gt;</span>
+          <input type="text" class="repl-input" id="replInput" placeholder="Enter balanced ternary expression, e.g. [2, 1, 0] * [2, -1, 0]...">
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Sidebar: Live TAFPU & Tri-State Monitor -->
+    <div class="monitor-panel">
+      <div class="monitor-card">
+        <div class="monitor-title">
+          <span>TAFPU Accumulator Q(√3)</span>
+          <span style="font-size: 10px; color: var(--yellow-neon);">0% ERROR</span>
+        </div>
+        <div class="reg-row">
+          <span>A (Rational):</span>
+          <span class="reg-val" id="monRegA">10</span>
+        </div>
+        <div class="reg-row">
+          <span>B (Radical √3):</span>
+          <span class="reg-val" id="monRegB">6</span>
+        </div>
+        <div class="reg-row">
+          <span>S (Exponent):</span>
+          <span class="reg-val" id="monRegS">0</span>
+        </div>
+        <div class="reg-row">
+          <span>Exact Algebraic:</span>
+          <span class="reg-val" id="monExact" style="color: var(--cyan-neon);">10 + 6√3</span>
+        </div>
+        <div class="reg-row">
+          <span>Approx Real:</span>
+          <span class="reg-val" id="monApprox">20.39230485</span>
+        </div>
+      </div>
+
+      <div class="monitor-card">
+        <div class="monitor-title">
+          <span>Setun-70 3-Way Branch Flag</span>
+        </div>
+        <div class="branch3-indicator">
+          <div class="branch-pill" id="flagNeg">[-] NEGATIVE</div>
+          <div class="branch-pill" id="flagZero">[0] ZERO</div>
+          <div class="branch-pill active-pos" id="flagPos">[+] POSITIVE</div>
+        </div>
+      </div>
+
+      <div class="monitor-card">
+        <div class="monitor-title">
+          <span>Hardware & Native AOT</span>
+        </div>
+        <div class="reg-row">
+          <span>Target Arch:</span>
+          <span class="reg-val" style="color: var(--blue-neon);">x86-64 AVX-512</span>
+        </div>
+        <div class="reg-row">
+          <span>CPU FMV:</span>
+          <span class="reg-val" style="color: var(--cyan-neon);">Auto-Dispatched</span>
+        </div>
+        <div class="reg-row">
+          <span>Memory Saved:</span>
+          <span class="reg-val" style="color: var(--pink-neon);">87.5% (4B Tryte)</span>
+        </div>
+        <div class="reg-row">
+          <span>GC Mode:</span>
+          <span class="reg-val">0ns Stack / ARC</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 3. Status Bar -->
+  <footer>
+    <div class="status-group">
+      <div class="status-item">
+        <div class="status-dot"></div>
+        <span>Setun Engine: READY</span>
+      </div>
+      <div class="status-item">
+        <span>Encoding: UTF-8</span>
+      </div>
+      <div class="status-item">
+        <span>Precision: Exact Q(√3)</span>
+      </div>
+    </div>
+    <div class="status-group">
+      <div class="status-item">
+        <span>Ln <span id="statLine">1</span>, Col <span id="statCol">1</span></span>
+      </div>
+      <div class="status-item">
+        <span>Setun 2.0</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

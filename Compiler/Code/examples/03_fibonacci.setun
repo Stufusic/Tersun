@@ -1,0 +1,27 @@
+// Example 3: Fibonacci Sequence on Setun-70
+
+println("=== Setun-70 Fibonacci Calculation ===");
+
+let a = 0;
+let b = 1;
+let count = 10;
+let step = 0;
+
+print("F(0) = ");
+println(a);
+print("F(1) = ");
+println(b);
+
+while (step < count) {
+    let next_fib = a + b;
+    a = b;
+    b = next_fib;
+    step = step + 1;
+
+    print("F(");
+    print(step + 1);
+    print(") = ");
+    println(b);
+}
+
+println("=== Fibonacci calculation complete ===");

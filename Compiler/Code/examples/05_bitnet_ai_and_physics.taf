@@ -1,0 +1,62 @@
+// Example 5: 1.58-bit Ternary Neural Network & Exact 3D Geometry
+// Combining TAFPU Q(sqrt(3)) Arithmetic with Balanced Ternary Weights
+
+println("=== Setun-70 AI & Exact 3D Physics Simulation ===");
+
+// 1. BitNet 1.58-bit Ternary Activation Simulation
+fn ternary_activate(val: taf3) -> taf3 {
+    branch (val) {
+        -1 -> { return [-1, 0, 0]; }
+         0 -> { return [0, 0, 0]; }
+        +1 -> { return [1, 0, 0]; }
+    }
+}
+
+// 2. 3D Distance Squared Calculation (0% floating-point drift)
+fn dist3d_sq(x1: taf3, y1: taf3, z1: taf3, x2: taf3, y2: taf3, z2: taf3) -> taf3 {
+    let dx = x1 - x2;
+    let dy = y1 - y2;
+    let dz = z1 - z2;
+    return (dx * dx) + (dy * dy) + (dz * dz);
+}
+
+// Input vector
+let x: taf3 = [1, 1, 0];   // 1 + sqrt(3) ≈ 2.732
+let y: taf3 = [-1, 0, 0];  // -1
+let z: taf3 = [0, 0, 0];   // 0
+
+print("Layer 1 Input Vector: [");
+print(x);
+print(", ");
+print(y);
+print(", ");
+print(z);
+println("]");
+
+// Activation outputs
+let act_x = ternary_activate(x);
+let act_y = ternary_activate(y);
+let act_z = ternary_activate(z);
+
+print("Ternary Quantized Activations: [");
+print(act_x);
+print(", ");
+print(act_y);
+print(", ");
+print(act_z);
+println("]");
+
+// Physics Distance
+let p1_x: taf3 = [10, 0, 0];
+let p1_y: taf3 = [20, 0, 0];
+let p1_z: taf3 = [30, 0, 0];
+
+let p2_x: taf3 = [13, 0, 0];
+let p2_y: taf3 = [24, 0, 0];
+let p2_z: taf3 = [30, 0, 0];
+
+let d2 = dist3d_sq(p1_x, p1_y, p1_z, p2_x, p2_y, p2_z);
+print("Exact 3D Distance Squared d^2: ");
+println(d2); // Expected: 3^2 + 4^2 = 25 -> [25, 0, 0]
+
+println("=== Simulation completed successfully with ZERO error ===");
