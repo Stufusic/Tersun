@@ -42,7 +42,34 @@ std::string LLVMEmitter::emit_native_c(const Program& program) {
     oss << "#include <cassert>\n\n";
     oss << "using namespace setun::runtime;\n\n";
 
+    oss << "template<typename T>\n";
+    oss << "static inline std::ostream& print_val_stream(std::ostream& os, const T& val) {\n";
+    oss << "    if constexpr (std::is_same_v<std::decay_t<T>, TafpuNum_C>) {\n";
+    oss << "        return os << val.to_double();\n";
+    oss << "    } else {\n";
+    oss << "        return os << val;\n";
+    oss << "    }\n";
+    oss << "}\n\n";
+
+    oss << "template<typename T>\n";
+    oss << "static inline bool is_truthy(const T& val) {\n";
+    oss << "    if constexpr (std::is_same_v<std::decay_t<T>, TafpuNum_C>) {\n";
+    oss << "        return val.to_double() != 0.0;\n";
+    oss << "    } else if constexpr (std::is_same_v<std::decay_t<T>, bool>) {\n";
+    oss << "        return val;\n";
+    oss << "    } else {\n";
+    oss << "        return static_cast<bool>(val);\n";
+    oss << "    }\n";
+    oss << "}\n\n";
+
     // Forward declarations and struct/class definitions
+    for (Stmt* s : program.statements) {
+        if (std::holds_alternative<StructDeclStmt>(s->data)) {
+            transpile_stmt(s, oss, 0);
+            oss << "\n";
+        }
+    }
+
     bool has_user_main = false;
     DataType user_main_ret = DataType::VOID;
     for (Stmt* s : program.statements) {
@@ -73,7 +100,7 @@ std::string LLVMEmitter::emit_native_c(const Program& program) {
         if (std::holds_alternative<FnDeclStmt>(s->data)) {
             transpile_stmt(s, oss, 0);
             oss << "\n";
-        } else {
+        } else if (!std::holds_alternative<StructDeclStmt>(s->data)) {
             main_stmts.push_back(s);
         }
     }
@@ -156,9 +183,9 @@ void LLVMEmitter::transpile_stmt(Stmt* stmt, std::ostringstream& oss, int indent
             oss << pad << "}\n";
         }
         else if constexpr (std::is_same_v<T, IfStmt>) {
-            oss << pad << "if (";
+            oss << pad << "if (is_truthy(";
             transpile_expr(s.condition, oss);
-            oss << ".to_double() != 0.0) {\n";
+            oss << ")) {\n";
             transpile_stmt(s.then_branch, oss, indent + 1);
             oss << pad << "}";
             if (s.else_branch) {
@@ -211,9 +238,9 @@ void LLVMEmitter::transpile_stmt(Stmt* stmt, std::ostringstream& oss, int indent
             oss << pad << "}\n";
         }
         else if constexpr (std::is_same_v<T, WhileStmt>) {
-            oss << pad << "while (";
+            oss << pad << "while (is_truthy(";
             transpile_expr(s.condition, oss);
-            oss << ".to_double() != 0.0) {\n";
+            oss << ")) {\n";
             transpile_stmt(s.body, oss, indent + 1);
             oss << pad << "}\n";
         }
@@ -254,7 +281,25 @@ void LLVMEmitter::transpile_stmt(Stmt* stmt, std::ostringstream& oss, int indent
             }
         }
         else if constexpr (std::is_same_v<T, StructDeclStmt>) {
-            oss << pad << "// Struct " << s.name << " (Value Type)\n";
+            oss << pad << "struct " << s.name << " {\n";
+            for (const auto& f : s.fields) {
+                std::string ft = (f.resolved_type && f.resolved_type->kind == TypeKind::STRUCT) ? f.resolved_type->name : type_to_c(f.type);
+                oss << pad << "    " << ft << " " << f.name << ";\n";
+            }
+            oss << pad << "    " << s.name << "() = default;\n";
+            oss << pad << "    " << s.name << "(";
+            for (size_t i = 0; i < s.fields.size(); ++i) {
+                if (i > 0) oss << ", ";
+                std::string ft = (s.fields[i].resolved_type && s.fields[i].resolved_type->kind == TypeKind::STRUCT) ? s.fields[i].resolved_type->name : type_to_c(s.fields[i].type);
+                oss << ft << " _" << s.fields[i].name;
+            }
+            oss << ") : ";
+            for (size_t i = 0; i < s.fields.size(); ++i) {
+                if (i > 0) oss << ", ";
+                oss << s.fields[i].name << "(_" << s.fields[i].name << ")";
+            }
+            oss << " {}\n";
+            oss << pad << "};\n";
         }
         else if constexpr (std::is_same_v<T, ClassDeclStmt>) {
             oss << pad << "// Class " << s.name << " (Reference Type with ARC)\n";
@@ -380,19 +425,23 @@ void LLVMEmitter::transpile_expr(Expr* expr, std::ostringstream& oss) {
         }
         else if constexpr (std::is_same_v<T, CallExpr>) {
             if (e.callee == "println" || e.callee == "print") {
-                oss << "std::cout << ";
+                oss << "(print_val_stream(std::cout, ";
                 if (!e.args.empty()) {
                     Expr* arg = e.args[0];
                     if (std::holds_alternative<StringLiteralExpr>(arg->data)) {
                         const auto& str = std::get<StringLiteralExpr>(arg->data);
                         oss << "\"" << str.value << "\"";
                     } else {
-                        oss << "(";
                         transpile_expr(arg, oss);
-                        oss << ").to_double()";
                     }
+                } else {
+                    oss << "\"\"";
                 }
-                if (e.callee == "println") oss << " << '\\n'";
+                if (e.callee == "println") {
+                    oss << ") << '\\n')";
+                } else {
+                    oss << "))";
+                }
             } else if (e.callee == "assert_eq") {
                 oss << "assert(tafpu_cmp_c(";
                 transpile_expr(e.args[0], oss);
@@ -429,6 +478,83 @@ std::string LLVMEmitter::next_temp() {
     return "%t" + std::to_string(++temp_id_);
 }
 
+std::string LLVMEmitter::to_llvm_type(DataType dt, const std::string& custom_name) {
+    switch (dt) {
+        case DataType::INT: return "i64";
+        case DataType::FLOAT: return "double";
+        case DataType::BOOL: return "i1";
+        case DataType::TRYTE: return "i16";
+        case DataType::TAF3: return "%struct.TafpuNum";
+        case DataType::STRING: return "i8*";
+        case DataType::ARRAY: return "%struct.TersunArray*";
+        case DataType::VOID: return "void";
+        case DataType::OBJECT:
+            if (!custom_name.empty()) return "%struct." + custom_name + "*";
+            return "i8*";
+        default: return "i64";
+    }
+}
+
+std::string LLVMEmitter::to_llvm_type(const TypePtr& type) {
+    if (!type) return "i64";
+    switch (type->kind) {
+        case TypeKind::INT: return "i64";
+        case TypeKind::FLOAT: return "double";
+        case TypeKind::BOOL: return "i1";
+        case TypeKind::TRYTE:
+        case TypeKind::TRIT: return "i16";
+        case TypeKind::TAF3:
+        case TypeKind::TVEC3: return "%struct.TafpuNum";
+        case TypeKind::STRING: return "i8*";
+        case TypeKind::ARRAY: return "%struct.TersunArray*";
+        case TypeKind::STRUCT:
+        case TypeKind::CLASS: return "%struct." + type->name + "*";
+        case TypeKind::VOID: return "void";
+        default: return "i64";
+    }
+}
+
+void LLVMEmitter::register_struct(const StructDeclStmt& s) {
+    StructMeta meta;
+    meta.name = s.name;
+    int idx = 0;
+    for (const auto& f : s.fields) {
+        StructFieldMeta fm;
+        fm.name = f.name;
+        fm.llvm_type = to_llvm_type(f.type);
+        if (f.resolved_type) fm.llvm_type = to_llvm_type(f.resolved_type);
+        fm.index = idx;
+        meta.fields.push_back(fm);
+        meta.field_indices[f.name] = idx;
+        idx++;
+    }
+    struct_registry_[s.name] = meta;
+}
+
+void LLVMEmitter::register_class(const ClassDeclStmt& c) {
+    StructMeta meta;
+    meta.name = c.name;
+    int idx = 0;
+    for (const auto& f : c.fields) {
+        StructFieldMeta fm;
+        fm.name = f.name;
+        fm.llvm_type = to_llvm_type(f.type);
+        if (f.resolved_type) fm.llvm_type = to_llvm_type(f.resolved_type);
+        fm.index = idx;
+        meta.fields.push_back(fm);
+        meta.field_indices[f.name] = idx;
+        idx++;
+    }
+    struct_registry_[c.name] = meta;
+}
+
+std::string LLVMEmitter::get_string_literal_ref(const std::string& str) {
+    std::string name = "@.str_" + std::to_string(++str_id_);
+    llvm_strings_.push_back({name, str});
+    size_t len = str.size() + 1;
+    return "getelementptr inbounds ([" + std::to_string(len) + " x i8], [" + std::to_string(len) + " x i8]* " + name + ", i32 0, i32 0)";
+}
+
 void LLVMEmitter::emit_llvm_global_decls(std::ostringstream& oss) {
     oss << "; ModuleID = 'setun_module'\n";
     oss << "source_filename = \"setun_source.stn\"\n";
@@ -436,14 +562,34 @@ void LLVMEmitter::emit_llvm_global_decls(std::ostringstream& oss) {
     oss << "target triple = \"" << config_.triple << "\"\n\n";
 
     oss << "%struct.TafpuNum = type { i64, i64, i32, i32 }\n";
+    oss << "%struct.TersunArray = type { i8*, i64, i64, i64 }\n";
+    oss << "%struct.TersunString = type { i8*, i64 }\n";
+
+    for (const auto& [name, meta] : struct_registry_) {
+        oss << "%struct." << name << " = type { ";
+        for (size_t i = 0; i < meta.fields.size(); ++i) {
+            if (i > 0) oss << ", ";
+            oss << meta.fields[i].llvm_type;
+        }
+        oss << " }\n";
+    }
+    oss << "\n";
+
     oss << "@TAFPU_ZERO = private unnamed_addr constant %struct.TafpuNum { i64 0, i64 0, i32 0, i32 0 }, align 8\n";
     oss << "@.fmt_i64 = private unnamed_addr constant [6 x i8] c\"%lld\\0A\\00\", align 1\n";
-    oss << "@.fmt_str = private unnamed_addr constant [4 x i8] c\"%s\\0A\\00\", align 1\n\n";
+    oss << "@.fmt_dbl = private unnamed_addr constant [5 x i8] c\"%lf\\0A\\00\", align 1\n";
+    oss << "@.fmt_str = private unnamed_addr constant [4 x i8] c\"%s\\0A\\00\", align 1\n";
+    oss << "@.fmt_bool_t = private unnamed_addr constant [6 x i8] c\"true\\0A\\00\", align 1\n";
+    oss << "@.fmt_bool_f = private unnamed_addr constant [7 x i8] c\"false\\0A\\00\", align 1\n";
+    oss << "@.fmt_taf3 = private unnamed_addr constant [25 x i8] c\"[%lld, %lld, %d] (~%lf)\\0A\\00\", align 1\n";
+    oss << "@.empty_str = private unnamed_addr constant [1 x i8] c\"\\00\", align 1\n\n";
 
-    // External declarations
     oss << "declare i32 @printf(i8*, ...) nounwind\n";
     oss << "declare i32 @puts(i8*) nounwind\n";
-    oss << "declare void @abort() noreturn nounwind\n";
+    oss << "declare i8* @malloc(i64) nounwind\n";
+    oss << "declare void @free(i8*) nounwind\n";
+    oss << "declare void @abort() noreturn nounwind\n\n";
+
     oss << "declare i32 @setun2d_init(i32, i32, i8*)\n";
     oss << "declare i32 @setun2d_is_running()\n";
     oss << "declare void @setun2d_clear(i32)\n";
@@ -454,7 +600,6 @@ void LLVMEmitter::emit_llvm_global_decls(std::ostringstream& oss) {
     oss << "declare i32 @setun2d_get_key()\n";
     oss << "declare void @setun2d_close()\n\n";
 
-    // BitNet 1.58-bit AI Engine Declarations
     oss << "declare i32 @setun_nn_create_dense(i32, i32, i32)\n";
     oss << "declare void @setun_nn_set_weight(i32, i32, i32, i32)\n";
     oss << "declare void @setun_nn_set_bias(i32, i32, i64)\n";
@@ -468,7 +613,6 @@ void LLVMEmitter::emit_llvm_global_decls(std::ostringstream& oss) {
     oss << "declare void @setun_nn_load_mnist_sample(i32)\n";
     oss << "declare void @setun_nn_free_layer(i32)\n\n";
 
-    // Native TAFPU Arithmetic Inlined
     oss << "define void @tafpu_add_native(%struct.TafpuNum* noalias nocapture sret(%struct.TafpuNum) %res, %struct.TafpuNum* nocapture readonly %x1, %struct.TafpuNum* nocapture readonly %x2) alwaysinline nounwind {\n";
     oss << "entry:\n";
     oss << "    %a1.ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* %x1, i32 0, i32 0\n";
@@ -546,6 +690,62 @@ void LLVMEmitter::emit_llvm_global_decls(std::ostringstream& oss) {
     oss << "    ret void\n";
     oss << "}\n\n";
 
+    oss << "define void @tafpu_div_native(%struct.TafpuNum* noalias nocapture sret(%struct.TafpuNum) %res, %struct.TafpuNum* nocapture readonly %x1, %struct.TafpuNum* nocapture readonly %x2) alwaysinline nounwind {\n";
+    oss << "entry:\n";
+    oss << "    %a1.ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* %x1, i32 0, i32 0\n";
+    oss << "    %a1 = load i64, i64* %a1.ptr, align 8\n";
+    oss << "    %b1.ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* %x1, i32 0, i32 1\n";
+    oss << "    %b1 = load i64, i64* %b1.ptr, align 8\n";
+    oss << "    %s1.ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* %x1, i32 0, i32 2\n";
+    oss << "    %s1 = load i32, i32* %s1.ptr, align 4\n";
+    oss << "    %a2.ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* %x2, i32 0, i32 0\n";
+    oss << "    %a2 = load i64, i64* %a2.ptr, align 8\n";
+    oss << "    %b2.ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* %x2, i32 0, i32 1\n";
+    oss << "    %b2 = load i64, i64* %b2.ptr, align 8\n";
+    oss << "    %s2.ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* %x2, i32 0, i32 2\n";
+    oss << "    %s2 = load i32, i32* %s2.ptr, align 4\n";
+    oss << "    %a2_sq = mul i64 %a2, %a2\n";
+    oss << "    %b2_sq = mul i64 %b2, %b2\n";
+    oss << "    %b2_sq_3 = mul i64 %b2_sq, 3\n";
+    oss << "    %denom = sub i64 %a2_sq, %b2_sq_3\n";
+    oss << "    %a1a2 = mul i64 %a1, %a2\n";
+    oss << "    %b1b2 = mul i64 %b1, %b2\n";
+    oss << "    %b1b2_3 = mul i64 %b1b2, 3\n";
+    oss << "    %num_a = sub i64 %a1a2, %b1b2_3\n";
+    oss << "    %b1a2 = mul i64 %b1, %a2\n";
+    oss << "    %a1b2 = mul i64 %a1, %b2\n";
+    oss << "    %num_b = sub i64 %b1a2, %a1b2\n";
+    oss << "    %res_a_val = sdiv i64 %num_a, %denom\n";
+    oss << "    %res_b_val = sdiv i64 %num_b, %denom\n";
+    oss << "    %res_s_val = sub i32 %s1, %s2\n";
+    oss << "    %res.a = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* %res, i32 0, i32 0\n";
+    oss << "    store i64 %res_a_val, i64* %res.a, align 8\n";
+    oss << "    %res.b = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* %res, i32 0, i32 1\n";
+    oss << "    store i64 %res_b_val, i64* %res.b, align 8\n";
+    oss << "    %res.s = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* %res, i32 0, i32 2\n";
+    oss << "    store i32 %res_s_val, i32* %res.s, align 4\n";
+    oss << "    ret void\n";
+    oss << "}\n\n";
+
+    oss << "define void @tafpu_tilde_native(%struct.TafpuNum* noalias nocapture sret(%struct.TafpuNum) %res, %struct.TafpuNum* nocapture readonly %x) alwaysinline nounwind {\n";
+    oss << "entry:\n";
+    oss << "    %p_a = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* %x, i32 0, i32 0\n";
+    oss << "    %a = load i64, i64* %p_a, align 8\n";
+    oss << "    %p_b = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* %x, i32 0, i32 1\n";
+    oss << "    %b = load i64, i64* %p_b, align 8\n";
+    oss << "    %p_s = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* %x, i32 0, i32 2\n";
+    oss << "    %s = load i32, i32* %p_s, align 4\n";
+    oss << "    %neg_a = sub i64 0, %a\n";
+    oss << "    %neg_b = sub i64 0, %b\n";
+    oss << "    %res_a = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* %res, i32 0, i32 0\n";
+    oss << "    store i64 %neg_a, i64* %res_a, align 8\n";
+    oss << "    %res_b = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* %res, i32 0, i32 1\n";
+    oss << "    store i64 %neg_b, i64* %res_b, align 8\n";
+    oss << "    %res_s = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* %res, i32 0, i32 2\n";
+    oss << "    store i32 %s, i32* %res_s, align 4\n";
+    oss << "    ret void\n";
+    oss << "}\n\n";
+
     oss << "define i32 @tafpu_cmp_native(%struct.TafpuNum* nocapture readonly %x1, %struct.TafpuNum* nocapture readonly %x2) alwaysinline nounwind {\n";
     oss << "entry:\n";
     oss << "    %a1.ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* %x1, i32 0, i32 0\n";
@@ -568,6 +768,529 @@ void LLVMEmitter::emit_llvm_global_decls(std::ostringstream& oss) {
     oss << "    %res = select i1 %is_lt, i32 -1, i32 %res_gt\n";
     oss << "    ret i32 %res\n";
     oss << "}\n\n";
+
+    oss << "define %struct.TersunArray* @tersun_array_create(i64 %cap, i64 %elem_size) {\n";
+    oss << "entry:\n";
+    oss << "    %arr_raw = call i8* @malloc(i64 32)\n";
+    oss << "    %arr = bitcast i8* %arr_raw to %struct.TersunArray*\n";
+    oss << "    %buf_size = mul i64 %cap, %elem_size\n";
+    oss << "    %buf = call i8* @malloc(i64 %buf_size)\n";
+    oss << "    %p_data = getelementptr inbounds %struct.TersunArray, %struct.TersunArray* %arr, i32 0, i32 0\n";
+    oss << "    store i8* %buf, i8** %p_data, align 8\n";
+    oss << "    %p_len = getelementptr inbounds %struct.TersunArray, %struct.TersunArray* %arr, i32 0, i32 1\n";
+    oss << "    store i64 0, i64* %p_len, align 8\n";
+    oss << "    %p_cap = getelementptr inbounds %struct.TersunArray, %struct.TersunArray* %arr, i32 0, i32 2\n";
+    oss << "    store i64 %cap, i64* %p_cap, align 8\n";
+    oss << "    %p_esize = getelementptr inbounds %struct.TersunArray, %struct.TersunArray* %arr, i32 0, i32 3\n";
+    oss << "    store i64 %elem_size, i64* %p_esize, align 8\n";
+    oss << "    ret %struct.TersunArray* %arr\n";
+    oss << "}\n\n";
+
+    oss << "define void @tersun_array_push_i64(%struct.TersunArray* %arr, i64 %val) {\n";
+    oss << "entry:\n";
+    oss << "    %p_len = getelementptr inbounds %struct.TersunArray, %struct.TersunArray* %arr, i32 0, i32 1\n";
+    oss << "    %len = load i64, i64* %p_len, align 8\n";
+    oss << "    %p_data = getelementptr inbounds %struct.TersunArray, %struct.TersunArray* %arr, i32 0, i32 0\n";
+    oss << "    %data = load i8*, i8** %p_data, align 8\n";
+    oss << "    %data_i64 = bitcast i8* %data to i64*\n";
+    oss << "    %slot = getelementptr inbounds i64, i64* %data_i64, i64 %len\n";
+    oss << "    store i64 %val, i64* %slot, align 8\n";
+    oss << "    %new_len = add i64 %len, 1\n";
+    oss << "    store i64 %new_len, i64* %p_len, align 8\n";
+    oss << "    ret void\n";
+    oss << "}\n\n";
+
+    oss << "define i64 @tersun_array_get_i64(%struct.TersunArray* %arr, i64 %idx) {\n";
+    oss << "entry:\n";
+    oss << "    %p_data = getelementptr inbounds %struct.TersunArray, %struct.TersunArray* %arr, i32 0, i32 0\n";
+    oss << "    %data = load i8*, i8** %p_data, align 8\n";
+    oss << "    %data_i64 = bitcast i8* %data to i64*\n";
+    oss << "    %slot = getelementptr inbounds i64, i64* %data_i64, i64 %idx\n";
+    oss << "    %val = load i64, i64* %slot, align 8\n";
+    oss << "    ret i64 %val\n";
+    oss << "}\n\n";
+
+    oss << "define void @tersun_array_set_i64(%struct.TersunArray* %arr, i64 %idx, i64 %val) {\n";
+    oss << "entry:\n";
+    oss << "    %p_data = getelementptr inbounds %struct.TersunArray, %struct.TersunArray* %arr, i32 0, i32 0\n";
+    oss << "    %data = load i8*, i8** %p_data, align 8\n";
+    oss << "    %data_i64 = bitcast i8* %data to i64*\n";
+    oss << "    %slot = getelementptr inbounds i64, i64* %data_i64, i64 %idx\n";
+    oss << "    store i64 %val, i64* %slot, align 8\n";
+    oss << "    ret void\n";
+    oss << "}\n\n";
+
+    oss << "define void @tersun_print_i64(i64 %v) {\n";
+    oss << "entry:\n";
+    oss << "    %fmt = getelementptr inbounds [6 x i8], [6 x i8]* @.fmt_i64, i32 0, i32 0\n";
+    oss << "    call i32 (i8*, ...) @printf(i8* %fmt, i64 %v)\n";
+    oss << "    ret void\n";
+    oss << "}\n\n";
+
+    oss << "define void @tersun_print_double(double %v) {\n";
+    oss << "entry:\n";
+    oss << "    %fmt = getelementptr inbounds [5 x i8], [5 x i8]* @.fmt_dbl, i32 0, i32 0\n";
+    oss << "    call i32 (i8*, ...) @printf(i8* %fmt, double %v)\n";
+    oss << "    ret void\n";
+    oss << "}\n\n";
+
+    oss << "define void @tersun_print_str(i8* %s) {\n";
+    oss << "entry:\n";
+    oss << "    %fmt = getelementptr inbounds [4 x i8], [4 x i8]* @.fmt_str, i32 0, i32 0\n";
+    oss << "    call i32 (i8*, ...) @printf(i8* %fmt, i8* %s)\n";
+    oss << "    ret void\n";
+    oss << "}\n\n";
+
+    oss << "define void @tersun_print_bool(i1 %b) {\n";
+    oss << "entry:\n";
+    oss << "    %s_t = getelementptr inbounds [6 x i8], [6 x i8]* @.fmt_bool_t, i32 0, i32 0\n";
+    oss << "    %s_f = getelementptr inbounds [7 x i8], [7 x i8]* @.fmt_bool_f, i32 0, i32 0\n";
+    oss << "    %s = select i1 %b, i8* %s_t, i8* %s_f\n";
+    oss << "    call i32 (i8*, ...) @printf(i8* %s)\n";
+    oss << "    ret void\n";
+    oss << "}\n\n";
+
+    oss << "define void @tersun_print_taf3(%struct.TafpuNum* %num) {\n";
+    oss << "entry:\n";
+    oss << "    %p_a = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* %num, i32 0, i32 0\n";
+    oss << "    %a = load i64, i64* %p_a, align 8\n";
+    oss << "    %p_b = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* %num, i32 0, i32 1\n";
+    oss << "    %b = load i64, i64* %p_b, align 8\n";
+    oss << "    %p_s = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* %num, i32 0, i32 2\n";
+    oss << "    %s = load i32, i32* %p_s, align 4\n";
+    oss << "    %fmt = getelementptr inbounds [25 x i8], [25 x i8]* @.fmt_taf3, i32 0, i32 0\n";
+    oss << "    %da = sitofp i64 %a to double\n";
+    oss << "    %db = sitofp i64 %b to double\n";
+    oss << "    %db_rt3 = fmul double %db, 0x3FFBB67AE8584CAA\n";
+    oss << "    %approx = fadd double %da, %db_rt3\n";
+    oss << "    call i32 (i8*, ...) @printf(i8* %fmt, i64 %a, i64 %b, i32 %s, double %approx)\n";
+    oss << "    ret void\n";
+    oss << "}\n\n";
+}
+
+LLVMValue LLVMEmitter::emit_typed_expr(Expr* expr, std::ostringstream& oss) {
+    if (!expr) return { "@TAFPU_ZERO", "%struct.TafpuNum*", true };
+
+    LLVMValue result;
+
+    std::visit([&](const auto& e) {
+        using T = std::decay_t<decltype(e)>;
+
+        if constexpr (std::is_same_v<T, IntLiteralExpr>) {
+            result = { std::to_string(e.value), "i64", false };
+        }
+        else if constexpr (std::is_same_v<T, TryteLiteralExpr>) {
+            result = { std::to_string(e.value), "i16", false };
+        }
+        else if constexpr (std::is_same_v<T, FloatLiteralExpr>) {
+            result = { std::to_string(e.value), "double", false };
+        }
+        else if constexpr (std::is_same_v<T, BoolLiteralExpr>) {
+            result = { e.value ? "1" : "0", "i1", false };
+        }
+        else if constexpr (std::is_same_v<T, StringLiteralExpr>) {
+            std::string ref = get_string_literal_ref(e.value);
+            result = { ref, "i8*", false };
+        }
+        else if constexpr (std::is_same_v<T, TafpuLiteralExpr>) {
+            std::string res_ptr = next_temp();
+            oss << "    " << res_ptr << " = alloca %struct.TafpuNum, align 8\n";
+            std::string t = next_temp();
+            oss << "    " << t << ".a = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res_ptr << ", i32 0, i32 0\n";
+            oss << "    store i64 " << e.value.a << ", i64* " << t << ".a, align 8\n";
+            oss << "    " << t << ".b = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res_ptr << ", i32 0, i32 1\n";
+            oss << "    store i64 " << e.value.b << ", i64* " << t << ".b, align 8\n";
+            oss << "    " << t << ".s = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res_ptr << ", i32 0, i32 2\n";
+            oss << "    store i32 " << e.value.s << ", i32* " << t << ".s, align 4\n";
+            result = { res_ptr, "%struct.TafpuNum*", true };
+        }
+        else if constexpr (std::is_same_v<T, TafpuConstructExpr>) {
+            std::string res_ptr = next_temp();
+            oss << "    " << res_ptr << " = alloca %struct.TafpuNum, align 8\n";
+            LLVMValue a_val = emit_typed_expr(e.a, oss);
+            LLVMValue b_val = emit_typed_expr(e.b, oss);
+            LLVMValue s_val = emit_typed_expr(e.s, oss);
+
+            std::string t = next_temp();
+            oss << "    " << t << ".a = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res_ptr << ", i32 0, i32 0\n";
+            oss << "    store i64 " << a_val.val << ", i64* " << t << ".a, align 8\n";
+            oss << "    " << t << ".b = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res_ptr << ", i32 0, i32 1\n";
+            oss << "    store i64 " << b_val.val << ", i64* " << t << ".b, align 8\n";
+            oss << "    " << t << ".s = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res_ptr << ", i32 0, i32 2\n";
+            oss << "    %s_i32 = trunc i64 " << s_val.val << " to i32\n";
+            oss << "    store i32 %s_i32, i32* " << t << ".s, align 4\n";
+            result = { res_ptr, "%struct.TafpuNum*", true };
+        }
+        else if constexpr (std::is_same_v<T, IdentifierExpr>) {
+            auto it = llvm_vars_.find(e.name);
+            if (it != llvm_vars_.end()) {
+                std::string ptr = it->second;
+                std::string type = llvm_var_types_[e.name];
+                if (type == "i64" || type == "double" || type == "i1" || type == "i16" || type == "i8*") {
+                    std::string t = next_temp();
+                    oss << "    " << t << " = load " << type << ", " << type << "* " << ptr << ", align 8\n";
+                    result = { t, type, false };
+                } else if (type == "%struct.TafpuNum") {
+                    result = { ptr, "%struct.TafpuNum*", true };
+                } else if (!type.empty() && type.back() == '*') {
+                    std::string t = next_temp();
+                    oss << "    " << t << " = load " << type << ", " << type << "* " << ptr << ", align 8\n";
+                    result = { t, type, false };
+                } else {
+                    result = { ptr, "%struct." + type + "*", true };
+                }
+            } else {
+                result = { "0", "i64", false };
+            }
+        }
+        else if constexpr (std::is_same_v<T, UnaryExpr>) {
+            LLVMValue op_val = emit_typed_expr(e.operand, oss);
+            if (e.op == UnaryOp::NEG) {
+                if (op_val.type == "%struct.TafpuNum*") {
+                    std::string res_ptr = next_temp();
+                    oss << "    " << res_ptr << " = alloca %struct.TafpuNum, align 8\n";
+                    oss << "    call void @tafpu_sub_native(%struct.TafpuNum* " << res_ptr << ", %struct.TafpuNum* @TAFPU_ZERO, %struct.TafpuNum* " << op_val.val << ")\n";
+                    result = { res_ptr, "%struct.TafpuNum*", true };
+                } else if (op_val.type == "double") {
+                    std::string t = next_temp();
+                    oss << "    " << t << " = fsub double 0.0, " << op_val.val << "\n";
+                    result = { t, "double", false };
+                } else {
+                    std::string t = next_temp();
+                    oss << "    " << t << " = sub " << op_val.type << " 0, " << op_val.val << "\n";
+                    result = { t, op_val.type, false };
+                }
+            } else if (e.op == UnaryOp::TILDE) {
+                if (op_val.type == "%struct.TafpuNum*") {
+                    std::string res_ptr = next_temp();
+                    oss << "    " << res_ptr << " = alloca %struct.TafpuNum, align 8\n";
+                    oss << "    call void @tafpu_tilde_native(%struct.TafpuNum* " << res_ptr << ", %struct.TafpuNum* " << op_val.val << ")\n";
+                    result = { res_ptr, "%struct.TafpuNum*", true };
+                } else {
+                    std::string t = next_temp();
+                    oss << "    " << t << " = sub " << op_val.type << " 0, " << op_val.val << "\n";
+                    result = { t, op_val.type, false };
+                }
+            } else if (e.op == UnaryOp::NOT) {
+                std::string t = next_temp();
+                oss << "    " << t << " = xor i1 " << op_val.val << ", true\n";
+                result = { t, "i1", false };
+            }
+        }
+        else if constexpr (std::is_same_v<T, BinaryExpr>) {
+            LLVMValue left_val = emit_typed_expr(e.left, oss);
+            LLVMValue right_val = emit_typed_expr(e.right, oss);
+
+            if (left_val.type == "%struct.TafpuNum*" || right_val.type == "%struct.TafpuNum*") {
+                std::string l_ptr = left_val.val;
+                std::string r_ptr = right_val.val;
+                if (left_val.type != "%struct.TafpuNum*") {
+                    l_ptr = next_temp();
+                    oss << "    " << l_ptr << " = alloca %struct.TafpuNum, align 8\n";
+                    std::string t = next_temp();
+                    oss << "    " << t << ".a = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << l_ptr << ", i32 0, i32 0\n";
+                    oss << "    store i64 " << left_val.val << ", i64* " << t << ".a, align 8\n";
+                    oss << "    " << t << ".b = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << l_ptr << ", i32 0, i32 1\n";
+                    oss << "    store i64 0, i64* " << t << ".b, align 8\n";
+                    oss << "    " << t << ".s = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << l_ptr << ", i32 0, i32 2\n";
+                    oss << "    store i32 0, i32* " << t << ".s, align 4\n";
+                }
+                if (right_val.type != "%struct.TafpuNum*") {
+                    r_ptr = next_temp();
+                    oss << "    " << r_ptr << " = alloca %struct.TafpuNum, align 8\n";
+                    std::string t = next_temp();
+                    oss << "    " << t << ".a = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << r_ptr << ", i32 0, i32 0\n";
+                    oss << "    store i64 " << right_val.val << ", i64* " << t << ".a, align 8\n";
+                    oss << "    " << t << ".b = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << r_ptr << ", i32 0, i32 1\n";
+                    oss << "    store i64 0, i64* " << t << ".b, align 8\n";
+                    oss << "    " << t << ".s = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << r_ptr << ", i32 0, i32 2\n";
+                    oss << "    store i32 0, i32* " << t << ".s, align 4\n";
+                }
+
+                if (e.op == BinaryOp::ADD) {
+                    std::string res = next_temp();
+                    oss << "    " << res << " = alloca %struct.TafpuNum, align 8\n";
+                    oss << "    call void @tafpu_add_native(%struct.TafpuNum* " << res << ", %struct.TafpuNum* " << l_ptr << ", %struct.TafpuNum* " << r_ptr << ")\n";
+                    result = { res, "%struct.TafpuNum*", true };
+                } else if (e.op == BinaryOp::SUB) {
+                    std::string res = next_temp();
+                    oss << "    " << res << " = alloca %struct.TafpuNum, align 8\n";
+                    oss << "    call void @tafpu_sub_native(%struct.TafpuNum* " << res << ", %struct.TafpuNum* " << l_ptr << ", %struct.TafpuNum* " << r_ptr << ")\n";
+                    result = { res, "%struct.TafpuNum*", true };
+                } else if (e.op == BinaryOp::MUL || e.op == BinaryOp::MATMUL) {
+                    std::string res = next_temp();
+                    oss << "    " << res << " = alloca %struct.TafpuNum, align 8\n";
+                    oss << "    call void @tafpu_mul_native(%struct.TafpuNum* " << res << ", %struct.TafpuNum* " << l_ptr << ", %struct.TafpuNum* " << r_ptr << ")\n";
+                    result = { res, "%struct.TafpuNum*", true };
+                } else if (e.op == BinaryOp::DIV) {
+                    std::string res = next_temp();
+                    oss << "    " << res << " = alloca %struct.TafpuNum, align 8\n";
+                    oss << "    call void @tafpu_div_native(%struct.TafpuNum* " << res << ", %struct.TafpuNum* " << l_ptr << ", %struct.TafpuNum* " << r_ptr << ")\n";
+                    result = { res, "%struct.TafpuNum*", true };
+                } else if (e.op == BinaryOp::SPACESHIP) {
+                    std::string cmp = next_temp();
+                    oss << "    " << cmp << " = call i32 @tafpu_cmp_native(%struct.TafpuNum* " << l_ptr << ", %struct.TafpuNum* " << r_ptr << ")\n";
+                    result = { cmp, "i32", false };
+                } else {
+                    std::string cmp = next_temp();
+                    oss << "    " << cmp << " = call i32 @tafpu_cmp_native(%struct.TafpuNum* " << l_ptr << ", %struct.TafpuNum* " << r_ptr << ")\n";
+                    std::string cond = (e.op == BinaryOp::EQ) ? "eq" : (e.op == BinaryOp::NEQ) ? "ne" : (e.op == BinaryOp::LT) ? "slt" : (e.op == BinaryOp::LE) ? "sle" : (e.op == BinaryOp::GT) ? "sgt" : "sge";
+                    std::string b = next_temp();
+                    oss << "    " << b << " = icmp " << cond << " i32 " << cmp << ", 0\n";
+                    result = { b, "i1", false };
+                }
+            }
+            else if (left_val.type == "double" || right_val.type == "double") {
+                std::string l = left_val.val;
+                std::string r = right_val.val;
+                if (left_val.type != "double") {
+                    std::string cvt = next_temp();
+                    oss << "    " << cvt << " = sitofp " << left_val.type << " " << l << " to double\n";
+                    l = cvt;
+                }
+                if (right_val.type != "double") {
+                    std::string cvt = next_temp();
+                    oss << "    " << cvt << " = sitofp " << right_val.type << " " << r << " to double\n";
+                    r = cvt;
+                }
+
+                if (e.op == BinaryOp::ADD) {
+                    std::string t = next_temp();
+                    oss << "    " << t << " = fadd double " << l << ", " << r << "\n";
+                    result = { t, "double", false };
+                } else if (e.op == BinaryOp::SUB) {
+                    std::string t = next_temp();
+                    oss << "    " << t << " = fsub double " << l << ", " << r << "\n";
+                    result = { t, "double", false };
+                } else if (e.op == BinaryOp::MUL) {
+                    std::string t = next_temp();
+                    oss << "    " << t << " = fmul double " << l << ", " << r << "\n";
+                    result = { t, "double", false };
+                } else if (e.op == BinaryOp::DIV) {
+                    std::string t = next_temp();
+                    oss << "    " << t << " = fdiv double " << l << ", " << r << "\n";
+                    result = { t, "double", false };
+                } else {
+                    std::string cond = (e.op == BinaryOp::EQ) ? "oeq" : (e.op == BinaryOp::NEQ) ? "one" : (e.op == BinaryOp::LT) ? "olt" : (e.op == BinaryOp::LE) ? "ole" : (e.op == BinaryOp::GT) ? "ogt" : "oge";
+                    std::string b = next_temp();
+                    oss << "    " << b << " = fcmp " << cond << " double " << l << ", " << r << "\n";
+                    result = { b, "i1", false };
+                }
+            }
+            else {
+                std::string type = left_val.type;
+                if (e.op == BinaryOp::ADD) {
+                    std::string t = next_temp();
+                    oss << "    " << t << " = add " << type << " " << left_val.val << ", " << right_val.val << "\n";
+                    result = { t, type, false };
+                } else if (e.op == BinaryOp::SUB) {
+                    std::string t = next_temp();
+                    oss << "    " << t << " = sub " << type << " " << left_val.val << ", " << right_val.val << "\n";
+                    result = { t, type, false };
+                } else if (e.op == BinaryOp::MUL) {
+                    std::string t = next_temp();
+                    oss << "    " << t << " = mul " << type << " " << left_val.val << ", " << right_val.val << "\n";
+                    result = { t, type, false };
+                } else if (e.op == BinaryOp::DIV) {
+                    std::string t = next_temp();
+                    oss << "    " << t << " = sdiv " << type << " " << left_val.val << ", " << right_val.val << "\n";
+                    result = { t, type, false };
+                } else if (e.op == BinaryOp::SPACESHIP) {
+                    std::string lt = next_temp();
+                    std::string gt = next_temp();
+                    oss << "    " << lt << " = icmp slt " << type << " " << left_val.val << ", " << right_val.val << "\n";
+                    oss << "    " << gt << " = icmp sgt " << type << " " << left_val.val << ", " << right_val.val << "\n";
+                    std::string s_pos = next_temp();
+                    oss << "    " << s_pos << " = select i1 " << gt << ", i32 1, i32 0\n";
+                    std::string s_res = next_temp();
+                    oss << "    " << s_res << " = select i1 " << lt << ", i32 -1, i32 " << s_pos << "\n";
+                    result = { s_res, "i32", false };
+                } else if (e.op == BinaryOp::MIN) {
+                    std::string lt = next_temp();
+                    oss << "    " << lt << " = icmp slt " << type << " " << left_val.val << ", " << right_val.val << "\n";
+                    std::string t = next_temp();
+                    oss << "    " << t << " = select i1 " << lt << ", " << type << " " << left_val.val << ", " << type << " " << right_val.val << "\n";
+                    result = { t, type, false };
+                } else if (e.op == BinaryOp::MAX) {
+                    std::string gt = next_temp();
+                    oss << "    " << gt << " = icmp sgt " << type << " " << left_val.val << ", " << right_val.val << "\n";
+                    std::string t = next_temp();
+                    oss << "    " << t << " = select i1 " << gt << ", " << type << " " << left_val.val << ", " << type << " " << right_val.val << "\n";
+                    result = { t, type, false };
+                } else {
+                    std::string cond = (e.op == BinaryOp::EQ) ? "eq" : (e.op == BinaryOp::NEQ) ? "ne" : (e.op == BinaryOp::LT) ? "slt" : (e.op == BinaryOp::LE) ? "sle" : (e.op == BinaryOp::GT) ? "sgt" : "sge";
+                    std::string b = next_temp();
+                    oss << "    " << b << " = icmp " << cond << " " << type << " " << left_val.val << ", " << right_val.val << "\n";
+                    result = { b, "i1", false };
+                }
+            }
+        }
+        else if constexpr (std::is_same_v<T, ArrayLiteralExpr>) {
+            size_t count = e.elements.size();
+            std::string arr_ptr = next_temp();
+            oss << "    " << arr_ptr << " = call %struct.TersunArray* @tersun_array_create(i64 " << std::max<size_t>(count, 8) << ", i64 8)\n";
+            for (Expr* elem : e.elements) {
+                LLVMValue v = emit_typed_expr(elem, oss);
+                std::string ival = v.val;
+                if (v.type == "i1") {
+                    std::string z = next_temp();
+                    oss << "    " << z << " = zext i1 " << v.val << " to i64\n";
+                    ival = z;
+                }
+                oss << "    call void @tersun_array_push_i64(%struct.TersunArray* " << arr_ptr << ", i64 " << ival << ")\n";
+            }
+            result = { arr_ptr, "%struct.TersunArray*", false };
+        }
+        else if constexpr (std::is_same_v<T, IndexExpr>) {
+            LLVMValue arr = emit_typed_expr(e.object, oss);
+            LLVMValue idx = emit_typed_expr(e.index, oss);
+            std::string t = next_temp();
+            oss << "    " << t << " = call i64 @tersun_array_get_i64(%struct.TersunArray* " << arr.val << ", i64 " << idx.val << ")\n";
+            result = { t, "i64", false };
+        }
+        else if constexpr (std::is_same_v<T, MemberAccessExpr>) {
+            LLVMValue obj = emit_typed_expr(e.object, oss);
+            std::string struct_name = "";
+            if (obj.type.rfind("%struct.", 0) == 0) {
+                size_t end_pos = obj.type.find('*');
+                if (end_pos != std::string::npos) {
+                    struct_name = obj.type.substr(8, end_pos - 8);
+                }
+            }
+            auto s_it = struct_registry_.find(struct_name);
+            if (s_it != struct_registry_.end()) {
+                auto f_it = s_it->second.field_indices.find(e.member);
+                if (f_it != s_it->second.field_indices.end()) {
+                    int f_idx = f_it->second;
+                    std::string f_type = s_it->second.fields[f_idx].llvm_type;
+                    std::string slot = next_temp();
+                    oss << "    " << slot << " = getelementptr inbounds %struct." << struct_name << ", %struct." << struct_name << "* " << obj.val << ", i32 0, i32 " << f_idx << "\n";
+                    std::string val = next_temp();
+                    oss << "    " << val << " = load " << f_type << ", " << f_type << "* " << slot << ", align 8\n";
+                    result = { val, f_type, false };
+                } else {
+                    result = { "0", "i64", false };
+                }
+            } else {
+                result = { "0", "i64", false };
+            }
+        }
+        else if constexpr (std::is_same_v<T, CallExpr>) {
+            if (e.callee == "println" || e.callee == "print") {
+                for (Expr* a : e.args) {
+                    LLVMValue v = emit_typed_expr(a, oss);
+                    if (v.type == "i8*") {
+                        oss << "    call void @tersun_print_str(i8* " << v.val << ")\n";
+                    } else if (v.type == "double") {
+                        oss << "    call void @tersun_print_double(double " << v.val << ")\n";
+                    } else if (v.type == "i1") {
+                        oss << "    call void @tersun_print_bool(i1 " << v.val << ")\n";
+                    } else if (v.type == "%struct.TafpuNum*") {
+                        oss << "    call void @tersun_print_taf3(%struct.TafpuNum* " << v.val << ")\n";
+                    } else {
+                        oss << "    call void @tersun_print_i64(i64 " << v.val << ")\n";
+                    }
+                }
+                if (e.callee == "println") {
+                    oss << "    call i32 @puts(i8* getelementptr inbounds ([1 x i8], [1 x i8]* @.empty_str, i32 0, i32 0))\n";
+                }
+                result = { "0", "void", false };
+            }
+            else if (e.callee == "assert_eq") {
+                if (e.args.size() >= 2) {
+                    LLVMValue v1 = emit_typed_expr(e.args[0], oss);
+                    LLVMValue v2 = emit_typed_expr(e.args[1], oss);
+                    std::string is_ne = next_temp();
+                    if (v1.type == "%struct.TafpuNum*") {
+                        std::string cmp = next_temp();
+                        oss << "    " << cmp << " = call i32 @tafpu_cmp_native(%struct.TafpuNum* " << v1.val << ", %struct.TafpuNum* " << v2.val << ")\n";
+                        oss << "    " << is_ne << " = icmp ne i32 " << cmp << ", 0\n";
+                    } else {
+                        oss << "    " << is_ne << " = icmp ne " << v1.type << " " << v1.val << ", " << v2.val << "\n";
+                    }
+                    std::string abort_lbl = next_label("abort");
+                    std::string ok_lbl = next_label("ok");
+                    oss << "    br i1 " << is_ne << ", label %" << abort_lbl << ", label %" << ok_lbl << "\n";
+                    oss << abort_lbl << ":\n";
+                    oss << "    call void @abort()\n";
+                    oss << "    unreachable\n";
+                    oss << ok_lbl << ":\n";
+                }
+                result = { "0", "void", false };
+            }
+            else if (e.callee == "setun2d_init") {
+                LLVMValue w = emit_typed_expr(e.args[0], oss);
+                LLVMValue h = emit_typed_expr(e.args[1], oss);
+                LLVMValue title = emit_typed_expr(e.args[2], oss);
+                std::string t = next_temp();
+                oss << "    " << t << " = call i32 @setun2d_init(i32 " << w.val << ", i32 " << h.val << ", i8* " << title.val << ")\n";
+                result = { t, "i32", false };
+            }
+            else if (e.callee == "setun2d_is_running") {
+                std::string t = next_temp();
+                oss << "    " << t << " = call i32 @setun2d_is_running()\n";
+                result = { t, "i32", false };
+            }
+            else if (e.callee == "setun2d_clear") {
+                LLVMValue col = emit_typed_expr(e.args[0], oss);
+                oss << "    call void @setun2d_clear(i32 " << col.val << ")\n";
+                result = { "0", "void", false };
+            }
+            else if (e.callee == "setun2d_flip") {
+                std::string t = next_temp();
+                oss << "    " << t << " = call i32 @setun2d_flip()\n";
+                result = { t, "i32", false };
+            }
+            else if (e.callee == "setun2d_close") {
+                oss << "    call void @setun2d_close()\n";
+                result = { "0", "void", false };
+            }
+            else if (e.callee == "setun2d_get_key") {
+                std::string t = next_temp();
+                oss << "    " << t << " = call i32 @setun2d_get_key()\n";
+                result = { t, "i32", false };
+            }
+            else {
+                std::vector<LLVMValue> arg_vals;
+                for (Expr* a : e.args) {
+                    arg_vals.push_back(emit_typed_expr(a, oss));
+                }
+                std::string t = next_temp();
+                oss << "    " << t << " = call i64 @" << e.callee << "(";
+                for (size_t i = 0; i < arg_vals.size(); ++i) {
+                    if (i > 0) oss << ", ";
+                    oss << arg_vals[i].type << " " << arg_vals[i].val;
+                }
+                oss << ")\n";
+                result = { t, "i64", false };
+            }
+        }
+        else if constexpr (std::is_same_v<T, ComptimeExpr>) {
+            result = emit_typed_expr(e.expr, oss);
+        }
+        else {
+            result = { "0", "i64", false };
+        }
+    }, expr->data);
+
+    return result;
+}
+
+std::string LLVMEmitter::emit_llvm_expr(Expr* expr, std::ostringstream& oss) {
+    LLVMValue v = emit_typed_expr(expr, oss);
+    if (v.type == "%struct.TafpuNum*") {
+        return v.val;
+    }
+    std::string ptr = next_temp();
+    oss << "    " << ptr << " = alloca %struct.TafpuNum, align 8\n";
+    std::string t = next_temp();
+    oss << "    " << t << ".a = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << ptr << ", i32 0, i32 0\n";
+    oss << "    store i64 " << v.val << ", i64* " << t << ".a, align 8\n";
+    oss << "    " << t << ".b = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << ptr << ", i32 0, i32 1\n";
+    oss << "    store i64 0, i64* " << t << ".b, align 8\n";
+    oss << "    " << t << ".s = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << ptr << ", i32 0, i32 2\n";
+    oss << "    store i32 0, i32* " << t << ".s, align 4\n";
+    return ptr;
 }
 
 void LLVMEmitter::emit_llvm_function(Stmt* stmt, std::ostringstream& oss) {
@@ -575,39 +1298,53 @@ void LLVMEmitter::emit_llvm_function(Stmt* stmt, std::ostringstream& oss) {
     const auto& fn = std::get<FnDeclStmt>(stmt->data);
 
     std::string fname = (fn.name == "main") ? "stn_main" : fn.name;
-    current_res_ptr_ = "%res";
+    bool is_sret = (fn.return_type == DataType::TAF3);
+    std::string ret_type = is_sret ? "void" : to_llvm_type(fn.return_type);
+    current_fn_ret_type_ = ret_type;
 
-    oss << "define void @" << fname << "(%struct.TafpuNum* noalias sret(%struct.TafpuNum) %res";
-    for (size_t i = 0; i < fn.params.size(); ++i) {
-        oss << ", %struct.TafpuNum* readonly %param_" << fn.params[i].name;
+    oss << "define " << ret_type << " @" << fname << "(";
+    if (is_sret) {
+        current_res_ptr_ = "%res";
+        oss << "%struct.TafpuNum* noalias sret(%struct.TafpuNum) %res";
+        for (size_t i = 0; i < fn.params.size(); ++i) {
+            oss << ", %struct.TafpuNum* readonly %param_" << fn.params[i].name;
+        }
+    } else {
+        for (size_t i = 0; i < fn.params.size(); ++i) {
+            if (i > 0) oss << ", ";
+            std::string p_type = to_llvm_type(fn.params[i].type);
+            oss << p_type << " %param_" << fn.params[i].name;
+        }
     }
     oss << ") {\n";
     oss << "entry:\n";
 
     llvm_vars_.clear();
+    llvm_var_types_.clear();
+
     for (size_t i = 0; i < fn.params.size(); ++i) {
-        std::string var_ptr = "%" + fn.params[i].name + ".ptr";
-        oss << "    " << var_ptr << " = alloca %struct.TafpuNum, align 8\n";
-        oss << "    %p_" << i << ".a_ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* %param_" << fn.params[i].name << ", i32 0, i32 0\n";
-        oss << "    %p_" << i << ".a = load i64, i64* %p_" << i << ".a_ptr, align 8\n";
-        oss << "    %p_" << i << ".b_ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* %param_" << fn.params[i].name << ", i32 0, i32 1\n";
-        oss << "    %p_" << i << ".b = load i64, i64* %p_" << i << ".b_ptr, align 8\n";
-        oss << "    %p_" << i << ".s_ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* %param_" << fn.params[i].name << ", i32 0, i32 2\n";
-        oss << "    %p_" << i << ".s = load i32, i32* %p_" << i << ".s_ptr, align 4\n";
-        oss << "    %dst_" << i << ".a = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << var_ptr << ", i32 0, i32 0\n";
-        oss << "    store i64 %p_" << i << ".a, i64* %dst_" << i << ".a, align 8\n";
-        oss << "    %dst_" << i << ".b = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << var_ptr << ", i32 0, i32 1\n";
-        oss << "    store i64 %p_" << i << ".b, i64* %dst_" << i << ".b, align 8\n";
-        oss << "    %dst_" << i << ".s = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << var_ptr << ", i32 0, i32 2\n";
-        oss << "    store i32 %p_" << i << ".s, i32* %dst_" << i << ".s, align 4\n";
-        llvm_vars_[fn.params[i].name] = var_ptr;
+        std::string p_name = fn.params[i].name;
+        std::string p_type = is_sret ? "%struct.TafpuNum" : to_llvm_type(fn.params[i].type);
+        std::string var_ptr = "%" + p_name + ".ptr";
+        oss << "    " << var_ptr << " = alloca " << p_type << ", align 8\n";
+        oss << "    store " << p_type << (is_sret ? "* " : " ") << "%param_" << p_name << ", " << p_type << "* " << var_ptr << ", align 8\n";
+        llvm_vars_[p_name] = var_ptr;
+        llvm_var_types_[p_name] = p_type;
     }
 
     if (fn.body) {
         emit_llvm_stmt(fn.body, oss);
     }
 
-    oss << "    ret void\n";
+    if (ret_type == "void") {
+        oss << "    ret void\n";
+    } else if (ret_type == "double") {
+        oss << "    ret double 0.0\n";
+    } else if (ret_type == "i1") {
+        oss << "    ret i1 0\n";
+    } else {
+        oss << "    ret " << ret_type << " 0\n";
+    }
     oss << "}\n\n";
 }
 
@@ -618,51 +1355,104 @@ void LLVMEmitter::emit_llvm_stmt(Stmt* stmt, std::ostringstream& oss) {
         using T = std::decay_t<decltype(s)>;
 
         if constexpr (std::is_same_v<T, VarDeclStmt>) {
-            std::string var_ptr = "%" + s.name + ".ptr";
-            oss << "    " << var_ptr << " = alloca %struct.TafpuNum, align 8\n";
-            llvm_vars_[s.name] = var_ptr;
-
+            std::string var_type = to_llvm_type(s.type, s.custom_type_name);
+            if (s.resolved_type) {
+                var_type = to_llvm_type(s.resolved_type);
+            }
+            LLVMValue init_val;
+            bool has_init = false;
             if (s.init) {
-                std::string init_ptr = emit_llvm_expr(s.init, oss);
-                std::string t = next_temp();
-                oss << "    " << t << ".a_ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << init_ptr << ", i32 0, i32 0\n";
-                oss << "    " << t << ".a = load i64, i64* " << t << ".a_ptr, align 8\n";
-                oss << "    " << t << ".b_ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << init_ptr << ", i32 0, i32 1\n";
-                oss << "    " << t << ".b = load i64, i64* " << t << ".b_ptr, align 8\n";
-                oss << "    " << t << ".s_ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << init_ptr << ", i32 0, i32 2\n";
-                oss << "    " << t << ".s = load i32, i32* " << t << ".s_ptr, align 4\n";
+                init_val = emit_typed_expr(s.init, oss);
+                has_init = true;
+                if (var_type.empty() || var_type == "i64") {
+                    var_type = init_val.type;
+                }
+            }
+            if (var_type.empty()) var_type = "i64";
 
-                oss << "    " << t << ".dst_a = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << var_ptr << ", i32 0, i32 0\n";
-                oss << "    store i64 " << t << ".a, i64* " << t << ".dst_a, align 8\n";
-                oss << "    " << t << ".dst_b = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << var_ptr << ", i32 0, i32 1\n";
-                oss << "    store i64 " << t << ".b, i64* " << t << ".dst_b, align 8\n";
-                oss << "    " << t << ".dst_s = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << var_ptr << ", i32 0, i32 2\n";
-                oss << "    store i32 " << t << ".s, i64* " << t << ".dst_s, align 4\n";
+            std::string var_ptr = "%" + s.name + ".ptr";
+            oss << "    " << var_ptr << " = alloca " << var_type << ", align 8\n";
+            llvm_vars_[s.name] = var_ptr;
+            llvm_var_types_[s.name] = var_type;
+
+            if (has_init) {
+                if (var_type == "%struct.TafpuNum" && init_val.type == "%struct.TafpuNum*") {
+                    std::string t = next_temp();
+                    oss << "    " << t << ".a_ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << init_val.val << ", i32 0, i32 0\n";
+                    oss << "    " << t << ".a = load i64, i64* " << t << ".a_ptr, align 8\n";
+                    oss << "    " << t << ".b_ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << init_val.val << ", i32 0, i32 1\n";
+                    oss << "    " << t << ".b = load i64, i64* " << t << ".b_ptr, align 8\n";
+                    oss << "    " << t << ".s_ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << init_val.val << ", i32 0, i32 2\n";
+                    oss << "    " << t << ".s = load i32, i32* " << t << ".s_ptr, align 4\n";
+
+                    oss << "    " << t << ".dst_a = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << var_ptr << ", i32 0, i32 0\n";
+                    oss << "    store i64 " << t << ".a, i64* " << t << ".dst_a, align 8\n";
+                    oss << "    " << t << ".dst_b = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << var_ptr << ", i32 0, i32 1\n";
+                    oss << "    store i64 " << t << ".b, i64* " << t << ".dst_b, align 8\n";
+                    oss << "    " << t << ".dst_s = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << var_ptr << ", i32 0, i32 2\n";
+                    oss << "    store i32 " << t << ".s, i32* " << t << ".dst_s, align 4\n";
+                } else {
+                    oss << "    store " << var_type << " " << init_val.val << ", " << var_type << "* " << var_ptr << ", align 8\n";
+                }
             }
         }
         else if constexpr (std::is_same_v<T, AssignStmt>) {
             auto it = llvm_vars_.find(s.name);
             if (it != llvm_vars_.end()) {
                 std::string var_ptr = it->second;
-                std::string val_ptr = emit_llvm_expr(s.value, oss);
-                std::string t = next_temp();
-                oss << "    " << t << ".a_ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << val_ptr << ", i32 0, i32 0\n";
-                oss << "    " << t << ".a = load i64, i64* " << t << ".a_ptr, align 8\n";
-                oss << "    " << t << ".b_ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << val_ptr << ", i32 0, i32 1\n";
-                oss << "    " << t << ".b = load i64, i64* " << t << ".b_ptr, align 8\n";
-                oss << "    " << t << ".s_ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << val_ptr << ", i32 0, i32 2\n";
-                oss << "    " << t << ".s = load i32, i32* " << t << ".s_ptr, align 4\n";
+                std::string var_type = llvm_var_types_[s.name];
+                LLVMValue val = emit_typed_expr(s.value, oss);
 
-                oss << "    " << t << ".dst_a = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << var_ptr << ", i32 0, i32 0\n";
-                oss << "    store i64 " << t << ".a, i64* " << t << ".dst_a, align 8\n";
-                oss << "    " << t << ".dst_b = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << var_ptr << ", i32 0, i32 1\n";
-                oss << "    store i64 " << t << ".b, i64* " << t << ".dst_b, align 8\n";
-                oss << "    " << t << ".dst_s = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << var_ptr << ", i32 0, i32 2\n";
-                oss << "    store i32 " << t << ".s, i64* " << t << ".dst_s, align 4\n";
+                if (var_type == "%struct.TafpuNum" && val.type == "%struct.TafpuNum*") {
+                    std::string t = next_temp();
+                    oss << "    " << t << ".a_ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << val.val << ", i32 0, i32 0\n";
+                    oss << "    " << t << ".a = load i64, i64* " << t << ".a_ptr, align 8\n";
+                    oss << "    " << t << ".b_ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << val.val << ", i32 0, i32 1\n";
+                    oss << "    " << t << ".b = load i64, i64* " << t << ".b_ptr, align 8\n";
+                    oss << "    " << t << ".s_ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << val.val << ", i32 0, i32 2\n";
+                    oss << "    " << t << ".s = load i32, i32* " << t << ".s_ptr, align 4\n";
+
+                    oss << "    " << t << ".dst_a = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << var_ptr << ", i32 0, i32 0\n";
+                    oss << "    store i64 " << t << ".a, i64* " << t << ".dst_a, align 8\n";
+                    oss << "    " << t << ".dst_b = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << var_ptr << ", i32 0, i32 1\n";
+                    oss << "    store i64 " << t << ".b, i64* " << t << ".dst_b, align 8\n";
+                    oss << "    " << t << ".dst_s = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << var_ptr << ", i32 0, i32 2\n";
+                    oss << "    store i32 " << t << ".s, i32* " << t << ".dst_s, align 4\n";
+                } else {
+                    oss << "    store " << var_type << " " << val.val << ", " << var_type << "* " << var_ptr << ", align 8\n";
+                }
             }
         }
+        else if constexpr (std::is_same_v<T, MemberAssignStmt>) {
+            LLVMValue obj = emit_typed_expr(s.object, oss);
+            std::string struct_name = "";
+            if (obj.type.rfind("%struct.", 0) == 0) {
+                size_t end_pos = obj.type.find('*');
+                if (end_pos != std::string::npos) {
+                    struct_name = obj.type.substr(8, end_pos - 8);
+                }
+            }
+            auto s_it = struct_registry_.find(struct_name);
+            if (s_it != struct_registry_.end()) {
+                auto f_it = s_it->second.field_indices.find(s.member);
+                if (f_it != s_it->second.field_indices.end()) {
+                    int f_idx = f_it->second;
+                    std::string f_type = s_it->second.fields[f_idx].llvm_type;
+                    LLVMValue val = emit_typed_expr(s.value, oss);
+                    std::string slot = next_temp();
+                    oss << "    " << slot << " = getelementptr inbounds %struct." << struct_name << ", %struct." << struct_name << "* " << obj.val << ", i32 0, i32 " << f_idx << "\n";
+                    oss << "    store " << f_type << " " << val.val << ", " << f_type << "* " << slot << ", align 8\n";
+                }
+            }
+        }
+        else if constexpr (std::is_same_v<T, IndexAssignStmt>) {
+            LLVMValue arr = emit_typed_expr(s.object, oss);
+            LLVMValue idx = emit_typed_expr(s.index, oss);
+            LLVMValue val = emit_typed_expr(s.value, oss);
+            oss << "    call void @tersun_array_set_i64(%struct.TersunArray* " << arr.val << ", i64 " << idx.val << ", i64 " << val.val << ")\n";
+        }
         else if constexpr (std::is_same_v<T, ExprStmt>) {
-            emit_llvm_expr(s.expr, oss);
+            emit_typed_expr(s.expr, oss);
         }
         else if constexpr (std::is_same_v<T, BlockStmt>) {
             for (Stmt* sub_s : s.statements) {
@@ -670,17 +1460,19 @@ void LLVMEmitter::emit_llvm_stmt(Stmt* stmt, std::ostringstream& oss) {
             }
         }
         else if constexpr (std::is_same_v<T, IfStmt>) {
-            std::string cond_ptr = emit_llvm_expr(s.condition, oss);
-            std::string t = next_temp();
-            oss << "    " << t << ".a_ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << cond_ptr << ", i32 0, i32 0\n";
-            oss << "    " << t << ".a = load i64, i64* " << t << ".a_ptr, align 8\n";
-            oss << "    " << t << ".cond = icmp ne i64 " << t << ".a, 0\n";
+            LLVMValue cond = emit_typed_expr(s.condition, oss);
+            std::string bool_cond = cond.val;
+            if (cond.type != "i1") {
+                std::string t = next_temp();
+                oss << "    " << t << " = icmp ne " << cond.type << " " << cond.val << ", 0\n";
+                bool_cond = t;
+            }
 
-            std::string then_lbl = next_label("then");
-            std::string else_lbl = next_label("else");
-            std::string merge_lbl = next_label("merge");
+            std::string then_lbl = next_label("if_then");
+            std::string else_lbl = next_label("if_else");
+            std::string merge_lbl = next_label("if_merge");
 
-            oss << "    br i1 " << t << ".cond, label %" << then_lbl << ", label %" << else_lbl << "\n";
+            oss << "    br i1 " << bool_cond << ", label %" << then_lbl << ", label %" << else_lbl << "\n";
             oss << then_lbl << ":\n";
             if (s.then_branch) emit_llvm_stmt(s.then_branch, oss);
             oss << "    br label %" << merge_lbl << "\n";
@@ -698,12 +1490,14 @@ void LLVMEmitter::emit_llvm_stmt(Stmt* stmt, std::ostringstream& oss) {
 
             oss << "    br label %" << cond_lbl << "\n";
             oss << cond_lbl << ":\n";
-            std::string cond_ptr = emit_llvm_expr(s.condition, oss);
-            std::string t = next_temp();
-            oss << "    " << t << ".a_ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << cond_ptr << ", i32 0, i32 0\n";
-            oss << "    " << t << ".a = load i64, i64* " << t << ".a_ptr, align 8\n";
-            oss << "    " << t << ".cond = icmp ne i64 " << t << ".a, 0\n";
-            oss << "    br i1 " << t << ".cond, label %" << body_lbl << ", label %" << exit_lbl << "\n";
+            LLVMValue cond = emit_typed_expr(s.condition, oss);
+            std::string bool_cond = cond.val;
+            if (cond.type != "i1") {
+                std::string t = next_temp();
+                oss << "    " << t << " = icmp ne " << cond.type << " " << cond.val << ", 0\n";
+                bool_cond = t;
+            }
+            oss << "    br i1 " << bool_cond << ", label %" << body_lbl << ", label %" << exit_lbl << "\n";
 
             oss << body_lbl << ":\n";
             if (s.body) emit_llvm_stmt(s.body, oss);
@@ -712,228 +1506,119 @@ void LLVMEmitter::emit_llvm_stmt(Stmt* stmt, std::ostringstream& oss) {
             oss << exit_lbl << ":\n";
         }
         else if constexpr (std::is_same_v<T, Branch3Stmt>) {
-            std::string cond_ptr = emit_llvm_expr(s.condition, oss);
-            std::string t = next_temp();
-            oss << "    " << t << ".trit = call i32 @tafpu_cmp_native(%struct.TafpuNum* " << cond_ptr << ", %struct.TafpuNum* @TAFPU_ZERO)\n";
+            LLVMValue cond = emit_typed_expr(s.condition, oss);
+            std::string trit_val = "";
+            if (cond.type == "%struct.TafpuNum*") {
+                std::string t = next_temp();
+                oss << "    " << t << " = call i32 @tafpu_cmp_native(%struct.TafpuNum* " << cond.val << ", %struct.TafpuNum* @TAFPU_ZERO)\n";
+                trit_val = t;
+            } else if (cond.type == "i32") {
+                trit_val = cond.val;
+            } else {
+                std::string lt = next_temp();
+                std::string gt = next_temp();
+                oss << "    " << lt << " = icmp slt " << cond.type << " " << cond.val << ", 0\n";
+                oss << "    " << gt << " = icmp sgt " << cond.type << " " << cond.val << ", 0\n";
+                std::string s_pos = next_temp();
+                oss << "    " << s_pos << " = select i1 " << gt << ", i32 1, i32 0\n";
+                std::string t = next_temp();
+                oss << "    " << t << " = select i1 " << lt << ", i32 -1, i32 " << s_pos << "\n";
+                trit_val = t;
+            }
 
             std::string neg_lbl = next_label("br3_neg");
             std::string zero_lbl = next_label("br3_zero");
             std::string pos_lbl = next_label("br3_pos");
             std::string merge_lbl = next_label("br3_merge");
 
-            oss << "    switch i32 " << t << ".trit, label %" << zero_lbl << " [\n";
+            oss << "    switch i32 " << trit_val << ", label %" << zero_lbl << " [\n";
             oss << "        i32 -1, label %" << neg_lbl << "\n";
             oss << "        i32 1, label %" << pos_lbl << "\n";
             oss << "    ]\n";
 
-            // Arm Negative
             oss << neg_lbl << ":\n";
             if (s.neg_branch) emit_llvm_stmt(s.neg_branch, oss);
             oss << "    br label %" << merge_lbl << "\n";
 
-            // Arm Zero
             oss << zero_lbl << ":\n";
             if (s.zero_branch) emit_llvm_stmt(s.zero_branch, oss);
             oss << "    br label %" << merge_lbl << "\n";
 
-            // Arm Positive
             oss << pos_lbl << ":\n";
             if (s.pos_branch) emit_llvm_stmt(s.pos_branch, oss);
             oss << "    br label %" << merge_lbl << "\n";
 
             oss << merge_lbl << ":\n";
         }
-        else if constexpr (std::is_same_v<T, ReturnStmt>) {
-            if (s.value && !current_res_ptr_.empty()) {
-                std::string val_ptr = emit_llvm_expr(s.value, oss);
-                std::string t = next_temp();
-                oss << "    " << t << ".a_ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << val_ptr << ", i32 0, i32 0\n";
-                oss << "    " << t << ".a = load i64, i64* " << t << ".a_ptr, align 8\n";
-                oss << "    " << t << ".b_ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << val_ptr << ", i32 0, i32 1\n";
-                oss << "    " << t << ".b = load i64, i64* " << t << ".b_ptr, align 8\n";
-                oss << "    " << t << ".s_ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << val_ptr << ", i32 0, i32 2\n";
-                oss << "    " << t << ".s = load i32, i32* " << t << ".s_ptr, align 4\n";
+        else if constexpr (std::is_same_v<T, MatchStmt>) {
+            LLVMValue cond = emit_typed_expr(s.condition, oss);
+            std::string match_merge = next_label("match_merge");
+            for (size_t i = 0; i < s.arms.size(); ++i) {
+                const auto& arm = s.arms[i];
+                std::string arm_body = next_label("arm_body");
+                std::string next_arm = (i + 1 < s.arms.size()) ? next_label("next_arm") : match_merge;
 
-                oss << "    " << t << ".dst_a = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << current_res_ptr_ << ", i32 0, i32 0\n";
-                oss << "    store i64 " << t << ".a, i64* " << t << ".dst_a, align 8\n";
-                oss << "    " << t << ".dst_b = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << current_res_ptr_ << ", i32 0, i32 1\n";
-                oss << "    store i64 " << t << ".b, i64* " << t << ".dst_b, align 8\n";
-                oss << "    " << t << ".dst_s = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << current_res_ptr_ << ", i32 0, i32 2\n";
-                oss << "    store i32 " << t << ".s, i64* " << t << ".dst_s, align 4\n";
+                if (arm.pattern) {
+                    LLVMValue pat = emit_typed_expr(arm.pattern, oss);
+                    std::string is_eq = next_temp();
+                    oss << "    " << is_eq << " = icmp eq " << cond.type << " " << cond.val << ", " << pat.val << "\n";
+                    std::string check_guard = is_eq;
+                    if (arm.guard) {
+                        LLVMValue gd = emit_typed_expr(arm.guard, oss);
+                        std::string g_and = next_temp();
+                        oss << "    " << g_and << " = and i1 " << is_eq << ", " << gd.val << "\n";
+                        check_guard = g_and;
+                    }
+                    oss << "    br i1 " << check_guard << ", label %" << arm_body << ", label %" << next_arm << "\n";
+                } else {
+                    oss << "    br label %" << arm_body << "\n";
+                }
+
+                oss << arm_body << ":\n";
+                if (arm.body) emit_llvm_stmt(arm.body, oss);
+                oss << "    br label %" << match_merge << "\n";
+
+                if (i + 1 < s.arms.size()) {
+                    oss << next_arm << ":\n";
+                }
             }
-            oss << "    ret void\n";
+            oss << match_merge << ":\n";
+        }
+        else if constexpr (std::is_same_v<T, ReturnStmt>) {
+            if (s.value) {
+                LLVMValue v = emit_typed_expr(s.value, oss);
+                if (current_fn_ret_type_ == "void") {
+                    if (!current_res_ptr_.empty() && v.type == "%struct.TafpuNum*") {
+                        std::string t = next_temp();
+                        oss << "    " << t << ".a_ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << v.val << ", i32 0, i32 0\n";
+                        oss << "    " << t << ".a = load i64, i64* " << t << ".a_ptr, align 8\n";
+                        oss << "    " << t << ".b_ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << v.val << ", i32 0, i32 1\n";
+                        oss << "    " << t << ".b = load i64, i64* " << t << ".b_ptr, align 8\n";
+                        oss << "    " << t << ".s_ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << v.val << ", i32 0, i32 2\n";
+                        oss << "    " << t << ".s = load i32, i32* " << t << ".s_ptr, align 4\n";
+
+                        oss << "    " << t << ".dst_a = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << current_res_ptr_ << ", i32 0, i32 0\n";
+                        oss << "    store i64 " << t << ".a, i64* " << t << ".dst_a, align 8\n";
+                        oss << "    " << t << ".dst_b = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << current_res_ptr_ << ", i32 0, i32 1\n";
+                        oss << "    store i64 " << t << ".b, i64* " << t << ".dst_b, align 8\n";
+                        oss << "    " << t << ".dst_s = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << current_res_ptr_ << ", i32 0, i32 2\n";
+                        oss << "    store i32 " << t << ".s, i32* " << t << ".dst_s, align 4\n";
+                    }
+                    oss << "    ret void\n";
+                } else {
+                    oss << "    ret " << current_fn_ret_type_ << " " << v.val << "\n";
+                }
+            } else {
+                oss << "    ret void\n";
+            }
+        }
+        else if constexpr (std::is_same_v<T, StructDeclStmt>) {
+            register_struct(s);
+        }
+        else if constexpr (std::is_same_v<T, ClassDeclStmt>) {
+            register_class(s);
         }
     }, stmt->data);
-}
-
-std::string LLVMEmitter::emit_llvm_expr(Expr* expr, std::ostringstream& oss) {
-    if (!expr) return "@TAFPU_ZERO";
-
-    std::string res_ptr = next_temp();
-
-    std::visit([&](const auto& e) {
-        using T = std::decay_t<decltype(e)>;
-
-        if constexpr (std::is_same_v<T, IntLiteralExpr>) {
-            oss << "    " << res_ptr << " = alloca %struct.TafpuNum, align 8\n";
-            std::string t = next_temp();
-            oss << "    " << t << ".a = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res_ptr << ", i32 0, i32 0\n";
-            oss << "    store i64 " << e.value << ", i64* " << t << ".a, align 8\n";
-            oss << "    " << t << ".b = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res_ptr << ", i32 0, i32 1\n";
-            oss << "    store i64 0, i64* " << t << ".b, align 8\n";
-            oss << "    " << t << ".s = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res_ptr << ", i32 0, i32 2\n";
-            oss << "    store i32 0, i32* " << t << ".s, align 4\n";
-        }
-        else if constexpr (std::is_same_v<T, TryteLiteralExpr>) {
-            oss << "    " << res_ptr << " = alloca %struct.TafpuNum, align 8\n";
-            std::string t = next_temp();
-            oss << "    " << t << ".a = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res_ptr << ", i32 0, i32 0\n";
-            oss << "    store i64 " << e.value << ", i64* " << t << ".a, align 8\n";
-            oss << "    " << t << ".b = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res_ptr << ", i32 0, i32 1\n";
-            oss << "    store i64 0, i64* " << t << ".b, align 8\n";
-            oss << "    " << t << ".s = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res_ptr << ", i32 0, i32 2\n";
-            oss << "    store i32 0, i32* " << t << ".s, align 4\n";
-        }
-        else if constexpr (std::is_same_v<T, TafpuLiteralExpr>) {
-            oss << "    " << res_ptr << " = alloca %struct.TafpuNum, align 8\n";
-            std::string t = next_temp();
-            oss << "    " << t << ".a = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res_ptr << ", i32 0, i32 0\n";
-            oss << "    store i64 " << e.value.a << ", i64* " << t << ".a, align 8\n";
-            oss << "    " << t << ".b = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res_ptr << ", i32 0, i32 1\n";
-            oss << "    store i64 " << e.value.b << ", i64* " << t << ".b, align 8\n";
-            oss << "    " << t << ".s = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res_ptr << ", i32 0, i32 2\n";
-            oss << "    store i32 " << e.value.s << ", i32* " << t << ".s, align 4\n";
-        }
-        else if constexpr (std::is_same_v<T, IdentifierExpr>) {
-            auto it = llvm_vars_.find(e.name);
-            if (it != llvm_vars_.end()) {
-                res_ptr = it->second;
-            } else {
-                res_ptr = "@TAFPU_ZERO";
-            }
-        }
-        else if constexpr (std::is_same_v<T, UnaryExpr>) {
-            std::string op_ptr = emit_llvm_expr(e.operand, oss);
-            oss << "    " << res_ptr << " = alloca %struct.TafpuNum, align 8\n";
-            if (e.op == UnaryOp::NEG) {
-                oss << "    call void @tafpu_sub_native(%struct.TafpuNum* " << res_ptr << ", %struct.TafpuNum* @TAFPU_ZERO, %struct.TafpuNum* " << op_ptr << ")\n";
-            }
-        }
-        else if constexpr (std::is_same_v<T, BinaryExpr>) {
-            std::string left_ptr = emit_llvm_expr(e.left, oss);
-            std::string right_ptr = emit_llvm_expr(e.right, oss);
-            oss << "    " << res_ptr << " = alloca %struct.TafpuNum, align 8\n";
-
-            switch (e.op) {
-                case BinaryOp::ADD:
-                    oss << "    call void @tafpu_add_native(%struct.TafpuNum* " << res_ptr << ", %struct.TafpuNum* " << left_ptr << ", %struct.TafpuNum* " << right_ptr << ")\n";
-                    break;
-                case BinaryOp::SUB:
-                    oss << "    call void @tafpu_sub_native(%struct.TafpuNum* " << res_ptr << ", %struct.TafpuNum* " << left_ptr << ", %struct.TafpuNum* " << right_ptr << ")\n";
-                    break;
-                case BinaryOp::MUL:
-                case BinaryOp::MATMUL:
-                    oss << "    call void @tafpu_mul_native(%struct.TafpuNum* " << res_ptr << ", %struct.TafpuNum* " << left_ptr << ", %struct.TafpuNum* " << right_ptr << ")\n";
-                    break;
-                case BinaryOp::EQ:
-                case BinaryOp::NEQ:
-                case BinaryOp::LT:
-                case BinaryOp::LE:
-                case BinaryOp::GT:
-                case BinaryOp::GE: {
-                    std::string t = next_temp();
-                    oss << "    " << t << ".cmp = call i32 @tafpu_cmp_native(%struct.TafpuNum* " << left_ptr << ", %struct.TafpuNum* " << right_ptr << ")\n";
-                    std::string cond_name = (e.op == BinaryOp::EQ) ? "eq" : (e.op == BinaryOp::NEQ) ? "ne" : (e.op == BinaryOp::LT) ? "slt" : (e.op == BinaryOp::LE) ? "sle" : (e.op == BinaryOp::GT) ? "sgt" : "sge";
-                    oss << "    " << t << ".bool = icmp " << cond_name << " i32 " << t << ".cmp, 0\n";
-                    oss << "    " << t << ".i64 = zext i1 " << t << ".bool to i64\n";
-                    oss << "    " << t << ".a = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res_ptr << ", i32 0, i32 0\n";
-                    oss << "    store i64 " << t << ".i64, i64* " << t << ".a, align 8\n";
-                    oss << "    " << t << ".b = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res_ptr << ", i32 0, i32 1\n";
-                    oss << "    store i64 0, i64* " << t << ".b, align 8\n";
-                    oss << "    " << t << ".s = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res_ptr << ", i32 0, i32 2\n";
-                    oss << "    store i32 0, i32* " << t << ".s, align 4\n";
-                    break;
-                }
-                default:
-                    oss << "    call void @tafpu_add_native(%struct.TafpuNum* " << res_ptr << ", %struct.TafpuNum* " << left_ptr << ", %struct.TafpuNum* " << right_ptr << ")\n";
-                    break;
-            }
-        }
-        else if constexpr (std::is_same_v<T, CallExpr>) {
-            if (e.callee == "print" || e.callee == "println") {
-                if (!e.args.empty()) {
-                    Expr* arg = e.args[0];
-                    if (std::holds_alternative<StringLiteralExpr>(arg->data)) {
-                        const auto& str = std::get<StringLiteralExpr>(arg->data);
-                        std::string gstr = "@.str." + std::to_string(++str_id_);
-                        llvm_strings_.push_back({gstr, str.value});
-                        oss << "    call i32 @puts(i8* getelementptr inbounds ([" << (str.value.size() + 1) << " x i8], [" << (str.value.size() + 1) << " x i8]* " << gstr << ", i32 0, i32 0))\n";
-                    } else {
-                        std::string val_ptr = emit_llvm_expr(arg, oss);
-                        std::string t = next_temp();
-                        oss << "    " << t << ".a_ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << val_ptr << ", i32 0, i32 0\n";
-                        oss << "    " << t << ".a = load i64, i64* " << t << ".a_ptr, align 8\n";
-                        oss << "    call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.fmt_i64, i32 0, i32 0), i64 " << t << ".a)\n";
-                    }
-                }
-                res_ptr = "@TAFPU_ZERO";
-            }
-            else if (e.callee == "setun2d_is_running") {
-                oss << "    " << res_ptr << " = alloca %struct.TafpuNum, align 8\n";
-                std::string t = next_temp();
-                oss << "    " << t << ".r = call i32 @setun2d_is_running()\n";
-                oss << "    " << t << ".i64 = sext i32 " << t << ".r to i64\n";
-                oss << "    " << t << ".a = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res_ptr << ", i32 0, i32 0\n";
-                oss << "    store i64 " << t << ".i64, i64* " << t << ".a, align 8\n";
-                oss << "    " << t << ".b = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res_ptr << ", i32 0, i32 1\n";
-                oss << "    store i64 0, i64* " << t << ".b, align 8\n";
-                oss << "    " << t << ".s = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res_ptr << ", i32 0, i32 2\n";
-                oss << "    store i32 0, i32* " << t << ".s, align 4\n";
-            }
-            else if (e.callee == "setun2d_flip") {
-                oss << "    " << res_ptr << " = alloca %struct.TafpuNum, align 8\n";
-                std::string t = next_temp();
-                oss << "    " << t << ".k = call i32 @setun2d_flip()\n";
-                oss << "    " << t << ".i64 = sext i32 " << t << ".k to i64\n";
-                oss << "    " << t << ".a = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res_ptr << ", i32 0, i32 0\n";
-                oss << "    store i64 " << t << ".i64, i64* " << t << ".a, align 8\n";
-                oss << "    " << t << ".b = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res_ptr << ", i32 0, i32 1\n";
-                oss << "    store i64 0, i64* " << t << ".b, align 8\n";
-                oss << "    " << t << ".s = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res_ptr << ", i32 0, i32 2\n";
-                oss << "    store i32 0, i32* " << t << ".s, align 4\n";
-            }
-            else if (e.callee == "setun2d_get_key") {
-                oss << "    " << res_ptr << " = alloca %struct.TafpuNum, align 8\n";
-                std::string t = next_temp();
-                oss << "    " << t << ".k = call i32 @setun2d_get_key()\n";
-                oss << "    " << t << ".i64 = sext i32 " << t << ".k to i64\n";
-                oss << "    " << t << ".a = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res_ptr << ", i32 0, i32 0\n";
-                oss << "    store i64 " << t << ".i64, i64* " << t << ".a, align 8\n";
-                oss << "    " << t << ".b = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res_ptr << ", i32 0, i32 1\n";
-                oss << "    store i64 0, i64* " << t << ".b, align 8\n";
-                oss << "    " << t << ".s = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res_ptr << ", i32 0, i32 2\n";
-                oss << "    store i32 0, i32* " << t << ".s, align 4\n";
-            }
-            else {
-                // Generic user-defined function call
-                oss << "    " << res_ptr << " = alloca %struct.TafpuNum, align 8\n";
-                std::vector<std::string> arg_ptrs;
-                for (Expr* a : e.args) {
-                    arg_ptrs.push_back(emit_llvm_expr(a, oss));
-                }
-                oss << "    call void @" << e.callee << "(%struct.TafpuNum* " << res_ptr;
-                for (const auto& ap : arg_ptrs) {
-                    oss << ", %struct.TafpuNum* " << ap;
-                }
-                oss << ")\n";
-            }
-        }
-        else {
-            res_ptr = "@TAFPU_ZERO";
-        }
-    }, expr->data);
-
-    return res_ptr;
 }
 
 std::string LLVMEmitter::emit_llvm_ir(const Program& program) {
@@ -942,43 +1627,65 @@ std::string LLVMEmitter::emit_llvm_ir(const Program& program) {
     label_counter_ = 0;
     str_id_ = 0;
     llvm_vars_.clear();
+    llvm_var_types_.clear();
     llvm_strings_.clear();
+    struct_registry_.clear();
 
-    // Emit user functions
+    for (Stmt* s : program.statements) {
+        if (std::holds_alternative<StructDeclStmt>(s->data)) {
+            register_struct(std::get<StructDeclStmt>(s->data));
+        } else if (std::holds_alternative<ClassDeclStmt>(s->data)) {
+            register_class(std::get<ClassDeclStmt>(s->data));
+        }
+    }
+
     bool has_user_main = false;
+    DataType user_main_ret = DataType::VOID;
     std::vector<Stmt*> top_stmts;
+
     for (Stmt* s : program.statements) {
         if (std::holds_alternative<FnDeclStmt>(s->data)) {
             const auto& fn = std::get<FnDeclStmt>(s->data);
-            if (fn.name == "main") has_user_main = true;
+            if (fn.name == "main") {
+                has_user_main = true;
+                user_main_ret = fn.return_type;
+            }
             emit_llvm_function(s, body_oss);
         } else {
             top_stmts.push_back(s);
         }
     }
 
-    // Emit main entry function
     body_oss << "define i32 @main(i32 %argc, i8** %argv) {\n";
     body_oss << "entry:\n";
     current_res_ptr_ = "";
+    current_fn_ret_type_ = "i32";
 
     for (Stmt* s : top_stmts) {
         emit_llvm_stmt(s, body_oss);
     }
 
     if (has_user_main) {
-        body_oss << "    %main_ret = alloca %struct.TafpuNum, align 8\n";
-        body_oss << "    call void @stn_main(%struct.TafpuNum* %main_ret)\n";
-        body_oss << "    %m.a_ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* %main_ret, i32 0, i32 0\n";
-        body_oss << "    %m.a = load i64, i64* %m.a_ptr, align 8\n";
-        body_oss << "    %ret_code = trunc i64 %m.a to i32\n";
-        body_oss << "    ret i32 %ret_code\n";
+        if (user_main_ret == DataType::TAF3) {
+            body_oss << "    %main_ret = alloca %struct.TafpuNum, align 8\n";
+            body_oss << "    call void @stn_main(%struct.TafpuNum* %main_ret)\n";
+            body_oss << "    %m.a_ptr = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* %main_ret, i32 0, i32 0\n";
+            body_oss << "    %m.a = load i64, i64* %m.a_ptr, align 8\n";
+            body_oss << "    %ret_code = trunc i64 %m.a to i32\n";
+            body_oss << "    ret i32 %ret_code\n";
+        } else if (user_main_ret == DataType::VOID) {
+            body_oss << "    call void @stn_main()\n";
+            body_oss << "    ret i32 0\n";
+        } else {
+            body_oss << "    %m_ret = call i64 @stn_main()\n";
+            body_oss << "    %ret_code = trunc i64 %m_ret to i32\n";
+            body_oss << "    ret i32 %ret_code\n";
+        }
     } else {
         body_oss << "    ret i32 0\n";
     }
     body_oss << "}\n";
 
-    // Build header with declarations and string constants
     std::ostringstream header_oss;
     emit_llvm_global_decls(header_oss);
 
@@ -1012,7 +1719,7 @@ bool LLVMEmitter::compile_native(const Program& program, const std::string& outp
     cmd << "g++ -std=c++20 -O" << opt_level 
         << " -Iinclude -I\"../include\" -I\"Code/include\" -I\"Compiler/Code/include\" -I\"../Code/include\" -I\"../../Compiler/Code/include\""
         << home_inc << " \"" 
-        << temp_c_file << "\" -o \"" << output_path << "\"";
+        << temp_c_file << "\" -L. -L\"Code\" -L\"../Code\" -ltersun_rt -lgdi32 -luser32 -o \"" << output_path << "\"";
 
     int ret = std::system(cmd.str().c_str());
     if (ret == 0) {
@@ -1038,7 +1745,7 @@ bool LLVMEmitter::compile_llvm_native(const Program& program, const std::string&
 
     // Try compiling with clang if available
     std::ostringstream clang_cmd;
-    clang_cmd << "clang -O" << opt_level << " \"" << ll_file << "\" -o \"" << output_path << "\" 2>nul";
+    clang_cmd << "clang -O" << opt_level << " \"" << ll_file << "\" -L. -L\"Code\" -L\"../Code\" -ltersun_rt -lgdi32 -luser32 -o \"" << output_path << "\" 2>nul";
     int ret = std::system(clang_cmd.str().c_str());
 
     if (ret == 0) {

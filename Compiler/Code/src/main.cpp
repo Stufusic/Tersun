@@ -18,6 +18,10 @@
 #include "compiler/monomorphizer.hpp"
 #include "graphics/setun2d_bridge.hpp"
 #include "vm/jit_engine.hpp"
+#include "qvm/qvm.hpp"
+#include "qvm/qgate.hpp"
+#include "compiler/llvm2qvm.hpp"
+#include "compiler/q_emitter.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -30,9 +34,17 @@ using namespace setun;
 
 void print_banner() {
     std::cout << "===================================================================\n";
-    std::cout << "  Setun 2.0 Balanced Ternary LLVM Compiler & AOT Toolchain (v2.0) \n";
-    std::cout << "  Native Speed C++ • Multi-Arch ARM/x86/RISC-V/Wasm • TAFPU Q(√3) \n";
+    std::cout << "  Tersun 1.0.2 Balanced Ternary Quantum (QVM) & LLVM Toolchain    \n";
+    std::cout << "  Quantum 2-Bit/Qubit Engine • OpenQASM 3.0 • LLVM AOT Native C++  \n";
     std::cout << "===================================================================\n\n";
+}
+
+void print_version() {
+    std::cout << "Tersun Compiler 1.0.2 (Quantum QVM & LLVM Edition)\n";
+    std::cout << "Version: 1.0.2\n";
+    std::cout << "Targets: QVM (.qbc), OpenQASM 3.0 (.qasm), LLVM IR (.ll), Native (.exe)\n";
+    std::cout << "Quantum Architecture: 2-bit packing to 1-qubit (|0>, |1>, |->, |+>/Nil)\n";
+    std::cout << "Algebraic Engine: TAFPU in Q(sqrt(3)), zero algebraic drift\n";
 }
 
 void print_help(const char* prog_name) {
@@ -41,7 +53,12 @@ void print_help(const char* prog_name) {
     std::cout << "Commands:\n";
     std::cout << "  run <file.setun|.tbc>   Execute a Setun source or bytecode file\n";
     std::cout << "  compile <file> -o <out> Compile source to bytecode binary (.tbc)\n";
+    std::cout << "  compile <file> --qvm    Compile source directly to QVM Quantum Bytecode (.qbc)\n";
+    std::cout << "  compile <file> --llvm   Compile source to AOT Native via LLVM (.exe)\n";
     std::cout << "  compile <file> --native Compile source to AOT Native Executable (.exe)\n";
+    std::cout << "  run-qvm <file.qbc>      Execute quantum bytecode on QVM Simulator\n";
+    std::cout << "  llvm2qvm <file.ll>      Translate LLVM IR text into QVM Bytecode (.qbc)\n";
+    std::cout << "  emit-qasm <file.stn>    Export quantum circuit to OpenQASM 3.0 (.qasm)\n";
     std::cout << "  --emit-c <file>         Transpile Setun source to High-Speed C20 SIMD code\n";
     std::cout << "  --emit-llvm <file>      Generate Multi-Arch LLVM IR text (.ll)\n";
     std::cout << "  --emit-verilog          Generate synthesizable Verilog-2001 RTL for TAFPU\n";
@@ -49,8 +66,9 @@ void print_help(const char* prog_name) {
     std::cout << "  tpm <init|build|test>   Ternary Package Manager project commands\n";
     std::cout << "  repl                    Start interactive balanced ternary REPL\n";
     std::cout << "  benchmark               Run 100,000 cycles TAFPU vs IEEE 754 benchmark\n";
-    std::cout << "  test                    Run self-tests (TAFPU, Branch3, Syntax, LLVM Native)\n";
+    std::cout << "  test                    Run self-tests (TAFPU, Branch3, LLVM, QVM 1.0.2)\n";
     std::cout << "  trace-btvp <a> <b>      Trace trit-by-trit addition (reproduces Table 1)\n";
+    std::cout << "  --version / -v          Display compiler version and target information\n";
     std::cout << "\n";
 }
 
@@ -174,6 +192,15 @@ int cmd_emit_llvm(const std::string& source_path, const std::string& out_path = 
         Parser parser(tokens, arena);
         Program program = parser.parse_program();
 
+        TypeChecker checker;
+        if (!checker.check_program(program)) {
+            std::cerr << checker.format_diagnostics(source);
+            return 1;
+        }
+
+        Monomorphizer monomorphizer;
+        monomorphizer.process_program(program);
+
         TargetConfig cfg;
         cfg.triple = triple;
         cfg.opt_level = 3;
@@ -207,6 +234,15 @@ int cmd_compile_llvm(const std::string& source_path, const std::string& out_path
 
         Parser parser(tokens, arena);
         Program program = parser.parse_program();
+
+        TypeChecker checker;
+        if (!checker.check_program(program)) {
+            std::cerr << checker.format_diagnostics(source);
+            return 1;
+        }
+
+        Monomorphizer monomorphizer;
+        monomorphizer.process_program(program);
 
         LLVMEmitter emitter;
         std::cout << "[LLVM AOT] Compiling " << source_path << " to Native Binary (" << out_path << ") with LLVM Backend (-O" << opt_level << ")...\n";
@@ -259,6 +295,16 @@ int cmd_compile_native(const std::string& source_path, const std::string& out_pa
 
 int cmd_disasm(const std::string& path) {
     try {
+        if (path.size() >= 4 && path.substr(path.size() - 4) == ".qbc") {
+            tersun::qvm::QChunk qchunk;
+            if (!tersun::qvm::QChunk::load_from_file(path, qchunk)) {
+                std::cerr << "[Error]: Failed to load binary QVM bytecode: " << path << "\n";
+                return 1;
+            }
+            std::cout << qchunk.disassemble(path) << "\n";
+            return 0;
+        }
+
         Chunk chunk;
         if (path.size() >= 4 && path.substr(path.size() - 4) == ".tbc") {
             if (!Chunk::load_from_file(path, chunk)) {
@@ -477,6 +523,12 @@ int main(int argc, char* argv[]) {
 
     std::string cmd = argv[1];
 
+    // Version flag
+    if (cmd == "--version" || cmd == "-v" || cmd == "version") {
+        print_version();
+        return 0;
+    }
+
     // 1. Emit C20 Native Transpile: setunc --emit-c <file>
     if (cmd == "--emit-c" && argc >= 3) {
         return cmd_emit_c(argv[2]);
@@ -499,11 +551,12 @@ int main(int argc, char* argv[]) {
         return cmd_emit_llvm(source_file, out_file, triple);
     }
 
-    // 3. Compile: setunc compile <source> [-o <out>] [--native|--llvm] [-O0|-O1|-O2|-O3]
+    // 3. Compile: setunc compile <source> [-o <out>] [--native|--llvm|--qvm] [-O0|-O1|-O2|-O3]
     if (cmd == "compile" && argc >= 3) {
         std::string source_file = argv[2];
         bool is_native = false;
         bool is_llvm = false;
+        bool is_qvm = false;
         std::string out_file = "";
         int opt_level = 3;
 
@@ -513,6 +566,8 @@ int main(int argc, char* argv[]) {
                 is_native = true;
             } else if (arg == "--llvm") {
                 is_llvm = true;
+            } else if (arg == "--qvm") {
+                is_qvm = true;
             } else if (arg == "-o" && i + 1 < argc) {
                 out_file = argv[++i];
             } else if (arg == "-O0") {
@@ -526,7 +581,36 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        if (is_llvm) {
+        if (is_qvm) {
+            if (out_file.empty()) out_file = "app.qbc";
+            try {
+                std::string source = read_file(source_file);
+                ArenaAllocator arena;
+                Lexer lexer(source);
+                auto tokens = lexer.tokenize();
+                Parser parser(tokens, arena);
+                Program program = parser.parse_program();
+
+                TypeChecker checker;
+                if (!checker.check_program(program)) {
+                    std::cerr << checker.format_diagnostics(source);
+                    return 1;
+                }
+                Monomorphizer mono;
+                mono.process_program(program);
+
+                tersun::compiler::QEmitter emitter;
+                if (!emitter.compile_file(program, out_file)) {
+                    std::cerr << "[Error]: Failed to write QVM file: " << out_file << "\n";
+                    return 1;
+                }
+                std::cout << "[QVM] Successfully compiled " << source_file << " -> " << out_file << " (Q-ISA Bytecode)\n";
+                return 0;
+            } catch (const std::exception& e) {
+                std::cerr << "[Error]: " << e.what() << "\n";
+                return 1;
+            }
+        } else if (is_llvm) {
             if (out_file.empty()) out_file = "app.exe";
             return cmd_compile_llvm(source_file, out_file, opt_level);
         } else if (is_native) {
@@ -535,6 +619,64 @@ int main(int argc, char* argv[]) {
         } else {
             if (out_file.empty()) out_file = "out.tbc";
             return cmd_compile(source_file, out_file);
+        }
+    }
+
+    // 3.1 Run QVM: setunc run-qvm <file.qbc>
+    if (cmd == "run-qvm" && argc >= 3) {
+        std::string qbc_path = argv[2];
+        tersun::qvm::QChunk chunk;
+        if (!tersun::qvm::QChunk::load_from_file(qbc_path, chunk)) {
+            std::cerr << "[Error]: Failed to load QVM bytecode file: " << qbc_path << "\n";
+            return 1;
+        }
+        tersun::qvm::QVM qvm(chunk.num_qubits);
+        std::cout << "[QVM Simulator] Running " << qbc_path << " (" << chunk.num_qubits << " Qubits)...\n";
+        int64_t ret = qvm.run(chunk);
+        std::cout << "[QVM Output / Exit Code]: " << ret << "\n";
+        return 0;
+    }
+
+    // 3.2 LLVM to QVM: setunc llvm2qvm <file.ll> [-o <out.qbc>]
+    if (cmd == "llvm2qvm" && argc >= 3) {
+        std::string ll_path = argv[2];
+        std::string out_qbc = (argc >= 5 && std::string(argv[3]) == "-o") ? argv[4] : "out.qbc";
+        tersun::compiler::LLVM2QVMTranslator trans;
+        if (!trans.translate_file(ll_path, out_qbc)) {
+            std::cerr << "[Error]: Failed to translate LLVM IR to QVM: " << ll_path << "\n";
+            return 1;
+        }
+        std::cout << "[LLVM->QVM] Successfully translated " << ll_path << " -> " << out_qbc << "\n";
+        return 0;
+    }
+
+    // 3.3 Emit OpenQASM: setunc emit-qasm <file.stn> [-o <out.qasm>]
+    if (cmd == "emit-qasm" && argc >= 3) {
+        std::string source_file = argv[2];
+        std::string out_qasm = (argc >= 5 && std::string(argv[3]) == "-o") ? argv[4] : "";
+        try {
+            std::string source = read_file(source_file);
+            ArenaAllocator arena;
+            Lexer lexer(source);
+            auto tokens = lexer.tokenize();
+            Parser parser(tokens, arena);
+            Program program = parser.parse_program();
+
+            tersun::compiler::QEmitter emitter;
+            std::string qasm = emitter.emit_qasm(program);
+
+            if (!out_qasm.empty()) {
+                std::ofstream ofs(out_qasm);
+                if (!ofs.is_open()) return 1;
+                ofs << qasm;
+                std::cout << "[OpenQASM] Exported circuit to " << out_qasm << "\n";
+            } else {
+                std::cout << qasm << "\n";
+            }
+            return 0;
+        } catch (const std::exception& e) {
+            std::cerr << "[Error]: " << e.what() << "\n";
+            return 1;
         }
     }
 

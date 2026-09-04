@@ -143,6 +143,7 @@ Stmt* Parser::parse_declaration() {
 }
 
 DataType Parser::parse_type() {
+    last_type_name_ = "";
     if (match(TokenType::LBRACKET)) {
         parse_type(); // parse element type if any
         consume(TokenType::RBRACKET, "Expected ']' after array type.");

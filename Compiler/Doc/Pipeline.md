@@ -101,7 +101,7 @@ Tài liệu này mô tả chi tiết toàn bộ quy trình xử lý (Pipeline), 
 ./setunc --dump-asm examples/05_bitnet_ai_and_physics.tbc
 ./setunc disasm examples/01_tafpu_demo.setun
 
-# 6. Chạy toàn bộ 8 bộ kiểm thử tự động (100% Verification)
+# 6. Chạy toàn bộ các bộ kiểm thử tự động (100% Verification)
 ./setunc test
 
 # 7. Tái hiện Bảng 1: Truy vết cộng tam phân BTVP (14 + 25 = 39)
@@ -112,4 +112,76 @@ Tài liệu này mô tả chi tiết toàn bộ quy trình xử lý (Pipeline), 
 
 # 9. Mở chế độ dòng lệnh tương tác REPL
 ./setunc repl
+
+# 10. Tersun 1.0.1 LLVM Native AOT Pipeline
+./setunc emit-llvm app_demo.stn -o app_demo.ll
+./setunc compile app_demo.stn --llvm -o app_demo.exe
+./setunc compile app_demo.stn --native -o app_demo_native.exe
+./setunc --version
 ```
+
+---
+
+## 4. Tersun 1.0.1: Kiến Trúc Hạ Cấp LLVM AOT Native (Phase 1)
+
+Tersun 1.0.1 hoàn thiện việc chuyển đổi trực tiếp AST cấu trúc sang LLVM IR (.ll) và nhị phân Native:
+
+1. **Hệ Kiểu Native (Typed Lowering)**:
+   - Kiểu số nguyên: `int` $\to$ `i64`, `tryte` / `trit` $\to$ `i16`.
+   - Kiểu thực & luận lý: `float` $\to$ `double`, `bool` $\to$ `i1`.
+   - Kiểu chuỗi: `string` $\to$ `i8*`.
+   - Cấu trúc dữ liệu: `struct` / `class` $\to$ `%struct.Name*` với truy cập offset qua LLVM `getelementptr inbounds`.
+   - Mảng động: `%struct.TersunArray*` với bộ API `@tersun_array_create`, `@tersun_array_push_i64`, `@tersun_array_get_i64`, `@tersun_array_set_i64`.
+
+2. **Hạ Cấp Rẽ Nhánh Tam Phân (Branch3 Lowering)**:
+   - Biểu thức rẽ nhánh 3 hướng được tính toán qua `@tafpu_cmp_native(val, TAFPU_ZERO)`.
+   - Bảng chuyển nhánh `switch i32` điều hướng trực tiếp sang 3 nhãn cơ sở: `negative` ($-1$), `zero` ($0$), `positive` ($+1$) không sinh rẽ nhánh nhị phân dư thừa.
+
+3. **Toán Học Đại Số Tuyệt Đối Trên $\mathbb{Q}(\sqrt{3})$**:
+   - Các hàm `@tafpu_add_native`, `@tafpu_sub_native`, `@tafpu_mul_native`, `@tafpu_div_native`, `@tafpu_tilde_native` được định nghĩa inline trực tiếp trong module LLVM IR.
+   - Bảo toàn $0\%$ sai số tích luỹ đại số.
+
+4. **Thư Viện Runtime Tĩnh Độc Lập (`libtersun_rt.a`)**:
+   - Đóng gói toàn bộ nhân TAFPU, BTVP, BitNet 1.58-bit Engine và Setun2D Window/Renderer thành thư viện liên kết tĩnh `libtersun_rt.a`.
+   - Cho phép nhị phân biên dịch từ LLVM IR hoặc Clang/GCC chạy độc lập với tốc độ phần cứng Native C++.
+
+---
+
+## 5. Tersun 1.0.2: Kiến Trúc Máy Ảo Lượng Tử QVM & Gom 2-Bit Thành 1-Qubit (Phase 2 & 3)
+
+Tersun 1.0.2 mở rộng hệ thống sang điện toán lượng tử (Quantum Computing) với cơ chế đóng gói trạng thái 2-bit thành 1-Qubit và hỗ trợ chuẩn công nghiệp OpenQASM 3.0:
+
+1. **Mô Hình Ánh Xạ 2-Bit Lên 1-Qubit:**
+   - `00_2` $\to$ $|0\rangle$ (Trit $0$, Ground state)
+   - `01_2` $\to$ $|1\rangle$ (Trit $+1$, Excited state)
+   - `10_2` $\to$ $|-\rangle = \frac{|0\rangle - |1\rangle}{\sqrt{2}}$ (Trit $-1$, Phase inverted)
+   - `11_2` $\to$ **Dual-Role**:
+     - *Chế độ lượng tử*: Trạng thái chồng chập $|+\rangle = \frac{|0\rangle + |1\rangle}{\sqrt{2}}$ (Unmeasured)
+     - *Chế độ cổ điển*: Trạng thái $\bot$ Nil / NaN / Zero-cost Hardware Exception.
+
+2. **Thanh Ghi Lượng Tử Đóng Gói (Packed Qubit Register):**
+   - Đóng gói 32 Qubit ảo vào một từ nhớ nguyên 64-bit (`PackedQubitWord`).
+   - Tự động chuyển đổi sang vector trạng thái biên độ phức ($\mathbb{C}^{2^N}$) khi xuất hiện cổng tạo chồng chập ($H$) hoặc vướng víu ($CNOT$).
+   - Thu gọn sóng lượng tử theo quy tắc xác suất Born khi thực hiện phép đo (`MEASURE`).
+
+3. **Bộ Chuyển Dịch LLVM $\to$ QVM (`llvm2qvm`):**
+   - Phân tích LLVM IR từ Tersun 1.0.1, nhóm cặp bit và chuyển đổi các phép toán logic cổ điển sang cổng lượng tử ($X, CNOT, \text{Toffoli}$).
+
+4. **Bộ Phát Sinh Mã Trực Tiếp Q-Emitter (Tersun 1.0.2):**
+   - Biên dịch trực tiếp AST sang mã nhị phân Q-ISA (`.qbc`) với Magic Header `"QSET"` và phiên bản `0x0102`.
+   - Xuất mạch lượng tử chuẩn **OpenQASM 3.0** (`.qasm`) tương thích với chip máy tính lượng tử thực tế (IBM Quantum, AWS Braket, Rigetti).
+
+5. **Lệnh CLI Tersun 1.0.2:**
+   ```bash
+   # Biên dịch trực tiếp sang QVM Bytecode
+   ./setunc compile quantum_demo.stn --qvm -o quantum_demo.qbc
+
+   # Chạy mô phỏng trên QVM Simulator
+   ./setunc run-qvm quantum_demo.qbc
+
+   # Xuất mã OpenQASM 3.0
+   ./setunc emit-qasm quantum_demo.stn -o circuit.qasm
+
+   # Dịch từ LLVM IR sang QVM
+   ./setunc llvm2qvm app_demo.ll -o app_from_llvm.qbc
+   ```

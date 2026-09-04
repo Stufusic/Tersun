@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(SetunTernaryCompiler VERSION 1.0.0 LANGUAGES CXX)
+project(SetunTernaryCompiler VERSION 1.0.2 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -22,7 +22,7 @@ add_library(tafpu STATIC
     src/tafpu/bitnet_engine.cpp
 )
 
-# 2. libsetun_compiler: Lexer, Pratt Parser, AST, Emitter, LLVM AOT Emitter
+# 2. libsetun_compiler: Lexer, Pratt Parser, AST, Emitter, LLVM AOT Emitter, Q-Emitter, LLVM2QVM
 add_library(setun_compiler STATIC
     src/compiler/lexer.cpp
     src/compiler/parser.cpp
@@ -31,10 +31,19 @@ add_library(setun_compiler STATIC
     src/compiler/monomorphizer.cpp
     src/compiler/emitter.cpp
     src/compiler/llvm_emitter.cpp
+    src/compiler/llvm2qvm.cpp
+    src/compiler/q_emitter.cpp
 )
 target_link_libraries(setun_compiler PRIVATE tafpu)
 
-# 3. libsetun_vm: VM Fetch-Decode-Execute, Stack, GC, FFI, Game Engine, Microkernel, Tools
+# 3. libqvm: Quantum Virtual Machine & 2-Bit Qubit Engine
+add_library(qvm STATIC
+    src/qvm/qreg.cpp
+    src/qvm/qgate.cpp
+    src/qvm/qvm.cpp
+)
+
+# 4. libsetun_vm: VM Fetch-Decode-Execute, Stack, GC, FFI, Game Engine, Microkernel, Tools
 add_library(setun_vm STATIC
     src/vm/vm.cpp
     src/vm/gc.cpp
@@ -50,9 +59,17 @@ add_library(setun_vm STATIC
     src/graphics/setun2d_bridge.cpp
     src/vm/jit_engine.cpp
 )
-target_link_libraries(setun_vm PRIVATE tafpu setun_compiler)
+target_link_libraries(setun_vm PRIVATE tafpu setun_compiler qvm)
 
-# 4. setunc: CLI Executable & Test Runner
+# 5. libtersun_rt: Standalone Native Runtime for AOT/LLVM compiled binaries
+add_library(tersun_rt STATIC
+    src/tafpu/trit.cpp
+    src/tafpu/tafpu.cpp
+    src/tafpu/bitnet_engine.cpp
+    src/graphics/setun2d_bridge.cpp
+)
+
+# 6. setunc: CLI Executable & Test Runner
 add_executable(setunc
     src/main.cpp
     tests/test_tafpu.cpp
@@ -69,12 +86,15 @@ add_executable(setunc
     tests/test_phase4_async.cpp
     tests/test_phase5_lsp.cpp
     tests/test_phase1_type_checker.cpp
+    tests/test_tersun_101_llvm.cpp
+    tests/test_qvm.cpp
     tests/test_main.cpp
 )
-target_link_libraries(setunc PRIVATE setun_vm setun_compiler tafpu)
+target_link_libraries(setunc PRIVATE setun_vm setun_compiler tafpu qvm)
 if (WIN32)
     target_link_libraries(setunc PRIVATE gdi32 user32)
+    target_link_libraries(tersun_rt PRIVATE gdi32 user32)
 endif()
 
 # Install rules
-install(TARGETS setunc DESTINATION bin)
+install(TARGETS setunc tersun_rt DESTINATION bin)

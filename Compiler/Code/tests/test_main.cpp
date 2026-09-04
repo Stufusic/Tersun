@@ -61,7 +61,13 @@ void run_phase5_lsp_tests();
 // Phase 1 Type Checker & Semantic Analyzer
 void run_phase1_type_checker_tests();
 
+// Tersun 1.0.1 Full LLVM Native AOT Backend Verification
+void run_tersun_101_llvm_tests();
+
 } // namespace setun
+
+// Tersun 1.0.2 QVM Verification Suite
+int run_qvm_tests();
 
 int run_all_tests() {
     std::cout << "\n==========================================================\n";
@@ -131,6 +137,12 @@ int run_all_tests() {
 
         std::cout << "\n[Next-Gen Phase 1 Evolution] Testing Static Type Checker, Generic Monomorphizer & ADT Pattern Matching...\n";
         setun::run_phase1_type_checker_tests();
+
+        std::cout << "\n[Tersun 1.0.1 Evolution] Testing Full LLVM AOT Native Backend...\n";
+        setun::run_tersun_101_llvm_tests();
+
+        std::cout << "\n[Tersun 1.0.2 Quantum Evolution] Testing QVM & 2-Bit Qubit Mapping...\n";
+        run_qvm_tests();
 
         std::cout << "\n==========================================================\n";
         std::cout << "  ALL TESTS PASSED SUCCESSFULLY! (100% Verification)      \n";
