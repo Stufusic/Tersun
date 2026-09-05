@@ -97,6 +97,8 @@ enum class BinaryOp {
     GT,           // >
     GE,           // >=
     SPACESHIP,    // <=> (3-way ternary comparison: -1, 0, 1)
+    LOGICAL_AND,  // && (logical AND, non-short-circuit Kleene min)
+    LOGICAL_OR,   // || (logical OR, non-short-circuit Kleene max)
     MIN,          // min (Kleene AND)
     MAX,          // max (Kleene OR)
     NULL_COALESCE // ??

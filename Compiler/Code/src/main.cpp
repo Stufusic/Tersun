@@ -16,6 +16,7 @@
 #include "compiler/types.hpp"
 #include "compiler/type_checker.hpp"
 #include "compiler/monomorphizer.hpp"
+#include "compiler/module_resolver.hpp"
 #include "graphics/setun2d_bridge.hpp"
 #include "vm/jit_engine.hpp"
 #include "qvm/qvm.hpp"
@@ -34,14 +35,14 @@ using namespace setun;
 
 void print_banner() {
     std::cout << "===================================================================\n";
-    std::cout << "  Tersun 1.0.2 Balanced Ternary Quantum (QVM) & LLVM Toolchain    \n";
-    std::cout << "  Quantum 2-Bit/Qubit Engine • OpenQASM 3.0 • LLVM AOT Native C++  \n";
+    std::cout << "  Tersun 1.0.3 Balanced Ternary Quantum (QVM) & Ecosystem Toolchain\n";
+    std::cout << "  Modular System • Native File I/O • Setun2D GUI • Zero-Opcode QVM \n";
     std::cout << "===================================================================\n\n";
 }
 
 void print_version() {
-    std::cout << "Tersun Compiler 1.0.2 (Quantum QVM & LLVM Edition)\n";
-    std::cout << "Version: 1.0.2\n";
+    std::cout << "Tersun Compiler 1.0.3 (Modular Ecosystem & AOT Edition)\n";
+    std::cout << "Version: 1.0.3\n";
     std::cout << "Targets: QVM (.qbc), OpenQASM 3.0 (.qasm), LLVM IR (.ll), Native (.exe)\n";
     std::cout << "Quantum Architecture: 2-bit packing to 1-qubit (|0>, |1>, |->, |+>/Nil)\n";
     std::cout << "Algebraic Engine: TAFPU in Q(sqrt(3)), zero algebraic drift\n";
@@ -101,6 +102,14 @@ int cmd_run(const std::string& path) {
             Parser parser(tokens, arena);
             Program program = parser.parse_program();
 
+            ModuleResolver resolver(arena);
+            if (!resolver.resolve_program(program, path)) {
+                for (const auto& diag : resolver.get_diagnostics()) {
+                    std::cerr << "[Module Error]: " << diag << "\n";
+                }
+                return 1;
+            }
+
             TypeChecker checker;
             if (!checker.check_program(program)) {
                 std::cerr << checker.format_diagnostics(source);
@@ -135,6 +144,14 @@ int cmd_compile(const std::string& source_path, const std::string& out_path) {
 
         Parser parser(tokens, arena);
         Program program = parser.parse_program();
+
+        ModuleResolver resolver(arena);
+        if (!resolver.resolve_program(program, source_path)) {
+            for (const auto& diag : resolver.get_diagnostics()) {
+                std::cerr << "[Module Error]: " << diag << "\n";
+            }
+            return 1;
+        }
 
         TypeChecker checker;
         if (!checker.check_program(program)) {
@@ -173,6 +190,14 @@ int cmd_emit_c(const std::string& source_path) {
         Parser parser(tokens, arena);
         Program program = parser.parse_program();
 
+        ModuleResolver resolver(arena);
+        if (!resolver.resolve_program(program, source_path)) {
+            for (const auto& diag : resolver.get_diagnostics()) {
+                std::cerr << "[Module Error]: " << diag << "\n";
+            }
+            return 1;
+        }
+
         LLVMEmitter emitter;
         std::cout << emitter.emit_native_c(program);
         return 0;
@@ -191,6 +216,14 @@ int cmd_emit_llvm(const std::string& source_path, const std::string& out_path = 
 
         Parser parser(tokens, arena);
         Program program = parser.parse_program();
+
+        ModuleResolver resolver(arena);
+        if (!resolver.resolve_program(program, source_path)) {
+            for (const auto& diag : resolver.get_diagnostics()) {
+                std::cerr << "[Module Error]: " << diag << "\n";
+            }
+            return 1;
+        }
 
         TypeChecker checker;
         if (!checker.check_program(program)) {
@@ -235,6 +268,14 @@ int cmd_compile_llvm(const std::string& source_path, const std::string& out_path
         Parser parser(tokens, arena);
         Program program = parser.parse_program();
 
+        ModuleResolver resolver(arena);
+        if (!resolver.resolve_program(program, source_path)) {
+            for (const auto& diag : resolver.get_diagnostics()) {
+                std::cerr << "[Module Error]: " << diag << "\n";
+            }
+            return 1;
+        }
+
         TypeChecker checker;
         if (!checker.check_program(program)) {
             std::cerr << checker.format_diagnostics(source);
@@ -268,6 +309,14 @@ int cmd_compile_native(const std::string& source_path, const std::string& out_pa
 
         Parser parser(tokens, arena);
         Program program = parser.parse_program();
+
+        ModuleResolver resolver(arena);
+        if (!resolver.resolve_program(program, source_path)) {
+            for (const auto& diag : resolver.get_diagnostics()) {
+                std::cerr << "[Module Error]: " << diag << "\n";
+            }
+            return 1;
+        }
 
         TypeChecker checker;
         if (!checker.check_program(program)) {
@@ -319,6 +368,14 @@ int cmd_disasm(const std::string& path) {
 
             Parser parser(tokens, arena);
             Program program = parser.parse_program();
+
+            ModuleResolver resolver(arena);
+            if (!resolver.resolve_program(program, path)) {
+                for (const auto& diag : resolver.get_diagnostics()) {
+                    std::cerr << "[Module Error]: " << diag << "\n";
+                }
+                return 1;
+            }
 
             BytecodeEmitter emitter;
             chunk = emitter.compile(program);
@@ -501,6 +558,14 @@ int cmd_repl() {
             Parser parser(tokens, arena);
             Program program = parser.parse_program();
 
+            ModuleResolver resolver(arena);
+            if (!resolver.resolve_program(program, ".")) {
+                for (const auto& diag : resolver.get_diagnostics()) {
+                    std::cerr << "[Module Error]: " << diag << "\n";
+                }
+                continue;
+            }
+
             BytecodeEmitter emitter;
             Chunk chunk = emitter.compile(program);
 
@@ -591,6 +656,14 @@ int main(int argc, char* argv[]) {
                 Parser parser(tokens, arena);
                 Program program = parser.parse_program();
 
+                ModuleResolver resolver(arena);
+                if (!resolver.resolve_program(program, source_file)) {
+                    for (const auto& diag : resolver.get_diagnostics()) {
+                        std::cerr << "[Module Error]: " << diag << "\n";
+                    }
+                    return 1;
+                }
+
                 TypeChecker checker;
                 if (!checker.check_program(program)) {
                     std::cerr << checker.format_diagnostics(source);
@@ -662,6 +735,14 @@ int main(int argc, char* argv[]) {
             Parser parser(tokens, arena);
             Program program = parser.parse_program();
 
+            ModuleResolver resolver(arena);
+            if (!resolver.resolve_program(program, source_file)) {
+                for (const auto& diag : resolver.get_diagnostics()) {
+                    std::cerr << "[Module Error]: " << diag << "\n";
+                }
+                return 1;
+            }
+
             tersun::compiler::QEmitter emitter;
             std::string qasm = emitter.emit_qasm(program);
 
@@ -715,6 +796,15 @@ int main(int argc, char* argv[]) {
             auto tokens = lexer.tokenize();
             Parser parser(tokens, arena);
             Program program = parser.parse_program();
+
+            ModuleResolver resolver(arena);
+            if (!resolver.resolve_program(program, target_file)) {
+                for (const auto& diag : resolver.get_diagnostics()) {
+                    std::cerr << "[Module Error]: " << diag << "\n";
+                }
+                return 1;
+            }
+
             BytecodeEmitter emitter;
             Chunk chunk = emitter.compile(program);
 

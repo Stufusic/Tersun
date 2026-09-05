@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iomanip>
 #include <cstring>
+#include <map>
 
 namespace setun {
 
@@ -226,6 +227,36 @@ std::string Chunk::disassemble(const std::string& name) const {
                 oss << " fn_id " << fn_id << " (argc " << static_cast<int>(argc) << ")";
                 break;
             }
+            case OpCode::OP_GET_FIELD:
+            case OpCode::OP_SET_FIELD: {
+                uint16_t str_id = static_cast<uint16_t>(code[offset] | (code[offset + 1] << 8));
+                offset += 2;
+                std::string s = (str_id < string_table.size()) ? string_table[str_id] : "<invalid>";
+                oss << " \"" << s << "\"";
+                break;
+            }
+            case OpCode::OP_NEW_INSTANCE: {
+                uint16_t tid = static_cast<uint16_t>(code[offset] | (code[offset + 1] << 8));
+                offset += 2;
+                uint8_t count = code[offset++];
+                std::string s = (tid < string_table.size()) ? string_table[tid] : "<invalid>";
+                oss << " \"" << s << "\" (fields " << static_cast<int>(count) << ")";
+                break;
+            }
+            case OpCode::OP_INVOKE_METHOD: {
+                uint16_t mid = static_cast<uint16_t>(code[offset] | (code[offset + 1] << 8));
+                offset += 2;
+                uint8_t argc = code[offset++];
+                std::string s = (mid < string_table.size()) ? string_table[mid] : "<invalid>";
+                oss << " \"" << s << "\" (argc " << static_cast<int>(argc) << ")";
+                break;
+            }
+            case OpCode::OP_NEW_ARRAY: {
+                uint16_t count = static_cast<uint16_t>(code[offset] | (code[offset + 1] << 8));
+                offset += 2;
+                oss << " " << count;
+                break;
+            }
             default:
                 break;
         }
@@ -262,6 +293,29 @@ bool Chunk::save_to_file(const std::string& filename) const {
         file.write(reinterpret_cast<const char*>(code.data()), code_size);
     }
 
+    // V-Tables (Class Methods Map for OOP method dispatch)
+    // Written through sorted copies so bytecode output is byte-reproducible.
+    std::map<std::string, std::map<std::string, uint16_t>> sorted_vtables;
+    for (const auto& [cname, methods] : vtables) {
+        sorted_vtables[cname].insert(methods.begin(), methods.end());
+    }
+    uint32_t class_count = static_cast<uint32_t>(sorted_vtables.size());
+    file.write(reinterpret_cast<const char*>(&class_count), sizeof(class_count));
+    for (const auto& [cname, methods] : sorted_vtables) {
+        uint32_t clen = static_cast<uint32_t>(cname.size());
+        file.write(reinterpret_cast<const char*>(&clen), sizeof(clen));
+        if (clen > 0) file.write(cname.data(), clen);
+
+        uint32_t method_count = static_cast<uint32_t>(methods.size());
+        file.write(reinterpret_cast<const char*>(&method_count), sizeof(method_count));
+        for (const auto& [mname, offset] : methods) {
+            uint32_t mlen = static_cast<uint32_t>(mname.size());
+            file.write(reinterpret_cast<const char*>(&mlen), sizeof(mlen));
+            if (mlen > 0) file.write(mname.data(), mlen);
+            file.write(reinterpret_cast<const char*>(&offset), sizeof(offset));
+        }
+    }
+
     return file.good();
 }
 
@@ -283,24 +337,60 @@ bool Chunk::load_from_file(const std::string& filename, Chunk& out_chunk) {
     // String Table
     uint32_t str_count = 0;
     file.read(reinterpret_cast<char*>(&str_count), sizeof(str_count));
+    if (!file || str_count > 1000000u) return false; // Untrusted length
     out_chunk.string_table.resize(str_count);
     for (uint32_t i = 0; i < str_count; ++i) {
         uint32_t len = 0;
         file.read(reinterpret_cast<char*>(&len), sizeof(len));
+        if (!file || len > 4096u) return false;
         std::string s(len, '\0');
         if (len > 0) {
             file.read(&s[0], len);
         }
+        if (!file) return false;
         out_chunk.string_table[i] = std::move(s);
     }
 
     // Bytecode
     uint32_t code_size = 0;
     file.read(reinterpret_cast<char*>(&code_size), sizeof(code_size));
+    if (!file || code_size > 268435456u) return false; // 256 MB cap
     out_chunk.code.resize(code_size);
     out_chunk.lines.resize(code_size, 1);
     if (code_size > 0) {
         file.read(reinterpret_cast<char*>(out_chunk.code.data()), code_size);
+    }
+    if (!file) return false;
+
+    // V-Tables (Optional OOP method dispatch table)
+    if (file.peek() != EOF) {
+        uint32_t class_count = 0;
+        if (!file.read(reinterpret_cast<char*>(&class_count), sizeof(class_count))) return false;
+        if (class_count > 65536u) return false;
+        for (uint32_t c = 0; c < class_count; ++c) {
+            uint32_t clen = 0;
+            file.read(reinterpret_cast<char*>(&clen), sizeof(clen));
+            if (!file || clen > 4096u) return false;
+            std::string cname(clen, '\0');
+            if (clen > 0) file.read(&cname[0], clen);
+
+            uint32_t method_count = 0;
+            file.read(reinterpret_cast<char*>(&method_count), sizeof(method_count));
+            if (!file || method_count > 65536u) return false;
+            std::unordered_map<std::string, uint16_t> methods;
+            for (uint32_t m = 0; m < method_count; ++m) {
+                uint32_t mlen = 0;
+                file.read(reinterpret_cast<char*>(&mlen), sizeof(mlen));
+                if (!file || mlen > 4096u) return false;
+                std::string mname(mlen, '\0');
+                if (mlen > 0) file.read(&mname[0], mlen);
+                uint16_t offset = 0;
+                file.read(reinterpret_cast<char*>(&offset), sizeof(offset));
+                if (!file) return false;
+                methods[mname] = offset;
+            }
+            out_chunk.vtables[cname] = std::move(methods);
+        }
     }
 
     return file.good();
@@ -315,6 +405,9 @@ Chunk BytecodeEmitter::compile(const Program& program) {
     next_global_slot_ = 0;
     functions_.clear();
     unresolved_calls_.clear();
+    class_fields_.clear();
+    class_methods_.clear();
+    class_init_arity_.clear();
 
     for (Stmt* stmt : program.statements) {
         emit_stmt(stmt);
@@ -665,7 +758,9 @@ void BytecodeEmitter::emit_binary(const BinaryExpr& expr) {
         case BinaryOp::GT: chunk_.write_opcode(OpCode::OP_GT, expr.loc.line); break;
         case BinaryOp::GE: chunk_.write_opcode(OpCode::OP_GE, expr.loc.line); break;
         case BinaryOp::SPACESHIP: chunk_.write_opcode(OpCode::OP_TERNARY_CMP, expr.loc.line); break;
+        case BinaryOp::LOGICAL_AND: // Kleene min; VM preserves bool-ness
         case BinaryOp::MIN: chunk_.write_opcode(OpCode::OP_TERNARY_MIN, expr.loc.line); break;
+        case BinaryOp::LOGICAL_OR: // Kleene max; VM preserves bool-ness
         case BinaryOp::MAX: chunk_.write_opcode(OpCode::OP_TERNARY_MAX, expr.loc.line); break;
     }
 }
@@ -776,13 +871,44 @@ void BytecodeEmitter::emit_call(const CallExpr& expr) {
     }
     // User-defined Class or Struct construction e.g. Point(10, 20)
     if (class_fields_.find(expr.callee) != class_fields_.end()) {
-        for (Expr* arg : expr.args) {
-            emit_expr(arg);
+        auto arity_it = class_init_arity_.find(expr.callee);
+        int init_arity = (arity_it != class_init_arity_.end()) ? arity_it->second : -1;
+
+        if (expr.args.empty()) {
+            // Legacy pattern: X() then obj.init(...) called manually.
+            uint16_t tid = chunk_.add_string(expr.callee);
+            chunk_.write_opcode(OpCode::OP_NEW_INSTANCE, expr.loc.line);
+            chunk_.write_int16(static_cast<int16_t>(tid), expr.loc.line);
+            chunk_.write_byte(0, expr.loc.line);
+            return;
         }
+
+        if (init_arity < 0) {
+            throw CompilerException("Class '" + expr.callee + "' has no init() method; construct it with '" + expr.callee + "()' and set its fields afterwards.");
+        }
+        if (init_arity == 0) {
+            throw CompilerException("init() of class '" + expr.callee + "' takes no arguments; construct with '" + expr.callee + "()' then call init().");
+        }
+        if (static_cast<int>(expr.args.size()) != init_arity) {
+            throw CompilerException("Constructor of class '" + expr.callee + "' (init) expects " + std::to_string(init_arity)
+                                    + " argument(s), but received " + std::to_string(expr.args.size()) + ".");
+        }
+
+        // X(args...) lowers to: obj = X(); obj.init(args...)
         uint16_t tid = chunk_.add_string(expr.callee);
         chunk_.write_opcode(OpCode::OP_NEW_INSTANCE, expr.loc.line);
         chunk_.write_int16(static_cast<int16_t>(tid), expr.loc.line);
+        chunk_.write_byte(0, expr.loc.line);
+        chunk_.write_opcode(OpCode::OP_DUP, expr.loc.line);
+        for (Expr* arg : expr.args) {
+            emit_expr(arg);
+        }
+        uint16_t iid = chunk_.add_string("init");
+        chunk_.write_opcode(OpCode::OP_INVOKE_METHOD, expr.loc.line);
+        chunk_.write_int16(static_cast<int16_t>(iid), expr.loc.line);
         chunk_.write_byte(static_cast<uint8_t>(expr.args.size()), expr.loc.line);
+        // Discard init's default return value; the object stays on the stack.
+        chunk_.write_opcode(OpCode::OP_POP, expr.loc.line);
         return;
     }
     if (expr.callee == "trace") {
@@ -988,10 +1114,25 @@ void BytecodeEmitter::emit_array_lit(const ArrayLiteralExpr& expr) {
     chunk_.write_int16(static_cast<int16_t>(expr.elements.size()), expr.loc.line);
 }
 
+// Number of init() parameters excluding 'self'; -1 when the class has no init.
+static int compute_init_arity(const std::string& class_name, const std::vector<MethodDecl>& methods) {
+    for (const auto& m : methods) {
+        if (m.name != "init") continue;
+        int arity = 0;
+        for (const auto& p : m.params) {
+            if (p.name != "self") ++arity;
+        }
+        return arity;
+    }
+    (void)class_name;
+    return -1;
+}
+
 void BytecodeEmitter::emit_struct_decl(const StructDeclStmt& stmt) {
     std::vector<std::string> fnames;
     for (const auto& f : stmt.fields) fnames.push_back(f.name);
     class_fields_[stmt.name] = fnames;
+    class_init_arity_[stmt.name] = compute_init_arity(stmt.name, stmt.methods);
 
     for (const auto& m : stmt.methods) {
         if (!m.body) continue;
@@ -1024,6 +1165,7 @@ void BytecodeEmitter::emit_class_decl(const ClassDeclStmt& stmt) {
     }
     for (const auto& f : stmt.fields) fnames.push_back(f.name);
     class_fields_[stmt.name] = fnames;
+    class_init_arity_[stmt.name] = compute_init_arity(stmt.name, stmt.methods);
 
     if (!stmt.super_class.empty() && class_methods_.find(stmt.super_class) != class_methods_.end()) {
         class_methods_[stmt.name] = class_methods_[stmt.super_class];

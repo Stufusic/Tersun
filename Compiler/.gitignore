@@ -1,0 +1,19 @@
+# Build artifacts
+*.exe
+*.o
+*.obj
+*.a
+*.pdb
+
+# Tersun build outputs (regenerable bytecode / IR)
+*.tbc
+*.qbc
+*.ll
+*.qasm
+
+# Local verification scratch space
+scratch/
+
+# OS noise
+Thumbs.db
+Desktop.ini

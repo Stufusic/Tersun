@@ -77,6 +77,8 @@ enum class TokenType {
     SPACESHIP,        // <=> (3-way comparison returning -1, 0, +1)
     TILDE,            // ~ (Ternary negation)
     PIPE,             // | (Closure parameter / Bitwise OR)
+    AMP_AMP,          // && (Logical AND)
+    PIPE_PIPE,        // || (Logical OR)
     KW_MIN,           // min / Kleene AND
     KW_MAX,           // max / Kleene OR
     KW_NOT,           // not

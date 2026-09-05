@@ -1,0 +1,49 @@
+// ============================================================================
+//  TERSUN 1.0.3 STANDARD LIBRARY - KEYBOARD & TEXT INPUT MODULE (std/keyboard.stn)
+//  Tuong thich nguoc 100% voi ISA 1.0.1 - Ha cap qua OP_INVOKE_METHOD (0xA4)
+// ============================================================================
+
+class HostKb {
+    pub dummy: int;
+
+    def kb_get_char(self) -> int {
+        return 0;
+    }
+    def kb_is_key_down(self, vk: int) -> bool {
+        return false;
+    }
+    def syscall(self, id: int, a1: int, a2: int, a3: int) -> int {
+        return 0;
+    }
+}
+
+// ----------------------------------------------------------------------------
+// HANG SO MA PHIM AO (VIRTUAL KEY CONSTANTS - WIN32)
+// ----------------------------------------------------------------------------
+fn key_backspace() -> int { return 8; }
+fn key_tab() -> int { return 9; }
+fn key_enter() -> int { return 13; }
+fn key_shift() -> int { return 16; }
+fn key_ctrl() -> int { return 17; }
+fn key_alt() -> int { return 18; }
+fn key_escape() -> int { return 27; }
+fn key_space() -> int { return 32; }
+fn key_left() -> int { return 37; }
+fn key_up() -> int { return 38; }
+fn key_right() -> int { return 39; }
+fn key_down() -> int { return 40; }
+fn key_delete() -> int { return 46; }
+
+// ----------------------------------------------------------------------------
+// API CAP CAO: DOC KY TU VA TRANG THAI PHIM
+// ----------------------------------------------------------------------------
+
+fn kb_get_char() -> int {
+    let host = HostKb();
+    return host.kb_get_char();
+}
+
+fn kb_is_key_down(vk: int) -> bool {
+    let host = HostKb();
+    return host.kb_is_key_down(vk);
+}

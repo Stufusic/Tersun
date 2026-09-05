@@ -84,6 +84,11 @@ private:
     std::unordered_map<std::string, TypePtr> type_defs_;
     std::unordered_map<std::string, TypePtr> functions_;
 
+    // First-declaration sites of user functions / types, for duplicate
+    // detection when imported modules are merged into one program.
+    std::unordered_map<std::string, SourceLocation> declared_fn_locs_;
+    std::unordered_map<std::string, SourceLocation> declared_type_locs_;
+
     // Current function return type for verifying 'return' statements
     TypePtr current_fn_return_type_{nullptr};
 };

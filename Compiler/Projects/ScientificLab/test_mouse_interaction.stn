@@ -1,0 +1,424 @@
+// ============================================================================
+//  TERSUN 1.0.2 - MOUSE & INTERACTION VERIFICATION LAB
+//  Kiem thu tuong tac chuot da nut, toa do Canvas Client va Semantic Click
+//  Tương thich nguoc 100% voi ISA 1.0.1 - Chay truc tiep tren Setun2D Engine
+// ============================================================================
+
+class Host {
+    pub dummy: int;
+
+    def mouse_get_x(self) -> int {
+        return 0;
+    }
+    def mouse_get_y(self) -> int {
+        return 0;
+    }
+    def mouse_get_btn(self) -> int {
+        return 99;
+    }
+    def is_mouse_down(self, btn: int) -> bool {
+        return false;
+    }
+    def mouse_move(self, x: int, y: int) {
+    }
+    def mouse_click(self, btn: int, x: int, y: int) {
+    }
+    def syscall(self, id: int, a1: int, a2: int, a3: int) -> int {
+        return 0;
+    }
+}
+
+fn mouse_get_x() -> int {
+    let host = Host();
+    return host.mouse_get_x();
+}
+
+fn mouse_get_y() -> int {
+    let host = Host();
+    return host.mouse_get_y();
+}
+
+fn mouse_get_button() -> int {
+    let host = Host();
+    return host.mouse_get_btn();
+}
+
+fn is_mouse_down(btn: int) -> bool {
+    let host = Host();
+    return host.is_mouse_down(btn);
+}
+
+class MouseTracker {
+    pub prev_left: bool;
+    pub prev_mid: bool;
+    pub prev_right: bool;
+    pub last_x: int;
+    pub last_y: int;
+
+    def init(self) {
+        self.prev_left = false;
+        self.prev_mid = false;
+        self.prev_right = false;
+        self.last_x = 0;
+        self.last_y = 0;
+    }
+
+    def update(self) {
+        self.prev_left = is_mouse_down(-1);
+        self.prev_mid = is_mouse_down(0);
+        self.prev_right = is_mouse_down(1);
+        self.last_x = mouse_get_x();
+        self.last_y = mouse_get_y();
+    }
+
+    def is_pressed(self, btn: int) -> bool {
+        let curr = is_mouse_down(btn);
+        if (btn == -1) {
+            if (curr) {
+                if (self.prev_left == false) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        if (btn == 0) {
+            if (curr) {
+                if (self.prev_mid == false) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        if (btn == 1) {
+            if (curr) {
+                if (self.prev_right == false) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        return false;
+    }
+
+    def is_released(self, btn: int) -> bool {
+        let curr = is_mouse_down(btn);
+        if (btn == -1) {
+            if (curr == false) {
+                if (self.prev_left) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        if (btn == 0) {
+            if (curr == false) {
+                if (self.prev_mid) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        if (btn == 1) {
+            if (curr == false) {
+                if (self.prev_right) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        return false;
+    }
+
+    def was_clicked(self, btn: int, x: int, y: int, w: int, h: int) -> bool {
+        let released = self.is_released(btn);
+        if (released) {
+            let mx = self.last_x;
+            let my = self.last_y;
+            if (mx >= x) {
+                if (mx <= (x + w)) {
+                    if (my >= y) {
+                        if (my <= (y + h)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+}
+
+// ----------------------------------------------------------------------------
+// DO HOA VA GIAO DIEN (GUI DRAWING HELPERS)
+// ----------------------------------------------------------------------------
+fn draw_card(x: int, y: int, w: int, h: int, bg_color: int, border_color: int) {
+    setun2d_draw_rect(x, y, w, h, border_color);
+    setun2d_draw_rect(x + 2, y + 2, w - 4, h - 4, bg_color);
+}
+
+fn is_in_rect(mx: int, my: int, x: int, y: int, w: int, h: int) -> bool {
+    if (mx >= x) {
+        if (mx <= (x + w)) {
+            if (my >= y) {
+                if (my <= (y + h)) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+fn draw_btn_ui(x: int, y: int, w: int, h: int, text: string, is_hover: bool, is_down: bool) {
+    if (is_down) {
+        setun2d_draw_rect(x, y, w, h, 65280); // Bright Green border
+        setun2d_draw_rect(x + 2, y + 2, w - 4, h - 4, 30515); // Dark cyan
+        setun2d_draw_text(x + 10, y + 8, text, 65280);
+    } else if (is_hover) {
+        setun2d_draw_rect(x, y, w, h, 62932); // Cyan border
+        setun2d_draw_rect(x + 2, y + 2, w - 4, h - 4, 1648710); // Navy hover
+        setun2d_draw_text(x + 10, y + 8, text, 62932);
+    } else {
+        setun2d_draw_rect(x, y, w, h, 2174526); // Border muted
+        setun2d_draw_rect(x + 2, y + 2, w - 4, h - 4, 791330); // Dark navy
+        setun2d_draw_text(x + 10, y + 8, text, 8952234); // Gray text
+    }
+}
+
+// ----------------------------------------------------------------------------
+// CHUONG TRINH CHINH (MAIN LOOP 60 FPS)
+// ----------------------------------------------------------------------------
+fn main() {
+    println("===================================================================");
+    println("  TERSUN 1.0.2 - MOUSE & INTERACTION TEST LAB                      ");
+    println("  Tuong thich ISA 1.0.1 - Ha cap qua OP_INVOKE_METHOD (0xA4)       ");
+    println("===================================================================");
+
+    let ok = setun2d_init(900, 560, "Tersun 1.0.2 Native Mouse & Event Lab");
+    if (ok == 0) {
+        println("[Error]: Failed to init Setun2D window.");
+        return;
+    }
+
+    // Bang mau Theme Cyberpunk Dark Navy
+    let col_bg = 394506;       // #06050A
+    let col_card = 791330;     // #0C1322
+    let col_border = 2174526;   // #212E3E
+    let col_cyan = 62932;      // #00F5D4
+    let col_white = 16777215;  // #FFFFFF
+    let col_gray = 8952234;    // #8899AA
+    let col_green = 65280;     // #00FF00
+    let col_red = 16724530;    // #FF2A32
+    let col_gold = 16766720;   // #FFD700
+    let col_magenta = 16711935;// #FF00FF
+
+    let tracker = MouseTracker();
+    tracker.init();
+
+    let mut click_count = 0;
+    let mut trail_active = true;
+    let mut last_click_type = "None";
+    let mut frame = 0;
+
+    // Buffer diem ve (Drawing trail canvas)
+    let mut trail_x = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    let mut trail_y = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    let mut trail_idx = 0;
+
+    while (setun2d_is_running()) {
+        frame = frame + 1;
+        setun2d_clear(col_bg);
+
+        let mx = mouse_get_x();
+        let my = mouse_get_y();
+        let left_down = is_mouse_down(-1);
+        let mid_down = is_mouse_down(0);
+        let right_down = is_mouse_down(1);
+        let last_btn = mouse_get_button();
+
+        // 1. THANH TIEU DE (Header Bar)
+        draw_card(20, 15, 860, 48, col_card, col_border);
+        setun2d_draw_text(35, 30, "TERSUN 1.0.2 - NATIVE MOUSE & INTERACTION VERIFICATION", col_cyan);
+        setun2d_draw_text(600, 30, "Strictly ISA 1.0.1 | 60 FPS Native", col_gray);
+
+        // 2. KHUNG TRANG THAI HUD BEN TRAI (Left HUD Telemetry: 360 x 460)
+        draw_card(20, 75, 380, 465, col_card, col_border);
+        setun2d_draw_text(40, 92, "REAL-TIME INPUT TELEMETRY (CLIENT)", col_gold);
+
+        // Tọa độ con trỏ Client
+        draw_card(40, 120, 340, 50, col_bg, col_border);
+        setun2d_draw_text(55, 135, "Client X:", col_gray);
+        print(""); // force string eval
+        setun2d_draw_text(130, 135, "0", col_cyan); // coordinate display placeholder
+        setun2d_draw_text(220, 135, "Client Y:", col_gray);
+        setun2d_draw_text(295, 135, "0", col_cyan);
+
+        // Hien thi vi tri con tro duoi dang thanh đo
+        let bar_x = (mx * 300) / 900;
+        let bar_y = (my * 300) / 560;
+        setun2d_draw_rect(55, 158, 310, 4, col_border);
+        setun2d_draw_rect(55, 158, bar_x, 4, col_cyan);
+
+        // Bang trang thai Balanced Ternary Buttons
+        setun2d_draw_text(40, 190, "BALANCED TERNARY BUTTONS:", col_cyan);
+
+        // [Left Button -1]
+        if (left_down) {
+            draw_card(40, 215, 340, 42, 1648710, col_green);
+            setun2d_draw_text(55, 227, "[ -1 ] LEFT BUTTON : ACTIVE (DOWN)", col_green);
+            setun2d_draw_circle(355, 236, 7, col_green);
+        } else {
+            draw_card(40, 215, 340, 42, col_bg, col_border);
+            setun2d_draw_text(55, 227, "[ -1 ] LEFT BUTTON : RELEASED", col_gray);
+            setun2d_draw_circle(355, 236, 7, col_border);
+        }
+
+        // [Middle Button 0]
+        if (mid_down) {
+            draw_card(40, 265, 340, 42, 1648710, col_cyan);
+            setun2d_draw_text(55, 277, "[  0 ] MIDDLE BUTTON : ACTIVE (DOWN)", col_cyan);
+            setun2d_draw_circle(355, 286, 7, col_cyan);
+        } else {
+            draw_card(40, 265, 340, 42, col_bg, col_border);
+            setun2d_draw_text(55, 277, "[  0 ] MIDDLE BUTTON : RELEASED", col_gray);
+            setun2d_draw_circle(355, 286, 7, col_border);
+        }
+
+        // [Right Button +1]
+        if (right_down) {
+            draw_card(40, 315, 340, 42, 1648710, col_magenta);
+            setun2d_draw_text(55, 327, "[ +1 ] RIGHT BUTTON : ACTIVE (DOWN)", col_magenta);
+            setun2d_draw_circle(355, 336, 7, col_magenta);
+        } else {
+            draw_card(40, 315, 340, 42, col_bg, col_border);
+            setun2d_draw_text(55, 327, "[ +1 ] RIGHT BUTTON : RELEASED", col_gray);
+            setun2d_draw_circle(355, 336, 7, col_border);
+        }
+
+        // Thong tin su kien chuyen tiep cuoi cung
+        draw_card(40, 375, 340, 70, col_bg, col_border);
+        setun2d_draw_text(55, 388, "Last Event Button:", col_gray);
+        if (last_btn == -1) {
+            setun2d_draw_text(200, 388, "BUTTON_LEFT (-1)", col_green);
+        } else if (last_btn == 0) {
+            setun2d_draw_text(200, 388, "BUTTON_MID (0)", col_cyan);
+        } else if (last_btn == 1) {
+            setun2d_draw_text(200, 388, "BUTTON_RIGHT (+1)", col_magenta);
+        } else {
+            setun2d_draw_text(200, 388, "BUTTON_NONE (99)", col_gray);
+        }
+        setun2d_draw_text(55, 415, "Recent Action:", col_gray);
+        setun2d_draw_text(200, 415, last_click_type, col_gold);
+
+        // Nut UI tương tac ben trai
+        let btn1_hover = is_in_rect(mx, my, 40, 465, 160, 40);
+        let mut btn1_down = false;
+        if (btn1_hover) {
+            if (left_down) {
+                btn1_down = true;
+            }
+        }
+        draw_btn_ui(40, 465, 160, 40, "Clear Trail", btn1_hover, btn1_down);
+
+        let btn2_hover = is_in_rect(mx, my, 215, 465, 165, 40);
+        let mut btn2_down = false;
+        if (btn2_hover) {
+            if (left_down) {
+                btn2_down = true;
+            }
+        }
+        draw_btn_ui(215, 465, 165, 40, "Click Me!", btn2_hover, btn2_down);
+
+        // Xu ly click nut UI thong qua tracker
+        if (tracker.was_clicked(-1, 40, 465, 160, 40)) {
+            let mut ci = 0;
+            while (ci < 16) {
+                trail_x[ci] = 0;
+                trail_y[ci] = 0;
+                ci = ci + 1;
+            }
+            last_click_type = "Cleared Canvas";
+        }
+
+        if (tracker.was_clicked(-1, 215, 465, 165, 40)) {
+            click_count = click_count + 1;
+            last_click_type = "Btn Clicked!";
+        }
+
+        // 3. KHUNG VUNG VE & CON TRO RADAR (Right Interactive Canvas: 460 x 465)
+        draw_card(415, 75, 465, 465, col_card, col_border);
+        setun2d_draw_text(435, 92, "INTERACTIVE CANVAS & PARTICLE TRAIL", col_cyan);
+        setun2d_draw_text(435, 112, "Hold Left Click to draw | Right click for burst", col_gray);
+
+        // Cap nhat vet ve neu dang nhan chuot trai
+        if (left_down) {
+            if (mx >= 420) {
+                if (mx <= 870) {
+                    if (my >= 130) {
+                        if (my <= 530) {
+                            trail_x[trail_idx] = mx;
+                            trail_y[trail_idx] = my;
+                            trail_idx = trail_idx + 1;
+                            if (trail_idx >= 16) {
+                                trail_idx = 0;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Ve cac hat trong trail buffer
+        let mut ti = 0;
+        while (ti < 16) {
+            let px = trail_x[ti];
+            let py = trail_y[ti];
+            if (px > 0) {
+                if (py > 0) {
+                    let r = 5;
+                    setun2d_draw_circle(px, py, r, col_cyan);
+                }
+            }
+            ti = ti + 1;
+        }
+
+        // Ve Radar Crosshair tai vi tri con tro chuot (neu con tro nam trong canvas)
+        if (mx > 0) {
+            if (mx < 900) {
+                if (my > 0) {
+                    if (my < 560) {
+                        // Vong tron radar tam
+                        let cur_color = col_cyan;
+                        if (left_down) {
+                            cur_color = col_green;
+                        } else if (right_down) {
+                            cur_color = col_magenta;
+                        } else if (mid_down) {
+                            cur_color = col_gold;
+                        }
+
+                        setun2d_draw_circle(mx, my, 12, cur_color);
+                        setun2d_draw_circle(mx, my, 4, col_white);
+                        // Duong ngam crosshair
+                        setun2d_draw_rect(mx - 18, my, 10, 2, cur_color);
+                        setun2d_draw_rect(mx + 8, my, 10, 2, cur_color);
+                        setun2d_draw_rect(mx, my - 18, 2, 10, cur_color);
+                        setun2d_draw_rect(mx, my + 8, 2, 10, cur_color);
+                    }
+                }
+            }
+        }
+
+        // Cap nhat tracker o cuoi frame
+        tracker.update();
+
+        // 60 FPS Flip
+        let key = setun2d_flip();
+        if (key == -1) {
+            // Left key pressed
+        }
+    }
+
+    setun2d_close();
+    println("Da dong Setun2D Interactive Window.");
+}

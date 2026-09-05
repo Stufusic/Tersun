@@ -1,0 +1,75 @@
+// ============================================================================
+//  TERSUN 1.0.3 STANDARD LIBRARY - NATIVE FILE SYSTEM MODULE (std/fs.stn)
+//  Tuong thich nguoc 100% voi ISA 1.0.1 - Ha cap qua OP_INVOKE_METHOD (0xA4)
+// ============================================================================
+
+class HostFs {
+    pub dummy: int;
+
+    def fs_read(self, path: string) -> string {
+        return "";
+    }
+    def fs_write(self, path: string, content: string) -> int {
+        return 0;
+    }
+    def fs_append(self, path: string, content: string) -> int {
+        return 0;
+    }
+    def fs_exists(self, path: string) -> bool {
+        return false;
+    }
+    def fs_size(self, path: string) -> int {
+        return -1;
+    }
+    def fs_err(self) -> string {
+        return "";
+    }
+    def file_dialog_save(self, filter: string, def_ext: string) -> string {
+        return "";
+    }
+    def file_dialog_open(self, filter: string) -> string {
+        return "";
+    }
+    def syscall(self, id: int, a1: string, a2: string, a3: int) -> int {
+        return 0;
+    }
+}
+
+// ----------------------------------------------------------------------------
+// API CAP CAO: DOC / GHI / KIEM TRA FILE HE THONG
+// ----------------------------------------------------------------------------
+
+fn file_read(path: string) -> string {
+    let host = HostFs();
+    return host.fs_read(path);
+}
+
+fn file_write(path: string, content: string) -> int {
+    let host = HostFs();
+    return host.fs_write(path, content);
+}
+
+fn file_append(path: string, content: string) -> int {
+    let host = HostFs();
+    return host.fs_append(path, content);
+}
+
+fn file_exists(path: string) -> bool {
+    let host = HostFs();
+    return host.fs_exists(path);
+}
+
+fn file_size(path: string) -> int {
+    let host = HostFs();
+    return host.fs_size(path);
+}
+
+fn file_dialog_save(filter: string, def_ext: string) -> string {
+    let host = HostFs();
+    return host.file_dialog_save(filter, def_ext);
+}
+
+fn file_dialog_open(filter: string) -> string {
+    let host = HostFs();
+    return host.file_dialog_open(filter);
+}

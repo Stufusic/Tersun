@@ -1,0 +1,103 @@
+// ============================================================================
+//  TERSUN 1.0.3 TEST SUITE: MULTI-MODULE IMPORT SYSTEM (tests/test_multi_import.stn)
+//  Kiem tra import cheo: fs.stn, keyboard.stn, gui.stn, mouse.stn
+// ============================================================================
+
+import "fs.stn";
+import "keyboard.stn";
+import "gui.stn";
+import "mouse.stn";
+
+fn main() -> int {
+    println("===================================================================");
+    println("  [Tersun 1.0.3] Modular Import & Cross-Module Verification Suite ");
+    println("===================================================================");
+
+    // 1. Verify Keyboard constants and functions
+    println("[Test 1/4] Verifying Keyboard module imports...");
+    let k_enter = key_enter();
+    let k_backspace = key_backspace();
+    if (k_enter != 13) {
+        println("  -> FAILED: key_enter != 13");
+        return 1;
+    }
+    if (k_backspace != 8) {
+        println("  -> FAILED: key_backspace != 8");
+        return 1;
+    }
+    println("  -> PASSED: Keyboard constants (ENTER=13, BACKSPACE=8) verified.");
+
+    // 2. Verify Mouse constants and tracker
+    println("[Test 2/4] Verifying Mouse module imports...");
+    let b_left = btn_left();
+    let b_right = btn_right();
+    if (b_left != -1) {
+        println("  -> FAILED: btn_left != -1");
+        return 1;
+    }
+    if (b_right != 1) {
+        println("  -> FAILED: btn_right != 1");
+        return 1;
+    }
+    let tracker = MouseTracker();
+    tracker.init();
+    println("  -> PASSED: Mouse balanced ternary buttons (-1, 0, 1) and tracker verified.");
+
+    // 3. Verify GUI widgets instantiation
+    println("[Test 3/4] Verifying GUI OOP Widgets (Button, Slider, TextInput, Panel)...");
+    let btn = Button();
+    btn.init(100, 150, 120, 36, "Calculate");
+    if (btn.label != "Calculate") {
+        println("  -> FAILED: Button label mismatch");
+        return 1;
+    }
+    if (btn.w != 120) {
+        println("  -> FAILED: Button width mismatch");
+        return 1;
+    }
+
+    let slider = Slider();
+    slider.init(50, 200, 200, 10, 100, 50);
+    if (slider.val != 50) {
+        println("  -> FAILED: Slider value mismatch");
+        return 1;
+    }
+
+    let txt = TextInput();
+    txt.init(50, 250, 240, 32, "Enter formula...");
+    if (txt.placeholder != "Enter formula...") {
+        println("  -> FAILED: TextInput placeholder mismatch");
+        return 1;
+    }
+
+    let panel = Panel();
+    panel.init(10, 10, 400, 300, 791330, 1648710);
+    if (panel.w != 400) {
+        println("  -> FAILED: Panel width mismatch");
+        return 1;
+    }
+    println("  -> PASSED: All GUI widgets initialized cleanly with correct properties.");
+
+    // 4. Verify cross-module interaction (GUI + Keyboard character feeding)
+    println("[Test 4/4] Verifying cross-module interaction (TextInput focus & typing)...");
+    txt.is_focused = true;
+    txt.handle_char(65); // 'A'
+    txt.handle_char(66); // 'B'
+    txt.handle_char(67); // 'C'
+    if (txt.text != "ABC") {
+        println("  -> FAILED: TextInput text expected 'ABC', got: " + txt.text);
+        return 1;
+    }
+    txt.handle_char(8); // Backspace
+    if (txt.text != "AB") {
+        println("  -> FAILED: TextInput backspace expected 'AB', got: " + txt.text);
+        return 1;
+    }
+    println("  -> TextInput typing & backspace result: '" + txt.text + "'");
+    println("  -> PASSED: Cross-module keyboard event dispatch verified.");
+
+    println("===================================================================");
+    println("  ALL TERSUN 1.0.3 MODULAR IMPORT TESTS PASSED (4/4 SUCCESS)!      ");
+    println("===================================================================");
+    return 0;
+}

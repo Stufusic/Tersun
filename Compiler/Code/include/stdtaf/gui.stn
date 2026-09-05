@@ -1,0 +1,771 @@
+// ============================================================================
+//  TERSUN 1.0.3 STANDARD LIBRARY - SETUN2D GUI MODULE (std/gui.stn)
+//  Thanh phan giao dien OOP cao cap:
+//  - Panel, DraggablePanel (Khung chua co the keo di chuyen)
+//  - Button (Nut bam voi hover, pressed, label)
+//  - Slider (Thanh truot tham so)
+//  - TextInput (Hop nhap chu co tro nhap nhay & backspace)
+//  - ContextMenu (Menu ngu canh chuot phai)
+//  - BoxSelector (Quet chon vung chu nhat)
+//  - HoverTooltip (Chu thich khi dung chuot)
+//  Tuong thich nguoc 100% voi ISA 1.0.1 - Ha cap qua OP_INVOKE_METHOD (0xA4)
+// ============================================================================
+
+import "keyboard.stn";
+import "mouse.stn";
+
+fn draw_line(x1: int, y1: int, x2: int, y2: int, rgb: int) {
+    let host = Host();
+    host.draw_line(x1, y1, x2, y2, rgb);
+}
+
+// ----------------------------------------------------------------------------
+// 1. PANEL CONTAINER
+// ----------------------------------------------------------------------------
+class Panel {
+    pub x: int;
+    pub y: int;
+    pub w: int;
+    pub h: int;
+    pub bg_color: int;
+    pub border_color: int;
+
+    def init(self, px: int, py: int, pw: int, ph: int, bg: int, border: int) {
+        self.x = px;
+        self.y = py;
+        self.w = pw;
+        self.h = ph;
+        self.bg_color = bg;
+        self.border_color = border;
+    }
+
+    def draw(self) {
+        setun2d_draw_rect(self.x, self.y, self.w, self.h, self.border_color);
+        setun2d_draw_rect(self.x + 2, self.y + 2, self.w - 4, self.h - 4, self.bg_color);
+    }
+}
+
+// ----------------------------------------------------------------------------
+// 2. DRAGGABLE PANEL (CUA SO CO THE KEO DI CHUYEN)
+// ----------------------------------------------------------------------------
+class DraggablePanel {
+    pub x: int;
+    pub y: int;
+    pub w: int;
+    pub h: int;
+    pub title: string;
+    pub bg_color: int;
+    pub border_color: int;
+    pub title_bg: int;
+    pub is_dragging: bool;
+    pub drag_offset_x: int;
+    pub drag_offset_y: int;
+
+    def init(self, px: int, py: int, pw: int, ph: int, title_text: string) {
+        self.x = px;
+        self.y = py;
+        self.w = pw;
+        self.h = ph;
+        self.title = title_text;
+        self.bg_color = 1054760;     // Dark card (0x101828)
+        self.border_color = 2174526; // Border muted
+        self.title_bg = 1648710;     // Title bar navy (0x192846)
+        self.is_dragging = false;
+        self.drag_offset_x = 0;
+        self.drag_offset_y = 0;
+    }
+
+    def update(self, mx: int, my: int, is_down: bool) {
+        let title_h = 28;
+        if (is_down) {
+            if (self.is_dragging) {
+                self.x = mx - self.drag_offset_x;
+                self.y = my - self.drag_offset_y;
+            } else {
+                if (mx >= self.x) {
+                    if (mx <= (self.x + self.w)) {
+                        if (my >= self.y) {
+                            if (my <= (self.y + title_h)) {
+                                self.is_dragging = true;
+                                self.drag_offset_x = mx - self.x;
+                                self.drag_offset_y = my - self.y;
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            self.is_dragging = false;
+        }
+    }
+
+    def draw(self) {
+        let title_h = 28;
+        setun2d_draw_rect(self.x, self.y, self.w, self.h, self.border_color);
+        setun2d_draw_rect(self.x + 2, self.y + 2, self.w - 4, self.h - 4, self.bg_color);
+        setun2d_draw_rect(self.x + 2, self.y + 2, self.w - 4, title_h, self.title_bg);
+        setun2d_draw_text(self.x + 10, self.y + 7, self.title, 62932);
+    }
+}
+
+// ----------------------------------------------------------------------------
+// 3. BUTTON WIDGET
+// ----------------------------------------------------------------------------
+class Button {
+    pub x: int;
+    pub y: int;
+    pub w: int;
+    pub h: int;
+    pub label: string;
+    pub is_hovered: bool;
+    pub is_pressed: bool;
+    pub col_normal: int;
+    pub col_hover: int;
+    pub col_border: int;
+    pub col_text: int;
+
+    def init(self, bx: int, by: int, bw: int, bh: int, text: string) {
+        self.x = bx;
+        self.y = by;
+        self.w = bw;
+        self.h = bh;
+        self.label = text;
+        self.is_hovered = false;
+        self.is_pressed = false;
+        self.col_normal = 791330;   // Dark navy (0x0C1122)
+        self.col_hover = 1648710;   // Navy hover (0x192846)
+        self.col_border = 62932;    // Cyan border (0x00F5D4)
+        self.col_text = 15724527;   // Off-white text (0xEFEFEF)
+    }
+
+    def update(self, mx: int, my: int, is_down: bool) -> bool {
+        self.is_hovered = false;
+        if (mx >= self.x) {
+            if (mx <= (self.x + self.w)) {
+                if (my >= self.y) {
+                    if (my <= (self.y + self.h)) {
+                        self.is_hovered = true;
+                    }
+                }
+            }
+        }
+
+        if (self.is_hovered) {
+            if (is_down) {
+                self.is_pressed = true;
+                return true;
+            }
+        }
+        self.is_pressed = false;
+        return false;
+    }
+
+    def draw(self) {
+        let bg = self.col_normal;
+        if (self.is_pressed) {
+            bg = 30515; // Active cyan
+        } else {
+            if (self.is_hovered) {
+                bg = self.col_hover;
+            }
+        }
+        setun2d_draw_rect(self.x, self.y, self.w, self.h, self.col_border);
+        setun2d_draw_rect(self.x + 2, self.y + 2, self.w - 4, self.h - 4, bg);
+        setun2d_draw_text(self.x + 10, self.y + 7, self.label, self.col_text);
+    }
+}
+
+// ----------------------------------------------------------------------------
+// 4. SLIDER WIDGET
+// ----------------------------------------------------------------------------
+class Slider {
+    pub x: int;
+    pub y: int;
+    pub w: int;
+    pub h: int;
+    pub min_val: int;
+    pub max_val: int;
+    pub val: int;
+    pub is_dragging: bool;
+
+    def init(self, sx: int, sy: int, sw: int, smin: int, smax: int, sval: int) {
+        self.x = sx;
+        self.y = sy;
+        self.w = sw;
+        self.h = 16;
+        self.min_val = smin;
+        self.max_val = smax;
+        self.val = sval;
+        self.is_dragging = false;
+    }
+
+    def update(self, mx: int, my: int, is_down: bool) {
+        if (is_down) {
+            if (mx >= (self.x - 6)) {
+                if (mx <= (self.x + self.w + 6)) {
+                    if (my >= (self.y - 6)) {
+                        if (my <= (self.y + self.h + 6)) {
+                            self.is_dragging = true;
+                        }
+                    }
+                }
+            }
+        } else {
+            self.is_dragging = false;
+        }
+
+        if (self.is_dragging) {
+            let rel = mx - self.x;
+            if (rel < 0) { rel = 0; }
+            if (rel > self.w) { rel = self.w; }
+            let span = self.max_val - self.min_val;
+            if (span > 0) {
+                self.val = self.min_val + ((rel * span) / self.w);
+            }
+        }
+    }
+
+    def draw(self) {
+        setun2d_draw_rect(self.x, self.y + 6, self.w, 4, 1648710);
+        let span = self.max_val - self.min_val;
+        let filled_w = 0;
+        if (span > 0) {
+            filled_w = ((self.val - self.min_val) * self.w) / span;
+        }
+        setun2d_draw_rect(self.x, self.y + 6, filled_w, 4, 62932);
+        let knob_x = self.x + filled_w - 5;
+        setun2d_draw_rect(knob_x, self.y, 10, 16, 62932);
+        setun2d_draw_rect(knob_x + 2, self.y + 2, 6, 12, 15724527);
+    }
+}
+
+// ----------------------------------------------------------------------------
+// 5. TEXT INPUT WIDGET
+// ----------------------------------------------------------------------------
+class TextInput {
+    pub x: int;
+    pub y: int;
+    pub w: int;
+    pub h: int;
+    pub text: string;
+    pub placeholder: string;
+    pub is_focused: bool;
+
+    def init(self, tx: int, ty: int, tw: int, th: int, ph: string) {
+        self.x = tx;
+        self.y = ty;
+        self.w = tw;
+        self.h = th;
+        self.text = "";
+        self.placeholder = ph;
+        self.is_focused = false;
+    }
+
+    def update_focus(self, mx: int, my: int, is_clicked: bool) {
+        if (is_clicked) {
+            if (mx >= self.x) {
+                if (mx <= (self.x + self.w)) {
+                    if (my >= self.y) {
+                        if (my <= (self.y + self.h)) {
+                            self.is_focused = true;
+                            return;
+                        }
+                    }
+                }
+            }
+            self.is_focused = false;
+        }
+    }
+
+    def handle_char(self, ch: int) {
+        if (self.is_focused) {
+            if (ch == 8) { // Backspace
+                let l = self.text.len();
+                if (l > 0) {
+                    self.text = self.text.substr(0, l - 1);
+                }
+            } else {
+                if (ch >= 32) {
+                    if (ch <= 126) {
+                        let host = Host();
+                        let s = host.chr(ch);
+                        self.text = self.text + s;
+                    }
+                }
+            }
+        }
+    }
+
+    def draw(self) {
+        let border_col = 1648710;
+        if (self.is_focused) {
+            border_col = 62932;
+        }
+        setun2d_draw_rect(self.x, self.y, self.w, self.h, border_col);
+        setun2d_draw_rect(self.x + 2, self.y + 2, self.w - 4, self.h - 4, 791330);
+
+        let disp = self.text;
+        let col = 15724527;
+        if (disp == "") {
+            disp = self.placeholder;
+            col = 8421504; // Gray placeholder
+        }
+        if (self.is_focused) {
+            disp = disp + "|";
+        }
+        setun2d_draw_text(self.x + 8, self.y + 6, disp, col);
+    }
+}
+
+// ----------------------------------------------------------------------------
+// 6. CONTEXT MENU WIDGET (MENU NGU CANH CHUOT PHAI)
+// ----------------------------------------------------------------------------
+class ContextMenu {
+    pub is_visible: bool;
+    pub x: int;
+    pub y: int;
+    pub w: int;
+    pub item_h: int;
+    pub num_items: int;
+    pub item1: string;
+    pub item2: string;
+    pub item3: string;
+    pub item4: string;
+
+    def init(self, mw: int) {
+        self.is_visible = false;
+        self.x = 0;
+        self.y = 0;
+        self.w = mw;
+        self.item_h = 28;
+        self.num_items = 0;
+        self.item1 = "";
+        self.item2 = "";
+        self.item3 = "";
+        self.item4 = "";
+    }
+
+    def set_items(self, it1: string, it2: string, it3: string, it4: string) {
+        self.item1 = it1;
+        self.item2 = it2;
+        self.item3 = it3;
+        self.item4 = it4;
+        self.num_items = 4;
+    }
+
+    def show(self, pos_x: int, pos_y: int) {
+        self.is_visible = true;
+        self.x = pos_x;
+        self.y = pos_y;
+    }
+
+    def hide(self) {
+        self.is_visible = false;
+    }
+
+    def update(self, tracker: MouseTracker, mx: int, my: int) -> int {
+        if (self.is_visible) {
+            let total_h = self.num_items * self.item_h;
+            let left_click = tracker.was_clicked(-1, 0, 0, 9999, 9999);
+            if (left_click) {
+                if (mx >= self.x) {
+                    if (mx <= (self.x + self.w)) {
+                        if (my >= self.y) {
+                            if (my <= (self.y + total_h)) {
+                                let rel_y = my - self.y;
+                                let idx = 1 + (rel_y / self.item_h);
+                                self.is_visible = false;
+                                return idx;
+                            }
+                        }
+                    }
+                }
+                self.is_visible = false;
+                return 0;
+            }
+
+            let right_click = tracker.was_clicked(1, 0, 0, 9999, 9999);
+            if (right_click) {
+                self.is_visible = false;
+                return 0;
+            }
+        }
+        return 0;
+    }
+
+    def draw(self, mx: int, my: int) {
+        if (self.is_visible == false) { return; }
+        let total_h = self.num_items * self.item_h;
+        setun2d_draw_rect(self.x, self.y, self.w, total_h, 62932);
+        setun2d_draw_rect(self.x + 2, self.y + 2, self.w - 4, total_h - 4, 791330);
+
+        let i = 0;
+        while (i < self.num_items) {
+            let iy = self.y + (i * self.item_h);
+            let hovered = false;
+            if (mx >= self.x) {
+                if (mx <= (self.x + self.w)) {
+                    if (my >= iy) {
+                        if (my <= (iy + self.item_h)) {
+                            hovered = true;
+                        }
+                    }
+                }
+            }
+
+            if (hovered) {
+                setun2d_draw_rect(self.x + 3, iy + 1, self.w - 6, self.item_h - 2, 1648710);
+            }
+
+            let item_text = "";
+            if (i == 0) { item_text = self.item1; }
+            if (i == 1) { item_text = self.item2; }
+            if (i == 2) { item_text = self.item3; }
+            if (i == 3) { item_text = self.item4; }
+
+            let col = 15724527;
+            if (hovered) { col = 62932; }
+            setun2d_draw_text(self.x + 8, iy + 6, item_text, col);
+            i = i + 1;
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
+// 7. BOX SELECTOR (QUET CHON VUNG HINH CHU NHAT)
+// ----------------------------------------------------------------------------
+class BoxSelector {
+    pub is_selecting: bool;
+    pub has_started: bool;
+    pub start_x: int;
+    pub start_y: int;
+    pub curr_x: int;
+    pub curr_y: int;
+
+    def init(self) {
+        self.is_selecting = false;
+        self.has_started = false;
+        self.start_x = 0;
+        self.start_y = 0;
+        self.curr_x = 0;
+        self.curr_y = 0;
+    }
+
+    def update(self, mx: int, my: int, is_down: bool) {
+        if (is_down) {
+            if (self.has_started == false) {
+                self.has_started = true;
+                self.start_x = mx;
+                self.start_y = my;
+                self.curr_x = mx;
+                self.curr_y = my;
+                self.is_selecting = false;
+            } else {
+                self.curr_x = mx;
+                self.curr_y = my;
+                let dx = mx - self.start_x;
+                if (dx < 0) { dx = 0 - dx; }
+                let dy = my - self.start_y;
+                if (dy < 0) { dy = 0 - dy; }
+                if (dx >= 4) { self.is_selecting = true; }
+                if (dy >= 4) { self.is_selecting = true; }
+            }
+        } else {
+            self.has_started = false;
+            self.is_selecting = false;
+        }
+    }
+
+    def draw(self) {
+        if (self.is_selecting) {
+            let bx = self.start_x;
+            let bw = self.curr_x - self.start_x;
+            if (bw < 0) {
+                bx = self.curr_x;
+                bw = 0 - bw;
+            }
+
+            let by = self.start_y;
+            let bh = self.curr_y - self.start_y;
+            if (bh < 0) {
+                by = self.curr_y;
+                bh = 0 - bh;
+            }
+
+            setun2d_draw_rect(bx, by, bw, 2, 62932);
+            setun2d_draw_rect(bx, by + bh - 2, bw, 2, 62932);
+            setun2d_draw_rect(bx, by, 2, bh, 62932);
+            setun2d_draw_rect(bx + bw - 2, by, 2, bh, 62932);
+        }
+    }
+
+    def contains(self, rx: int, ry: int, rw: int, rh: int) -> bool {
+        if (self.is_selecting == false) { return false; }
+        let bx = self.start_x;
+        let bw = self.curr_x - self.start_x;
+        if (bw < 0) {
+            bx = self.curr_x;
+            bw = 0 - bw;
+        }
+        let by = self.start_y;
+        let bh = self.curr_y - self.start_y;
+        if (bh < 0) {
+            by = self.curr_y;
+            bh = 0 - bh;
+        }
+
+        let cx = rx + (rw / 2);
+        let cy = ry + (rh / 2);
+        if (cx >= bx) {
+            if (cx <= (bx + bw)) {
+                if (cy >= by) {
+                    if (cy <= (by + bh)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+}
+
+// ----------------------------------------------------------------------------
+// 8. HOVER TOOLTIP (CHU THICH XUAT HIEN KHI RÊ CHUOT CO DO TRE)
+// ----------------------------------------------------------------------------
+class HoverTooltip {
+    pub hover_count: int;
+    pub delay_threshold: int;
+    pub text: string;
+    pub is_active: bool;
+
+    def init(self, delay: int) {
+        self.hover_count = 0;
+        self.delay_threshold = delay;
+        self.text = "";
+        self.is_active = false;
+    }
+
+    def update(self, is_hovered: bool, tooltip_text: string) {
+        if (is_hovered) {
+            self.text = tooltip_text;
+            self.hover_count = self.hover_count + 1;
+            if (self.hover_count >= self.delay_threshold) {
+                self.is_active = true;
+            }
+        } else {
+            self.hover_count = 0;
+            self.is_active = false;
+        }
+    }
+
+    def draw(self, mx: int, my: int) {
+        if (self.is_active) {
+            let tw = (self.text.len() * 8) + 16;
+            let th = 24;
+            let tx = mx + 12;
+            let ty = my + 16;
+
+            setun2d_draw_rect(tx, ty, tw, th, 62932);
+            setun2d_draw_rect(tx + 1, ty + 1, tw - 2, th - 2, 526360);
+            setun2d_draw_text(tx + 8, ty + 5, self.text, 15724527);
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
+// 9. SCROLL VIEW WIDGET (KHUNG CUON VO TAN VOI THANH CUON & CON LAN CHUOT)
+// ----------------------------------------------------------------------------
+class ScrollView {
+    pub x: int;
+    pub y: int;
+    pub w: int;
+    pub h: int;
+    pub content_h: int;
+    pub scroll_y: int;
+    pub is_dragging_bar: bool;
+    pub drag_start_my: int;
+    pub drag_start_scroll: int;
+    pub bg_color: int;
+    pub border_color: int;
+
+    def init(self, px: int, py: int, pw: int, ph: int) {
+        self.x = px;
+        self.y = py;
+        self.w = pw;
+        self.h = ph;
+        self.content_h = ph;
+        self.scroll_y = 0;
+        self.is_dragging_bar = false;
+        self.drag_start_my = 0;
+        self.drag_start_scroll = 0;
+        self.bg_color = 791330;      // 0x0c1322
+        self.border_color = 1648710; // 0x192846
+    }
+
+    def set_content_height(self, ch: int) {
+        self.content_h = ch;
+        self.clamp_scroll();
+    }
+
+    def clamp_scroll(self) {
+        let max_scroll = self.content_h - self.h;
+        if (max_scroll < 0) {
+            self.scroll_y = 0;
+            return;
+        }
+        if (self.scroll_y < 0) {
+            self.scroll_y = 0;
+        }
+        if (self.scroll_y > max_scroll) {
+            self.scroll_y = max_scroll;
+        }
+    }
+
+    def update(self, tracker: MouseTracker, mx: int, my: int, wheel: int) {
+        // Cuon bang con lan chuot khi con tro nam trong viewport
+        if (mx >= self.x) {
+            if (mx <= (self.x + self.w)) {
+                if (my >= self.y) {
+                    if (my <= (self.y + self.h)) {
+                        if (wheel != 0) {
+                            self.scroll_y = self.scroll_y - (wheel * 24);
+                            self.clamp_scroll();
+                        }
+                    }
+                }
+            }
+        }
+
+        // Keo thanh cuon (Scrollbar Thumb Drag)
+        let bar_w = 8;
+        let bar_x = self.x + self.w - bar_w - 2;
+        let is_down = tracker.curr_left;
+
+        if (is_down) {
+            if (self.is_dragging_bar) {
+                let dy = my - self.drag_start_my;
+                let max_scroll = self.content_h - self.h;
+                if (max_scroll > 0) {
+                    let travel = self.h - 30;
+                    if (travel > 0) {
+                        let delta_scroll = (dy * max_scroll) / travel;
+                        self.scroll_y = self.drag_start_scroll + delta_scroll;
+                        self.clamp_scroll();
+                    }
+                }
+            } else {
+                if (tracker.is_pressed(-1)) {
+                    if (mx >= bar_x - 4) {
+                        if (mx <= (bar_x + bar_w + 4)) {
+                            if (my >= self.y) {
+                                if (my <= (self.y + self.h)) {
+                                    self.is_dragging_bar = true;
+                                    self.drag_start_my = my;
+                                    self.drag_start_scroll = self.scroll_y;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            self.is_dragging_bar = false;
+        }
+    }
+
+    def is_visible(self, item_rel_y: int, item_h: int) -> bool {
+        let screen_y = (self.y + item_rel_y) - self.scroll_y;
+        if ((screen_y + item_h) < self.y) {
+            return false;
+        }
+        if (screen_y > (self.y + self.h)) {
+            return false;
+        }
+        return true;
+    }
+
+    def get_screen_y(self, item_rel_y: int) -> int {
+        return (self.y + item_rel_y) - self.scroll_y;
+    }
+
+    def draw_background(self) {
+        setun2d_draw_rect(self.x, self.y, self.w, self.h, self.border_color);
+        setun2d_draw_rect(self.x + 1, self.y + 1, self.w - 2, self.h - 2, self.bg_color);
+    }
+
+    def draw_scrollbar(self) {
+        if (self.content_h <= self.h) {
+            return;
+        }
+        let bar_w = 6;
+        let bar_x = self.x + self.w - bar_w - 2;
+        let track_h = self.h - 4;
+        let thumb_h = (track_h * self.h) / self.content_h;
+        if (thumb_h < 20) { thumb_h = 20; }
+
+        let max_scroll = self.content_h - self.h;
+        let travel = track_h - thumb_h;
+        let thumb_y = self.y + 2;
+        if (max_scroll > 0) {
+            thumb_y = self.y + 2 + ((self.scroll_y * travel) / max_scroll);
+        }
+
+        // Draw track
+        setun2d_draw_rect(bar_x, self.y + 2, bar_w, track_h, 1054760);
+
+        // Draw thumb
+        let col_thumb = 1648710;
+        if (self.is_dragging_bar) {
+            col_thumb = 62932;
+        }
+        setun2d_draw_rect(bar_x, thumb_y, bar_w, thumb_h, col_thumb);
+    }
+}
+
+// ----------------------------------------------------------------------------
+// 10. LINE PLOTTER WIDGET (DO THI KHOA HOC 2D)
+// ----------------------------------------------------------------------------
+class LinePlotter {
+    pub x: int;
+    pub y: int;
+    pub w: int;
+    pub h: int;
+    pub title: string;
+    pub bg_color: int;
+    pub border_color: int;
+    pub grid_color: int;
+    pub axis_color: int;
+
+    def init(self, px: int, py: int, pw: int, ph: int, t: string) {
+        self.x = px;
+        self.y = py;
+        self.w = pw;
+        self.h = ph;
+        self.title = t;
+        self.bg_color = 526360;      // 0x080818
+        self.border_color = 1648710; // 0x192846
+        self.grid_color = 1054760;   // 0x101828
+        self.axis_color = 62932;     // Cyan 0x00f5d4
+    }
+
+    def draw_frame(self) {
+        setun2d_draw_rect(self.x, self.y, self.w, self.h, self.border_color);
+        setun2d_draw_rect(self.x + 1, self.y + 1, self.w - 2, self.h - 2, self.bg_color);
+
+        // Header Title
+        setun2d_draw_rect(self.x + 1, self.y + 1, self.w - 2, 24, 1648710);
+        setun2d_draw_text(self.x + 8, self.y + 4, self.title, 62932);
+
+        // Draw Grid lines
+        let plot_y0 = self.y + 28;
+        let plot_h = self.h - 32;
+
+        let mid_y = plot_y0 + (plot_h / 2);
+        draw_line(self.x + 8, mid_y, self.x + self.w - 8, mid_y, 8952234);
+
+        let top_y = plot_y0 + (plot_h / 4);
+        let bot_y = plot_y0 + ((plot_h * 3) / 4);
+        draw_line(self.x + 8, top_y, self.x + self.w - 8, top_y, self.grid_color);
+        draw_line(self.x + 8, bot_y, self.x + self.w - 8, bot_y, self.grid_color);
+    }
+}

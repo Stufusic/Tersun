@@ -103,6 +103,8 @@ private:
     // OOP Classes & Structs registry
     std::unordered_map<std::string, std::vector<std::string>> class_fields_;
     std::unordered_map<std::string, std::unordered_map<std::string, uint16_t>> class_methods_;
+    // init() arity per class (excluding 'self'); -1 when the class has no init.
+    std::unordered_map<std::string, int> class_init_arity_;
 };
 
 } // namespace setun

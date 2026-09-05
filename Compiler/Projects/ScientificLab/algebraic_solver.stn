@@ -1,0 +1,167 @@
+// ============================================================================
+//  TERSUN SCIENTIFIC LAB: ALGEBRAIC SOLVER & MINI MATLAB ENGINE
+//  Phan giai he phuong trinh tuyen tinh Gauss-Jordan dai so trong truong Q(sqrt(3))
+//  Toan bo phep tinh bao toan tinh nguyen, triet tieu sai so lam tron 100%
+// ============================================================================
+
+class Linear2x2Solution {
+    pub x: taf3;
+    pub y: taf3;
+    pub det: taf3;
+    pub res1: taf3;
+    pub res2: taf3;
+    pub is_solvable: bool;
+}
+
+// ----------------------------------------------------------------------------
+// 1. THUAT TOAN GIAI HE PHUONG TRINH 2x2 CHINH XAC TUYET DOI
+//    [ a11  a12 | b1 ]
+//    [ a21  a22 | b2 ]
+// ----------------------------------------------------------------------------
+fn solve_linear_2x2(a11: taf3, a12: taf3, b1: taf3,
+                    a21: taf3, a22: taf3, b2: taf3) -> Linear2x2Solution {
+    let sol = Linear2x2Solution();
+
+    // Dinh thuc Det = a11 * a22 - a12 * a21
+    let det = (a11 * a22) - (a12 * a21);
+    sol.det = det;
+
+    // Kiem tra he suy bien (det == 0)
+    let zero_taf: taf3 = [0, 0, 0];
+    if (det == zero_taf) {
+        sol.is_solvable = false;
+        sol.x = [0, 0, 0];
+        sol.y = [0, 0, 0];
+        sol.res1 = [0, 0, 0];
+        sol.res2 = [0, 0, 0];
+        return sol;
+    }
+
+    // Dinh thuc con theo quy tac Cramer / Gauss-Jordan bien doi
+    let dx = (b1 * a22) - (a12 * b2);
+    let dy = (a11 * b2) - (b1 * a21);
+
+    let x_exact = dx / det;
+    let y_exact = dy / det;
+
+    sol.x = x_exact;
+    sol.y = y_exact;
+    sol.is_solvable = true;
+
+    // Tinh vector phan du (Residual vector: r = A*x - b)
+    let r1 = (a11 * x_exact + a12 * y_exact) - b1;
+    let r2 = (a21 * x_exact + a22 * y_exact) - b2;
+    sol.res1 = r1;
+    sol.res2 = r2;
+
+    return sol;
+}
+
+// ----------------------------------------------------------------------------
+// 2. CAC BAI TOAN MAU (PRESETS) CHO MINI MATLAB
+// ----------------------------------------------------------------------------
+
+// PRESET 1: He Hinh hoc vo ty (Exact Irrational Geometry)
+// (1 + sqrt(3))x + y = 2 + sqrt(3)
+// x + (1 - sqrt(3))y = 2 - sqrt(3)
+// Nghiem: x = [1, 0, 0] = 1, y = [1, 0, 0] = 1
+fn run_preset_1() -> Linear2x2Solution {
+    let a11: taf3 = [1, 1, 0];
+    let a12: taf3 = [1, 0, 0];
+    let b1: taf3  = [2, 1, 0];
+
+    let a21: taf3 = [1, 0, 0];
+    let a22: taf3 = [1, -1, 0];
+    let b2: taf3  = [2, -1, 0];
+
+    return solve_linear_2x2(a11, a12, b1, a21, a22, b2);
+}
+
+// PRESET 2: He Mach dien khang tro xoay chieu 3 pha (AC Circuit Impedance)
+// (2 + sqrt(3))x - y = 4 + 3*sqrt(3)
+// x + (2 - sqrt(3))y = 3
+// Nghiem giai tich: x = [1, 1, 0] = 1 + sqrt(3), y = [1, 0, 0] = 1
+fn run_preset_2() -> Linear2x2Solution {
+    let a11: taf3 = [2, 1, 0];
+    let a12: taf3 = [-1, 0, 0];
+    let b1: taf3  = [4, 3, 0];
+
+    let a21: taf3 = [1, 0, 0];
+    let a22: taf3 = [2, -1, 0];
+    let b2: taf3  = [3, 0, 0];
+
+    return solve_linear_2x2(a11, a12, b1, a21, a22, b2);
+}
+
+// PRESET 3: He quay toa do khong gian (Rotational Kinematics)
+// 2x + sqrt(3)y = 5
+// sqrt(3)x + 2y = 3*sqrt(3)
+// Nghiem giai tich: x = [1, 0, 0] = 1, y = [0, 1, 0] = sqrt(3)
+fn run_preset_3() -> Linear2x2Solution {
+    let a11: taf3 = [2, 0, 0];
+    let a12: taf3 = [0, 1, 0];
+    let b1: taf3  = [5, 0, 0];
+
+    let a21: taf3 = [0, 1, 0];
+    let a22: taf3 = [2, 0, 0];
+    let b2: taf3  = [0, 3, 0];
+
+    return solve_linear_2x2(a11, a12, b1, a21, a22, b2);
+}
+
+// ----------------------------------------------------------------------------
+// 3. RUT GON BIEU THUC VA TINH CHUAN DAI SO (Algebraic Norm)
+// N(A + B*sqrt(3)) = A^2 - 3*B^2
+// ----------------------------------------------------------------------------
+fn algebraic_norm(x: taf3) -> int {
+    let a: int = x.a;
+    let b: int = x.b;
+    let norm = (a * a) - (3 * b * b);
+    return norm;
+}
+
+fn main() {
+    println("===================================================================");
+    println("  KIEM TRA THU VIEN BO GIAI HE MA TRAN GAUSS-JORDAN TERSUN Q(sqrt(3))");
+    println("===================================================================");
+
+    println("\n[1] Giai He Phuong Trinh Preset 1 (Hinh hoc vo ty):");
+    let sol1 = run_preset_1();
+    print("  * Dinh thuc Det = "); println(sol1.det);
+    print("  * Nghiem x      = "); println(sol1.x);
+    print("  * Nghiem y      = "); println(sol1.y);
+    print("  * Phan du Res 1 = "); println(sol1.res1);
+    print("  * Phan du Res 2 = "); println(sol1.res2);
+    assert_eq(sol1.res1, [0, 0, 0]);
+    assert_eq(sol1.res2, [0, 0, 0]);
+    println("  => CHUNG MINH: Vector phan du bang 0 tuyet doi (0% Residual Error)!");
+
+    println("\n[2] Giai He Phuong Trinh Preset 2 (Mach dien 3 pha):");
+    let sol2 = run_preset_2();
+    print("  * Dinh thuc Det = "); println(sol2.det);
+    print("  * Nghiem x      = "); println(sol2.x);
+    print("  * Nghiem y      = "); println(sol2.y);
+    print("  * Phan du Res 1 = "); println(sol2.res1);
+    print("  * Phan du Res 2 = "); println(sol2.res2);
+    assert_eq(sol2.res1, [0, 0, 0]);
+    assert_eq(sol2.res2, [0, 0, 0]);
+
+    println("\n[3] Giai He Phuong Trinh Preset 3 (Quay toa do khong gian):");
+    let sol3 = run_preset_3();
+    print("  * Dinh thuc Det = "); println(sol3.det);
+    print("  * Nghiem x      = "); println(sol3.x);
+    print("  * Nghiem y      = "); println(sol3.y);
+    print("  * Phan du Res 1 = "); println(sol3.res1);
+    print("  * Phan du Res 2 = "); println(sol3.res2);
+    assert_eq(sol3.res1, [0, 0, 0]);
+    assert_eq(sol3.res2, [0, 0, 0]);
+
+    println("\n[4] Tinh Chuan Dai So (Algebraic Norm) cua (2 + 1*sqrt(3)):");
+    let z: taf3 = [2, 1, 0];
+    let norm_z = algebraic_norm(z);
+    print("  * Norm N(2 + sqrt(3)) = 2^2 - 3*1^2 = ");
+    println(norm_z);
+    assert_eq(norm_z, 1);
+
+    println("\n=== THU VIEN ALGEBRAIC SOLVER DA VUOT QUA TAT CA TEST CASE! ===");
+}

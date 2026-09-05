@@ -1,0 +1,372 @@
+// ===================================================================
+//  Chuong Trinh Duyet Cay Tam Phan (Ternary Tree Traversal)
+//  Ngon ngu Lap Trinh Setun-70 / Tersun Logic Tam Phan Can Bang
+// ===================================================================
+
+class TernaryTreeNode {
+    pub val: int;
+    pub name: string;
+    
+    pub has_low: bool;
+    pub low: TernaryTreeNode;     // Nhanh Am (-1): Low / Left
+    
+    pub has_mid: bool;
+    pub mid: TernaryTreeNode;     // Nhanh Khong (0): Equal / Middle
+    
+    pub has_high: bool;
+    pub high: TernaryTreeNode;    // Nhanh Duong (+1): High / Right
+}
+
+def make_node(val: int, name: string) -> TernaryTreeNode {
+    let n = TernaryTreeNode();
+    n.val = val;
+    n.name = name;
+    n.has_low = false;
+    n.has_mid = false;
+    n.has_high = false;
+    return n;
+}
+
+// -------------------------------------------------------------------
+// 1. THUAT TOAN DUYET TIEN THU TU (Pre-Order Traversal)
+// Thu tu: Goc (Root) -> Nhanh Am (-1) -> Nhanh Khong (0) -> Nhanh Duong (+1)
+// -------------------------------------------------------------------
+fn traverse_preorder(n: TernaryTreeNode, depth: int) {
+    let i = 0;
+    while (i < depth) {
+        print("  ");
+        i = i + 1;
+    }
+    print("[PreOrder] Nut: ");
+    print(n.name);
+    print(" (val = ");
+    print(n.val);
+    println(")");
+
+    if (n.has_low) {
+        traverse_preorder(n.low, depth + 1);
+    }
+    if (n.has_mid) {
+        traverse_preorder(n.mid, depth + 1);
+    }
+    if (n.has_high) {
+        traverse_preorder(n.high, depth + 1);
+    }
+}
+
+// -------------------------------------------------------------------
+// 2. THUAT TOAN DUYET TRUNG THU TU (In-Order Traversal)
+// Thu tu: Nhanh Am (-1) -> Nhanh Khong/Goc (0) -> Nhanh Duong (+1)
+// -------------------------------------------------------------------
+fn traverse_inorder(n: TernaryTreeNode) {
+    if (n.has_low) {
+        traverse_inorder(n.low);
+    }
+
+    print(n.val);
+    print(" (");
+    print(n.name);
+    print(") ");
+
+    if (n.has_mid) {
+        traverse_inorder(n.mid);
+    }
+
+    if (n.has_high) {
+        traverse_inorder(n.high);
+    }
+}
+
+// -------------------------------------------------------------------
+// 3. THUAT TOAN DUYET HAU THU TU (Post-Order Traversal)
+// Thu tu: Nhanh Am (-1) -> Nhanh Khong (0) -> Nhanh Duong (+1) -> Goc (Root)
+// -------------------------------------------------------------------
+fn traverse_postorder(n: TernaryTreeNode) {
+    if (n.has_low) {
+        traverse_postorder(n.low);
+    }
+    if (n.has_mid) {
+        traverse_postorder(n.mid);
+    }
+    if (n.has_high) {
+        traverse_postorder(n.high);
+    }
+
+    print(n.name);
+    print(" [");
+    print(n.val);
+    print("] -> ");
+}
+
+// -------------------------------------------------------------------
+// 4. THUAT TOAN DEM NUT VA TINH TONG GIA TRI KHI DUYET
+// -------------------------------------------------------------------
+fn count_nodes(n: TernaryTreeNode) -> int {
+    let count = 1;
+    if (n.has_low) {
+        let sub_low = count_nodes(n.low);
+        count = count + sub_low;
+    }
+    if (n.has_mid) {
+        let sub_mid = count_nodes(n.mid);
+        count = count + sub_mid;
+    }
+    if (n.has_high) {
+        let sub_high = count_nodes(n.high);
+        count = count + sub_high;
+    }
+    return count;
+}
+
+fn sum_tree(n: TernaryTreeNode) -> int {
+    let total = n.val;
+    if (n.has_low) {
+        let sub_low = sum_tree(n.low);
+        total = total + sub_low;
+    }
+    if (n.has_mid) {
+        let sub_mid = sum_tree(n.mid);
+        total = total + sub_mid;
+    }
+    if (n.has_high) {
+        let sub_high = sum_tree(n.high);
+        total = total + sub_high;
+    }
+    return total;
+}
+
+// -------------------------------------------------------------------
+// 5. THUAT TOAN DUYET TIM KIEM 3 HUONG VOI TOAN TU <=> VA BRANCH
+// Su dung co che re nhanh 1 chu ky may cua Setun-70
+// -------------------------------------------------------------------
+fn search_tree(n: TernaryTreeNode, target: int, step: int) {
+    print("  Buoc ");
+    print(step);
+    print(": Dang o nut [");
+    print(n.name);
+    print("] co gia tri = ");
+    println(n.val);
+
+    // So sanh 3 ngoi: tra ve -1 neu target < n.val, 0 neu ==, +1 neu target > n.val
+    let cmp = target <=> n.val;
+
+    branch (cmp) {
+        -1 -> {
+            println("    -> Toan tu <=> tra ve -1 (Target nho hon): Chon nhanh AM (Low/Left)");
+            if (n.has_low) {
+                search_tree(n.low, target, step + 1);
+            } else {
+                println("    [Ket qua]: Khong tim thay target o nhanh Am!");
+            }
+        }
+        0 -> {
+            println("    -> Toan tu <=> tra ve 0 (Khop chinh xac): Chon nhanh KHONG (Mid/Equal)");
+            print("    [Ket qua]: TIM THAY MUC TIEU ");
+            print(target);
+            print(" tai nut: ");
+            println(n.name);
+        }
+        +1 -> {
+            println("    -> Toan tu <=> tra ve +1 (Target lon hon): Chon nhanh DUONG (High/Right)");
+            if (n.has_high) {
+                search_tree(n.high, target, step + 1);
+            } else {
+                println("    [Ket qua]: Khong tim thay target o nhanh Duong!");
+            }
+        }
+    }
+}
+
+// -------------------------------------------------------------------
+// 6. CAY QUYET DINH LOGIC TAM PHAN KLEENE (Kleene Logic Evaluator Tree)
+// Duyet cay de tinh gia tri chan ly {-1: Sai, 0: Khong xac dinh, +1: Dung}
+// Su dung cac toan tu Kleene nguyen ban: min (AND), max (OR), ~ (NOT)
+// -------------------------------------------------------------------
+class LogicNode {
+    pub op: string;        // "VAL", "AND", "OR", "NOT"
+    pub truth_val: int;    // -1, 0, +1
+    pub has_left: bool;
+    pub left: LogicNode;
+    pub has_right: bool;
+    pub right: LogicNode;
+}
+
+def make_leaf_logic(val: int) -> LogicNode {
+    let n = LogicNode();
+    n.op = "VAL";
+    n.truth_val = val;
+    n.has_left = false;
+    n.has_right = false;
+    return n;
+}
+
+def make_op_logic(op_type: string, l: LogicNode, r: LogicNode) -> LogicNode {
+    let n = LogicNode();
+    n.op = op_type;
+    n.truth_val = 0;
+    n.left = l;
+    n.has_left = true;
+    n.right = r;
+    n.has_right = true;
+    return n;
+}
+
+fn eval_logic_tree(n: LogicNode) -> int {
+    if (n.op == "VAL") {
+        return n.truth_val;
+    }
+
+    if (n.op == "NOT") {
+        let child_val = eval_logic_tree(n.left);
+        let res = ~child_val;
+        return res;
+    }
+
+    let left_val = eval_logic_tree(n.left);
+    let right_val = eval_logic_tree(n.right);
+
+    if (n.op == "AND") {
+        let res = left_val min right_val;
+        return res;
+    }
+
+    if (n.op == "OR") {
+        let res = left_val max right_val;
+        return res;
+    }
+
+    return 0;
+}
+
+// -------------------------------------------------------------------
+// HAM MAIN CHINH CUA CHUONG TRINH
+// -------------------------------------------------------------------
+fn main() {
+    println("===================================================================");
+    println("  CHUONG TRINH DUYET CAY TAM PHAN TREN SETUN-70 / TERSUN LOGIC     ");
+    println("===================================================================");
+    println("");
+
+    // Xay dung cay tam phan mau (Moi nut co 3 nhanh: Low (-1), Mid (0), High (+1))
+    //                Root(50)
+    //          /        |         \
+    //      Low(20)    Mid(50)    High(80)
+    //      /     \               /      \
+    //  Low(10)  High(30)      Low(70)  High(90)
+
+    let root = make_node(50, "Goc_50");
+    let n20 = make_node(20, "NhanhAm_20");
+    let n50_mid = make_node(50, "NhanhKhong_50");
+    let n80 = make_node(80, "NhanhDuong_80");
+
+    let n10 = make_node(10, "La_10");
+    let n30 = make_node(30, "La_30");
+    let n70 = make_node(70, "La_70");
+    let n90 = make_node(90, "La_90");
+
+    // Gan cac nhanh con cho nut 20
+    n20.low = n10;
+    n20.has_low = true;
+    n20.high = n30;
+    n20.has_high = true;
+
+    // Gan cac nhanh con cho nut 80
+    n80.low = n70;
+    n80.has_low = true;
+    n80.high = n90;
+    n80.has_high = true;
+
+    // Gan cac nhanh con cho nut Root 50
+    root.low = n20;
+    root.has_low = true;
+    root.mid = n50_mid;
+    root.has_mid = true;
+    root.high = n80;
+    root.has_high = true;
+
+    println("--- 1. DUYET TIEN THU TU (PRE-ORDER TRAVERSAL) ---");
+    println("Thu tu duyet: Goc -> Nhanh Am (-1) -> Nhanh Khong (0) -> Nhanh Duong (+1)");
+    traverse_preorder(root, 0);
+    println("");
+
+    println("--- 2. DUYET TRUNG THU TU (IN-ORDER TRAVERSAL) ---");
+    println("Thu tu duyet: Nhanh Am -> Goc/Nhanh Khong -> Nhanh Duong");
+    print("Ket qua In-Order: [ ");
+    traverse_inorder(root);
+    println("]");
+    println("");
+
+    println("--- 3. DUYET HAU THU TU (POST-ORDER TRAVERSAL) ---");
+    println("Thu tu duyet: Nhanh Am -> Nhanh Khong -> Nhanh Duong -> Goc");
+    print("Ket qua Post-Order: ");
+    traverse_postorder(root);
+    println("Xong!");
+    println("");
+
+    println("--- 4. THONG KE SO NUT VA TONG GIA TRI CAY ---");
+    let total_nodes = count_nodes(root);
+    let total_sum = sum_tree(root);
+    print("Tong so nut trong cay: ");
+    println(total_nodes);
+    print("Tong gia tri tat ca cac nut: ");
+    println(total_sum);
+    println("");
+
+    println("--- 5. DUYET TIM KIEM THEO LOGIC 3 NGOI (<=> VA BRANCH) ---");
+    println("[Kiem tra 1]: Tim kiem gia tri 30");
+    search_tree(root, 30, 1);
+    println("");
+
+    println("[Kiem tra 2]: Tim kiem gia tri 70");
+    search_tree(root, 70, 1);
+    println("");
+
+    println("[Kiem tra 3]: Tim kiem gia tri 50 (Nhanh khong)");
+    search_tree(root, 50, 1);
+    println("");
+
+    println("[Kiem tra 4]: Tim kiem gia tri 99 (Khong co trong cay)");
+    search_tree(root, 99, 1);
+    println("");
+
+    println("--- 6. DUYET CAY DANH GIA LOGIC TAM PHAN KLEENE ---");
+    println("Mo hinh cay: Expression = (A AND B) OR (~C)");
+    println("Voi A = 1 (Dung), B = 0 (Khong xac dinh), C = 1 (Dung)");
+    
+    // A AND B = (1 min 0) = 0
+    let node_a = make_leaf_logic(1);
+    let node_b = make_leaf_logic(0);
+    let tree_and = make_op_logic("AND", node_a, node_b);
+
+    // NOT C = ~1 = -1
+    let node_c = make_leaf_logic(1);
+    let node_not_c = LogicNode();
+    node_not_c.op = "NOT";
+    node_not_c.left = node_c;
+    node_not_c.has_left = true;
+    node_not_c.has_right = false;
+
+    // (A AND B) OR (~C) = (0 max -1) = 0
+    let root_logic = make_op_logic("OR", tree_and, node_not_c);
+
+    let logic_result = eval_logic_tree(root_logic);
+    print("Ket qua chan ly cua toan bo cay logic tam phan: ");
+    println(logic_result);
+
+    branch (logic_result) {
+        -1 -> {
+            println("=> Ket luan logic: MUC TIEU SAI (False / -1)");
+        }
+        0 -> {
+            println("=> Ket luan logic: MUC TIEU CHUA XAC DINH / NEUTRAL (Unknown / 0)");
+        }
+        +1 -> {
+            println("=> Ket luan logic: MUC TIEU DUNG (True / +1)");
+        }
+    }
+
+    println("");
+    println("===================================================================");
+    println("  HOAN TAT CHUONG TRINH DUYET CAY LOGIC TAM PHAN THANH CONG!       ");
+    println("===================================================================");
+}

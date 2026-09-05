@@ -3,6 +3,8 @@
 #include "tafpu/bitnet_engine.hpp"
 #include "tafpu/exception.hpp"
 #include <iostream>
+#include <fstream>
+#include <filesystem>
 #include <sstream>
 #include <iomanip>
 #include <cstring>
@@ -10,6 +12,10 @@
 #include <chrono>
 
 namespace setun {
+
+// Last filesystem error message reported by the HostFs native API
+// (queried from scripts via host.fs_err(); empty string means success).
+static std::string g_last_fs_error;
 
 VM::VM() {
     locals_.resize(256);
@@ -298,6 +304,11 @@ void VM::handle_ternary_min(const Chunk&) {
     } else {
         int64_t v1 = a.as_int();
         int64_t v2 = b.as_int();
+        // Preserve bool-ness so '&&' (lowered to min) stays a bool.
+        if (a.is_bool() && b.is_bool()) {
+            stack_.push(VMValue(v1 < v2 ? v1 != 0 : v2 != 0));
+            return;
+        }
         stack_.push(v1 < v2 ? v1 : v2);
     }
 }
@@ -311,6 +322,11 @@ void VM::handle_ternary_max(const Chunk&) {
     } else {
         int64_t v1 = a.as_int();
         int64_t v2 = b.as_int();
+        // Preserve bool-ness so '||' (lowered to max) stays a bool.
+        if (a.is_bool() && b.is_bool()) {
+            stack_.push(VMValue(v1 > v2 ? v1 != 0 : v2 != 0));
+            return;
+        }
         stack_.push(v1 > v2 ? v1 : v2);
     }
 }
@@ -768,6 +784,9 @@ void VM::handle_get_field(const Chunk& chunk) {
                 stack_.push(VMValue(static_cast<int64_t>(vmo->fields.size())));
                 return;
             }
+            if (!vmo->fields.count(field)) {
+                throw VMException("Object of type '" + vmo->type_name + "' has no field '" + field + "'.");
+            }
             stack_.push(vmo->get_field(field));
             return;
         }
@@ -928,22 +947,270 @@ void VM::handle_invoke_method(const Chunk& chunk) {
         }
     }
 
-    // Dynamic dispatch via V-Table
+    // String built-in methods
+    if (target.is_string()) {
+        std::string s = target.to_string();
+        if (method_name == "len" || method_name == "length" || method_name == "size") {
+            stack_.push(VMValue(static_cast<int64_t>(s.size())));
+            return;
+        } else if (method_name == "pop") {
+            if (!s.empty()) {
+                char last = s.back();
+                s.pop_back();
+                stack_.push(VMValue(std::string(1, last)));
+            } else {
+                stack_.push(VMValue(""));
+            }
+            return;
+        } else if (method_name == "slice" || method_name == "substr") {
+            size_t start = (!args.empty()) ? static_cast<size_t>(args[0].as_int()) : 0;
+            size_t count = (args.size() >= 2) ? static_cast<size_t>(args[1].as_int()) : std::string::npos;
+            if (start < s.size()) {
+                stack_.push(VMValue(s.substr(start, count)));
+            } else {
+                stack_.push(VMValue(""));
+            }
+            return;
+        }
+    }
+
+    // Dynamic dispatch via V-Table & Native Host Extension (Tersun 1.0.2)
     if (target.is_object()) {
         auto obj = target.as_object();
-        if (obj && obj->vtable) {
-            auto it = obj->vtable->methods.find(method_name);
-            if (it != obj->vtable->methods.end()) {
-                uint16_t fn_entry = it->second;
-                size_t new_local_base = locals_.size();
-                locals_.resize(new_local_base + argc + 1 + 32);
-                locals_[new_local_base] = target; // slot 0 is 'self'
-                for (size_t i = 0; i < argc; ++i) {
-                    locals_[new_local_base + 1 + i] = args[i];
+        if (obj) {
+            // Native Host / Syscall Dispatch — intercept ONLY for the reserved host
+            // classes below. User classes are never hijacked, even when a method
+            // happens to share a name with a host API.
+            if (obj->type_name == "Host" || obj->type_name == "HostFs" || obj->type_name == "HostKb" || obj->type_name == "Syscall") {
+
+                if (method_name == "mouse_get_x") {
+                    stack_.push(VMValue(static_cast<int64_t>(graphics::Setun2DBridge::instance().get_mouse_x())));
+                    return;
+                } else if (method_name == "mouse_get_y") {
+                    stack_.push(VMValue(static_cast<int64_t>(graphics::Setun2DBridge::instance().get_mouse_y())));
+                    return;
+                } else if (method_name == "mouse_get_btn" || method_name == "mouse_get_button") {
+                    stack_.push(VMValue(static_cast<int64_t>(graphics::Setun2DBridge::instance().get_mouse_btn())));
+                    return;
+                } else if (method_name == "is_mouse_down") {
+                    int btn = (!args.empty()) ? static_cast<int>(args[0].as_int()) : -1;
+                    bool down = graphics::Setun2DBridge::instance().is_mouse_down(btn);
+                    stack_.push(VMValue(down ? 1LL : 0LL));
+                    return;
+                } else if (method_name == "mouse_move") {
+                    int mx = (args.size() >= 1) ? static_cast<int>(args[0].as_int()) : 0;
+                    int my = (args.size() >= 2) ? static_cast<int>(args[1].as_int()) : 0;
+                    graphics::Setun2DBridge::instance().set_mouse_pos(mx, my);
+                    stack_.push(VMValue());
+                    return;
+                } else if (method_name == "mouse_click") {
+                    int btn = (args.size() >= 1) ? static_cast<int>(args[0].as_int()) : -1;
+                    int mx = (args.size() >= 2) ? static_cast<int>(args[1].as_int()) : 0;
+                    int my = (args.size() >= 3) ? static_cast<int>(args[2].as_int()) : 0;
+                    graphics::Setun2DBridge::instance().mouse_click(btn, mx, my);
+                    stack_.push(VMValue());
+                    return;
+                } else if (method_name == "mouse_get_wheel" || method_name == "get_wheel") {
+                    stack_.push(VMValue(static_cast<int64_t>(graphics::Setun2DBridge::instance().get_wheel_delta())));
+                    return;
+                } else if (method_name == "kb_get_char") {
+                    stack_.push(VMValue(static_cast<int64_t>(graphics::Setun2DBridge::instance().get_char())));
+                    return;
+                } else if (method_name == "kb_is_key_down") {
+                    int vk = (!args.empty()) ? static_cast<int>(args[0].as_int()) : 0;
+                    bool down = graphics::Setun2DBridge::instance().is_key_down(vk);
+                    stack_.push(VMValue(down ? 1LL : 0LL));
+                    return;
+                } else if (method_name == "chr" || method_name == "char_to_str") {
+                    int c = (!args.empty()) ? static_cast<int>(args[0].as_int()) : 0;
+                    if (c > 0 && c < 256) {
+                        stack_.push(VMValue(std::string(1, static_cast<char>(c))));
+                    } else {
+                        stack_.push(VMValue(""));
+                    }
+                    return;
+                } else if (method_name == "draw_line") {
+                    int x1 = (args.size() >= 1) ? static_cast<int>(args[0].as_int()) : 0;
+                    int y1 = (args.size() >= 2) ? static_cast<int>(args[1].as_int()) : 0;
+                    int x2 = (args.size() >= 3) ? static_cast<int>(args[2].as_int()) : 0;
+                    int y2 = (args.size() >= 4) ? static_cast<int>(args[3].as_int()) : 0;
+                    int rgb = (args.size() >= 5) ? static_cast<int>(args[4].as_int()) : 0;
+                    graphics::Setun2DBridge::instance().draw_line(x1, y1, x2, y2, rgb);
+                    stack_.push(VMValue());
+                    return;
+                } else if (method_name == "file_dialog_save") {
+                    std::string filter = (args.size() >= 1) ? args[0].to_string() : "";
+                    std::string def_ext = (args.size() >= 2) ? args[1].to_string() : "";
+                    std::string path = graphics::Setun2DBridge::instance().file_dialog_save(filter, def_ext);
+                    stack_.push(VMValue(path));
+                    return;
+                } else if (method_name == "file_dialog_open") {
+                    std::string filter = (args.size() >= 1) ? args[0].to_string() : "";
+                    std::string path = graphics::Setun2DBridge::instance().file_dialog_open(filter);
+                    stack_.push(VMValue(path));
+                    return;
+                } else if (method_name == "fs_err") {
+                    stack_.push(VMValue(g_last_fs_error));
+                    return;
+                } else if (method_name == "fs_read") {
+                    std::string path = (!args.empty()) ? args[0].to_string() : "";
+                    std::ifstream f(path, std::ios::binary);
+                    if (!f.is_open()) {
+                        g_last_fs_error = "fs_read: cannot open '" + path + "'";
+                        stack_.push(VMValue(""));
+                    } else {
+                        g_last_fs_error.clear();
+                        std::stringstream ss;
+                        ss << f.rdbuf();
+                        stack_.push(VMValue(ss.str()));
+                    }
+                    return;
+                } else if (method_name == "fs_write") {
+                    std::string path = (!args.empty()) ? args[0].to_string() : "";
+                    std::string content = (args.size() >= 2) ? args[1].to_string() : "";
+                    std::ofstream f(path, std::ios::binary | std::ios::trunc);
+                    if (!f.is_open()) {
+                        g_last_fs_error = "fs_write: cannot open '" + path + "'";
+                        stack_.push(VMValue(0LL));
+                    } else {
+                        f << content;
+                        g_last_fs_error = f.good() ? "" : ("fs_write: I/O error on '" + path + "'");
+                        stack_.push(VMValue(f.good() ? 1LL : 0LL));
+                    }
+                    return;
+                } else if (method_name == "fs_append") {
+                    std::string path = (!args.empty()) ? args[0].to_string() : "";
+                    std::string content = (args.size() >= 2) ? args[1].to_string() : "";
+                    std::ofstream f(path, std::ios::binary | std::ios::app);
+                    if (!f.is_open()) {
+                        g_last_fs_error = "fs_append: cannot open '" + path + "'";
+                        stack_.push(VMValue(0LL));
+                    } else {
+                        f << content;
+                        g_last_fs_error = f.good() ? "" : ("fs_append: I/O error on '" + path + "'");
+                        stack_.push(VMValue(f.good() ? 1LL : 0LL));
+                    }
+                    return;
+                } else if (method_name == "fs_exists") {
+                    std::string path = (!args.empty()) ? args[0].to_string() : "";
+                    std::error_code ec;
+                    bool ex = std::filesystem::exists(path, ec);
+                    g_last_fs_error = ec ? ("fs_exists: '" + path + "': " + ec.message()) : "";
+                    stack_.push(VMValue(ex ? 1LL : 0LL));
+                    return;
+                } else if (method_name == "fs_size") {
+                    std::string path = (!args.empty()) ? args[0].to_string() : "";
+                    std::error_code ec;
+                    auto sz = std::filesystem::file_size(path, ec);
+                    g_last_fs_error = ec ? ("fs_size: '" + path + "': " + ec.message()) : "";
+                    stack_.push(VMValue(ec ? -1LL : static_cast<int64_t>(sz)));
+                    return;
+                } else if (method_name == "syscall") {
+                    int64_t sys_id = (!args.empty()) ? args[0].as_int() : 0;
+                    if (sys_id == 101) {
+                        stack_.push(VMValue(static_cast<int64_t>(graphics::Setun2DBridge::instance().get_mouse_x())));
+                        return;
+                    } else if (sys_id == 102) {
+                        stack_.push(VMValue(static_cast<int64_t>(graphics::Setun2DBridge::instance().get_mouse_y())));
+                        return;
+                    } else if (sys_id == 103) {
+                        stack_.push(VMValue(static_cast<int64_t>(graphics::Setun2DBridge::instance().get_mouse_btn())));
+                        return;
+                    } else if (sys_id == 104) {
+                        int btn = (args.size() >= 2) ? static_cast<int>(args[1].as_int()) : -1;
+                        bool down = graphics::Setun2DBridge::instance().is_mouse_down(btn);
+                        stack_.push(VMValue(down ? 1LL : 0LL));
+                        return;
+                    } else if (sys_id == 105) {
+                        int mx = (args.size() >= 2) ? static_cast<int>(args[1].as_int()) : 0;
+                        int my = (args.size() >= 3) ? static_cast<int>(args[2].as_int()) : 0;
+                        graphics::Setun2DBridge::instance().set_mouse_pos(mx, my);
+                        stack_.push(VMValue());
+                        return;
+                    } else if (sys_id == 106) {
+                        int btn = (args.size() >= 2) ? static_cast<int>(args[1].as_int()) : -1;
+                        int mx = (args.size() >= 3) ? static_cast<int>(args[2].as_int()) : 0;
+                        int my = (args.size() >= 4) ? static_cast<int>(args[3].as_int()) : 0;
+                        graphics::Setun2DBridge::instance().mouse_click(btn, mx, my);
+                        stack_.push(VMValue());
+                        return;
+                    } else if (sys_id == 107) {
+                        stack_.push(VMValue(static_cast<int64_t>(graphics::Setun2DBridge::instance().get_char())));
+                        return;
+                    } else if (sys_id == 108) {
+                        int vk = (args.size() >= 2) ? static_cast<int>(args[1].as_int()) : 0;
+                        stack_.push(VMValue(graphics::Setun2DBridge::instance().is_key_down(vk) ? 1LL : 0LL));
+                        return;
+                    } else if (sys_id == 109) {
+                        stack_.push(VMValue(static_cast<int64_t>(graphics::Setun2DBridge::instance().get_wheel_delta())));
+                        return;
+                    } else if (sys_id == 201) {
+                        std::string path = (args.size() >= 2) ? args[1].to_string() : "";
+                        std::ifstream f(path, std::ios::binary);
+                        if (!f.is_open()) {
+                            stack_.push(VMValue(""));
+                        } else {
+                            std::stringstream ss;
+                            ss << f.rdbuf();
+                            stack_.push(VMValue(ss.str()));
+                        }
+                        return;
+                    } else if (sys_id == 202) {
+                        std::string path = (args.size() >= 2) ? args[1].to_string() : "";
+                        std::string content = (args.size() >= 3) ? args[2].to_string() : "";
+                        std::ofstream f(path, std::ios::binary | std::ios::trunc);
+                        if (!f.is_open()) {
+                            stack_.push(VMValue(0LL));
+                        } else {
+                            f << content;
+                            stack_.push(VMValue(f.good() ? 1LL : 0LL));
+                        }
+                        return;
+                    } else if (sys_id == 203) {
+                        std::string path = (args.size() >= 2) ? args[1].to_string() : "";
+                        std::string content = (args.size() >= 3) ? args[2].to_string() : "";
+                        std::ofstream f(path, std::ios::binary | std::ios::app);
+                        if (!f.is_open()) {
+                            stack_.push(VMValue(0LL));
+                        } else {
+                            f << content;
+                            stack_.push(VMValue(f.good() ? 1LL : 0LL));
+                        }
+                        return;
+                    } else if (sys_id == 204) {
+                        std::string path = (args.size() >= 2) ? args[1].to_string() : "";
+                        bool ex = std::filesystem::exists(path);
+                        stack_.push(VMValue(ex ? 1LL : 0LL));
+                        return;
+                    } else if (sys_id == 205) {
+                        std::string path = (args.size() >= 2) ? args[1].to_string() : "";
+                        std::error_code ec;
+                        auto sz = std::filesystem::file_size(path, ec);
+                        stack_.push(VMValue(ec ? -1LL : static_cast<int64_t>(sz)));
+                        return;
+                    } else {
+                        // Unknown syscall id: report as error code instead of
+                        // silently falling through to vtable dispatch.
+                        stack_.push(VMValue(-1LL));
+                        return;
+                    }
                 }
-                call_stack_.push_back(CallFrame{ip_, new_local_base});
-                ip_ = fn_entry;
-                return;
+            }
+
+            if (obj->vtable) {
+                auto it = obj->vtable->methods.find(method_name);
+                if (it != obj->vtable->methods.end()) {
+                    uint16_t fn_entry = it->second;
+                    size_t new_local_base = locals_.size();
+                    locals_.resize(new_local_base + argc + 1 + 32);
+                    locals_[new_local_base] = target; // slot 0 is 'self'
+                    for (size_t i = 0; i < argc; ++i) {
+                        locals_[new_local_base + 1 + i] = args[i];
+                    }
+                    call_stack_.push_back(CallFrame{ip_, new_local_base});
+                    ip_ = fn_entry;
+                    return;
+                }
             }
         }
     }

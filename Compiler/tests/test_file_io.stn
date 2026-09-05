@@ -1,0 +1,69 @@
+// ============================================================================
+//  TERSUN 1.0.3 TEST SUITE: NATIVE FILE I/O (tests/test_file_io.stn)
+//  Kiem tra toan dien: file_write, file_read, file_append, file_exists, file_size
+// ============================================================================
+
+import "fs.stn";
+
+fn main() -> int {
+    println("===================================================================");
+    println("  [Tersun 1.0.3] Native File I/O Verification Suite               ");
+    println("===================================================================");
+
+    let test_file = "test_io_temp.txt";
+    let initial_data = "Hello from Tersun 1.0.3 Native I/O!";
+
+    // 1. Write file
+    println("[Test 1/5] Writing to file: test_io_temp.txt...");
+    let w_res = file_write(test_file, initial_data);
+    if (w_res == 0) {
+        println("  -> FAILED: file_write returned 0");
+        return 1;
+    }
+    println("  -> PASSED: file_write successful.");
+
+    // 2. Check existence
+    println("[Test 2/5] Checking file_exists...");
+    let exists = file_exists(test_file);
+    if (exists == false) {
+        println("  -> FAILED: file_exists returned false");
+        return 1;
+    }
+    println("  -> PASSED: file_exists verified.");
+
+    // 3. Check file size
+    println("[Test 3/5] Checking file_size...");
+    let sz = file_size(test_file);
+    let expected_sz = initial_data.len();
+    if (sz != expected_sz) {
+        println("  -> FAILED: file_size mismatch");
+        return 1;
+    }
+    println("  -> PASSED: file_size matches exact length: 35 bytes.");
+
+    // 4. Append to file
+    println("[Test 4/5] Appending to file...");
+    let append_data = " [Appended 1.0.3 Content]";
+    let a_res = file_append(test_file, append_data);
+    if (a_res == 0) {
+        println("  -> FAILED: file_append returned 0");
+        return 1;
+    }
+    println("  -> PASSED: file_append successful.");
+
+    // 5. Read file and verify full content
+    println("[Test 5/5] Reading full content via file_read...");
+    let content = file_read(test_file);
+    let expected_content = initial_data + append_data;
+    if (content != expected_content) {
+        println("  -> FAILED: content mismatch");
+        return 1;
+    }
+    println("  -> Read back: " + content);
+    println("  -> PASSED: Content matches 100% byte-for-byte!");
+
+    println("===================================================================");
+    println("  ALL TERSUN 1.0.3 FILE I/O TESTS PASSED (5/5 SUCCESS)!           ");
+    println("===================================================================");
+    return 0;
+}

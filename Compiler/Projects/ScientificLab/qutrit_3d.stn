@@ -1,0 +1,270 @@
+// ============================================================================
+//  TERSUN 1.0.3 SCIENTIFIC LAB - 3D QUTRIT BLOCH SPHERE SIMULATION (qutrit_3d.stn)
+//  Không gian Hilbert 3 trạng thái Qutrit: |-1>, |0>, |+1>
+//  Khung cầu 3D tương tác xoay góc nhìn bằng chuột (Pitch & Yaw 3D Rotation)
+//  100% Backward Compatible với ISA 1.0.1 (Zero Opcode Bloat)
+// ============================================================================
+
+import "../std/gui.stn";
+import "../std/mouse.stn";
+import "ternary_math_engine.stn";
+
+// ----------------------------------------------------------------------------
+// 1. CLASS QUTRIT STATE (TRANG THAI QUAN DUNG TAM PHAN)
+// ----------------------------------------------------------------------------
+class QutritState {
+    pub a_minus: int; // He so bien do |-1> (nhan 1000)
+    pub a_zero: int;  // He so bien do |0>  (nhan 1000)
+    pub a_plus: int;  // He so bien do |+1> (nhan 1000)
+
+    def init(self, m: int, z: int, p: int) {
+        self.a_minus = m;
+        self.a_zero = z;
+        self.a_plus = p;
+        self.normalize();
+    }
+
+    def normalize(self) {
+        let sum_sq = (self.a_minus * self.a_minus) + (self.a_zero * self.a_zero) + (self.a_plus * self.a_plus);
+        if (sum_sq <= 0) {
+            self.a_zero = 1000;
+        }
+    }
+
+    def get_prob_minus(self) -> int {
+        let sum_sq = (self.a_minus * self.a_minus) + (self.a_zero * self.a_zero) + (self.a_plus * self.a_plus);
+        if (sum_sq <= 0) { return 0; }
+        return ((self.a_minus * self.a_minus) * 100) / sum_sq;
+    }
+
+    def get_prob_zero(self) -> int {
+        let sum_sq = (self.a_minus * self.a_minus) + (self.a_zero * self.a_zero) + (self.a_plus * self.a_plus);
+        if (sum_sq <= 0) { return 100; }
+        return ((self.a_zero * self.a_zero) * 100) / sum_sq;
+    }
+
+    def get_prob_plus(self) -> int {
+        let sum_sq = (self.a_minus * self.a_minus) + (self.a_zero * self.a_zero) + (self.a_plus * self.a_plus);
+        if (sum_sq <= 0) { return 0; }
+        return ((self.a_plus * self.a_plus) * 100) / sum_sq;
+    }
+}
+
+// ----------------------------------------------------------------------------
+// 2. CLASS 3D QUTRIT BLOCH SPHERE (QUA CAU 3D XOAY BANG CHUOT)
+// ----------------------------------------------------------------------------
+class QutritBlochSphere {
+    pub x: int;
+    pub y: int;
+    pub w: int;
+    pub h: int;
+    pub cx: int;
+    pub cy: int;
+    pub radius: int;
+
+    // Goc quay 3D (do nguyen)
+    pub yaw: int;   // Xoay ngang (-180 -> 180)
+    pub pitch: int; // Xoay doc   (-90 -> 90)
+
+    // Chuot keo re (Drag to rotate)
+    pub is_dragging: bool;
+    pub last_drag_x: int;
+    pub last_drag_y: int;
+
+    // Trang thai hien tai
+    pub state: QutritState;
+
+    def init(self, px: int, py: int, pw: int, ph: int) {
+        self.x = px;
+        self.y = py;
+        self.w = pw;
+        self.h = ph;
+        self.cx = px + (pw / 2);
+        self.cy = py + (ph / 2) - 10;
+        self.radius = 100;
+        self.yaw = 30;
+        self.pitch = 20;
+        self.is_dragging = false;
+        self.last_drag_x = 0;
+        self.last_drag_y = 0;
+
+        self.state = QutritState();
+        self.state.init(577, 577, 577); // Superposition 1/sqrt(3) (~0.577)
+    }
+
+    def update(self, tracker: MouseTracker, mx: int, my: int) {
+        let is_down = tracker.curr_left;
+
+        if (is_down) {
+            if (self.is_dragging) {
+                let dx = mx - self.last_drag_x;
+                let dy = my - self.last_drag_y;
+                self.yaw = self.yaw + dx;
+                self.pitch = self.pitch + dy;
+
+                if (self.pitch > 85) { self.pitch = 85; }
+                if (self.pitch < -85) { self.pitch = -85; }
+
+                self.last_drag_x = mx;
+                self.last_drag_y = my;
+            } else {
+                if (tracker.is_pressed(-1)) {
+                    if (mx >= self.x) {
+                        if (mx <= (self.x + self.w)) {
+                            if (my >= self.y) {
+                                if (my <= (self.y + self.h)) {
+                                    self.is_dragging = true;
+                                    self.last_drag_x = mx;
+                                    self.last_drag_y = my;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            self.is_dragging = false;
+        }
+    }
+
+    // Phep chieu toa do 3D (X, Y, Z) sang toa do man hinh 2D (sx, sy)
+    def project_x(self, p3_x: int, p3_y: int, p3_z: int) -> int {
+        let trig_yaw = cordic_exact_angle(self.yaw);
+        let cos_y = (trig_yaw.cos_val.a * 1000) / trig_yaw.denom;
+        let sin_y = (trig_yaw.sin_val.a * 1000) / trig_yaw.denom;
+
+        // Xoay Yaw quanh truc Y
+        let x1 = ((p3_x * cos_y) + (p3_z * sin_y)) / 1000;
+        return self.cx + x1;
+    }
+
+    def project_y(self, p3_x: int, p3_y: int, p3_z: int) -> int {
+        let trig_yaw = cordic_exact_angle(self.yaw);
+        let cos_y = (trig_yaw.cos_val.a * 1000) / trig_yaw.denom;
+        let sin_y = (trig_yaw.sin_val.a * 1000) / trig_yaw.denom;
+
+        let trig_pitch = cordic_exact_angle(self.pitch);
+        let cos_p = (trig_pitch.cos_val.a * 1000) / trig_pitch.denom;
+        let sin_p = (trig_pitch.sin_val.a * 1000) / trig_pitch.denom;
+
+        // Xoay Yaw -> z1
+        let z1 = ((0 - p3_x) * sin_y + (p3_z * cos_y)) / 1000;
+
+        // Xoay Pitch quanh truc X
+        let y1 = ((p3_y * cos_p) - (z1 * sin_p)) / 1000;
+        return self.cy - y1;
+    }
+
+    def draw(self) {
+        // Background card
+        setun2d_draw_rect(self.x, self.y, self.w, self.h, 1648710);
+        setun2d_draw_rect(self.x + 2, self.y + 2, self.w - 4, self.h - 4, 526360);
+
+        // Header
+        setun2d_draw_rect(self.x + 2, self.y + 2, self.w - 4, 26, 1648710);
+        setun2d_draw_text(self.x + 12, self.y + 6, "3D QUTRIT BLOCH SPHERE [DRAG MOUSE TO ROTATE 3D]", 62932);
+
+        let R = self.radius;
+
+        // 1. Ve cac vong tron kinh tuyen & vi tuyen 3D (Wireframe Sphere)
+        let mut deg = 0;
+        let step = 15;
+        let mut prev_px = 0;
+        let mut prev_py = 0;
+
+        // Vi tuyen xich dao (Equator Z-X plane)
+        while (deg <= 360) {
+            let tr = cordic_exact_angle(deg);
+            let c = (tr.cos_val.a * R) / tr.denom;
+            let s = (tr.sin_val.a * R) / tr.denom;
+
+            let cur_px = self.project_x(c, 0, s);
+            let cur_py = self.project_y(c, 0, s);
+
+            if (deg > 0) {
+                draw_line(prev_px, prev_py, cur_px, cur_py, 1054760);
+            }
+            prev_px = cur_px;
+            prev_py = cur_py;
+            deg = deg + step;
+        }
+
+        // Kinh tuyen dung 1 (Meridian Y-Z plane)
+        deg = 0;
+        while (deg <= 360) {
+            let tr = cordic_exact_angle(deg);
+            let c = (tr.cos_val.a * R) / tr.denom;
+            let s = (tr.sin_val.a * R) / tr.denom;
+
+            let cur_px = self.project_x(0, c, s);
+            let cur_py = self.project_y(0, c, s);
+
+            if (deg > 0) {
+                draw_line(prev_px, prev_py, cur_px, cur_py, 1054760);
+            }
+            prev_px = cur_px;
+            prev_py = cur_py;
+            deg = deg + step;
+        }
+
+        // 2. Ve 3 truc co so luong tu cua Qutrit
+        // Truc |+1> (Dinh tren / Z-axis)
+        let ax_p_x = self.project_x(0, R + 20, 0);
+        let ax_p_y = self.project_y(0, R + 20, 0);
+        draw_line(self.cx, self.cy, ax_p_x, ax_p_y, 16704576); // Gold
+        setun2d_draw_circle(ax_p_x, ax_p_y, 4, 16704576);
+        setun2d_draw_text(ax_p_x + 6, ax_p_y - 6, "|+1>", 16704576);
+
+        // Truc |0> (Day phai / X-axis)
+        let ax_z_x = self.project_x(R + 20, -30, 0);
+        let ax_z_y = self.project_y(R + 20, -30, 0);
+        draw_line(self.cx, self.cy, ax_z_x, ax_z_y, 8952234);  // Gray
+        setun2d_draw_circle(ax_z_x, ax_z_y, 4, 8952234);
+        setun2d_draw_text(ax_z_x + 6, ax_z_y - 6, "|0>", 8952234);
+
+        // Truc |-1> (Day trai / -X-axis)
+        let ax_m_x = self.project_x(-(R + 20), -30, 0);
+        let ax_m_y = self.project_y(-(R + 20), -30, 0);
+        draw_line(self.cx, self.cy, ax_m_x, ax_m_y, 16724838); // Red
+        setun2d_draw_circle(ax_m_x, ax_m_y, 4, 16724838);
+        setun2d_draw_text(ax_m_x - 30, ax_m_y - 6, "|-1>", 16724838);
+
+        // 3. Ve Vector Trang Thai Luong Tu |psi>
+        // Tinh toa do 3D tu 3 bien do xac suat
+        let vx = ((self.state.a_zero - self.state.a_minus) * R) / 1000;
+        let vy = (self.state.a_plus * R) / 1000;
+        let vz = ((self.state.a_zero + self.state.a_minus) * (R / 2)) / 1000;
+
+        let v_sx = self.project_x(vx, vy, vz);
+        let v_sy = self.project_y(vx, vy, vz);
+
+        // Ve mui ten trang thai |psi> (Cyan thick line)
+        draw_line(self.cx, self.cy, v_sx, v_sy, 62932);
+        draw_line(self.cx + 1, self.cy, v_sx + 1, v_sy, 62932);
+        draw_line(self.cx, self.cy + 1, v_sx, v_sy + 1, 62932);
+
+        // Dau vector (Glowing cyan head)
+        setun2d_draw_circle(v_sx, v_sy, 6, 62932);
+        setun2d_draw_circle(v_sx, v_sy, 3, 16777215);
+        setun2d_draw_text(v_sx + 8, v_sy - 8, "|psi>", 62932);
+
+        // 4. Bang Thong Tin Xac Suat Do Luong (Quantum Readout)
+        let info_x = self.x + self.w - 180;
+        let info_y = self.y + 35;
+        setun2d_draw_rect(info_x, info_y, 165, 120, 1648710);
+        setun2d_draw_rect(info_x + 1, info_y + 1, 163, 118, 791330);
+
+        setun2d_draw_text(info_x + 8, info_y + 8, "QUANTUM PROBABILITY:", 16704576);
+
+        let p_plus = self.state.get_prob_plus();
+        let p_zero = self.state.get_prob_zero();
+        let p_minus = self.state.get_prob_minus();
+
+        setun2d_draw_text(info_x + 8, info_y + 32, "P(|+1>): " + p_plus + "%", 16704576);
+        setun2d_draw_text(info_x + 8, info_y + 54, "P(| 0>): " + p_zero + "%", 8952234);
+        setun2d_draw_text(info_x + 8, info_y + 76, "P(|-1>): " + p_minus + "%", 16724838);
+
+        let rot_info = "Yaw: " + self.yaw + "o | Pitch: " + self.pitch + "o";
+        setun2d_draw_text(info_x + 8, info_y + 98, rot_info, 62932);
+    }
+}

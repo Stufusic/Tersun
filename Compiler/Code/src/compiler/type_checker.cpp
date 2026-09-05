@@ -4,6 +4,21 @@
 
 namespace setun {
 
+// Build a MethodTypeInfo signature from a method declaration, excluding the
+// implicit 'self'/'this' receiver so it matches call-site argument lists.
+static MethodTypeInfo make_method_info(const MethodDecl& m) {
+    MethodTypeInfo mi;
+    mi.name = m.name;
+    for (const auto& p : m.params) {
+        if (p.name == "self" || p.name == "this") continue;
+        mi.param_types.push_back(Type::from_data_type(p.type));
+        mi.param_names.push_back(p.name);
+    }
+    mi.return_type = Type::from_data_type(m.return_type);
+    mi.is_pub = m.is_pub;
+    return mi;
+}
+
 TypeChecker::TypeChecker() {
     init_builtins();
 }
@@ -117,6 +132,8 @@ std::string TypeChecker::format_diagnostics(const std::string& /*source_code*/) 
 
 bool TypeChecker::check_program(Program& program) {
     errors_.clear();
+    declared_fn_locs_.clear();
+    declared_type_locs_.clear();
     init_builtins();
 
     // Pass 1: Register all Struct, Class, Interface, Enum and Function forward signatures
@@ -124,17 +141,47 @@ bool TypeChecker::check_program(Program& program) {
         if (!stmt) continue;
         if (std::holds_alternative<StructDeclStmt>(stmt->data)) {
             auto& s = std::get<StructDeclStmt>(stmt->data);
+            if (declared_type_locs_.count(s.name)) {
+                report_error("Redefinition of struct '" + s.name + "' (previously declared at line "
+                             + std::to_string(declared_type_locs_[s.name].line) + ").", s.loc);
+            } else {
+                declared_type_locs_[s.name] = s.loc;
+            }
             auto st_type = Type::make_struct(s.name);
+            for (const auto& m : s.methods) {
+                st_type->methods[m.name] = make_method_info(m);
+            }
             type_defs_[s.name] = st_type;
         } else if (std::holds_alternative<ClassDeclStmt>(stmt->data)) {
             auto& c = std::get<ClassDeclStmt>(stmt->data);
+            if (declared_type_locs_.count(c.name)) {
+                report_error("Redefinition of class '" + c.name + "' (previously declared at line "
+                             + std::to_string(declared_type_locs_[c.name].line) + ").", c.loc);
+            } else {
+                declared_type_locs_[c.name] = c.loc;
+            }
             auto cl_type = Type::make_class(c.name, c.super_class);
+            for (const auto& m : c.methods) {
+                cl_type->methods[m.name] = make_method_info(m);
+            }
             type_defs_[c.name] = cl_type;
         } else if (std::holds_alternative<InterfaceDeclStmt>(stmt->data)) {
             auto& i = std::get<InterfaceDeclStmt>(stmt->data);
+            if (declared_type_locs_.count(i.name)) {
+                report_error("Redefinition of interface '" + i.name + "' (previously declared at line "
+                             + std::to_string(declared_type_locs_[i.name].line) + ").", i.loc);
+            } else {
+                declared_type_locs_[i.name] = i.loc;
+            }
             type_defs_[i.name] = Type::make_interface(i.name);
         } else if (std::holds_alternative<EnumDeclStmt>(stmt->data)) {
             auto& e = std::get<EnumDeclStmt>(stmt->data);
+            if (declared_type_locs_.count(e.name)) {
+                report_error("Redefinition of enum '" + e.name + "' (previously declared at line "
+                             + std::to_string(declared_type_locs_[e.name].line) + ").", e.loc);
+            } else {
+                declared_type_locs_[e.name] = e.loc;
+            }
             auto en_type = Type::make_enum(e.name);
             for (const auto& v : e.variants) {
                 EnumVariantType ev;
@@ -147,6 +194,12 @@ bool TypeChecker::check_program(Program& program) {
             type_defs_[e.name] = en_type;
         } else if (std::holds_alternative<FnDeclStmt>(stmt->data)) {
             auto& f = std::get<FnDeclStmt>(stmt->data);
+            if (declared_fn_locs_.count(f.name)) {
+                report_error("Redefinition of function '" + f.name + "' (previously declared at line "
+                             + std::to_string(declared_fn_locs_[f.name].line) + ").", f.loc);
+            } else {
+                declared_fn_locs_[f.name] = f.loc;
+            }
             std::vector<TypePtr> param_types;
             for (const auto& p : f.params) {
                 param_types.push_back(Type::from_data_type(p.type));
@@ -369,6 +422,11 @@ void TypeChecker::check_fn_decl(FnDeclStmt& stmt) {
 }
 
 void TypeChecker::check_struct_decl(StructDeclStmt& stmt) {
+    if (declared_fn_locs_.count(stmt.name)) {
+        report_error("Cannot declare struct '" + stmt.name + "' with the same name as a function (declared at line "
+                         + std::to_string(declared_fn_locs_[stmt.name].line) + ").",
+                     stmt.loc);
+    }
     auto st_type = type_defs_[stmt.name];
     if (!st_type) {
         st_type = Type::make_struct(stmt.name);
@@ -392,6 +450,11 @@ void TypeChecker::check_struct_decl(StructDeclStmt& stmt) {
 }
 
 void TypeChecker::check_class_decl(ClassDeclStmt& stmt) {
+    if (declared_fn_locs_.count(stmt.name)) {
+        report_error("Cannot declare class '" + stmt.name + "' with the same name as a function (declared at line "
+                         + std::to_string(declared_fn_locs_[stmt.name].line) + ").",
+                     stmt.loc);
+    }
     auto cl_type = type_defs_[stmt.name];
     if (!cl_type) {
         cl_type = Type::make_class(stmt.name, stmt.super_class);
@@ -635,6 +698,10 @@ TypePtr TypeChecker::check_binary(BinaryExpr& expr) {
         case BinaryOp::MAX:
             return left_type;
 
+        case BinaryOp::LOGICAL_AND:
+        case BinaryOp::LOGICAL_OR:
+            return Type::make_bool();
+
         case BinaryOp::NULL_COALESCE:
             return left_type;
     }
@@ -704,7 +771,10 @@ TypePtr TypeChecker::check_member_access(MemberAccessExpr& expr) {
 
 TypePtr TypeChecker::check_method_call(MethodCallExpr& expr) {
     TypePtr obj_type = check_expr(expr.object);
-    for (Expr* arg : expr.args) check_expr(arg);
+    std::vector<TypePtr> arg_types;
+    for (Expr* arg : expr.args) {
+        arg_types.push_back(check_expr(arg));
+    }
 
     if (obj_type && obj_type->kind == TypeKind::ARRAY) {
         if (expr.method == "append" || expr.method == "push") {
@@ -713,6 +783,53 @@ TypePtr TypeChecker::check_method_call(MethodCallExpr& expr) {
         if (expr.method == "len") {
             return Type::make_int();
         }
+        return Type::make_any();
+    }
+
+    if (obj_type && obj_type->kind == TypeKind::STRING) {
+        if (expr.method == "len" || expr.method == "length" || expr.method == "size") {
+            return Type::make_int();
+        }
+        if (expr.method == "pop" || expr.method == "slice" || expr.method == "substr") {
+            return Type::make_string();
+        }
+        report_error("string has no method '" + expr.method + "'.", expr.loc);
+        return Type::make_any();
+    }
+
+    if (obj_type && (obj_type->kind == TypeKind::CLASS || obj_type->kind == TypeKind::STRUCT)) {
+        // Walk the inheritance chain looking for the method.
+        const TypePtr* cursor = &obj_type;
+        int depth = 0;
+        while (cursor && *cursor && depth < 32) {
+            auto mit = (*cursor)->methods.find(expr.method);
+            if (mit != (*cursor)->methods.end()) {
+                const auto& mi = mit->second;
+                if (arg_types.size() != mi.param_types.size()) {
+                    report_error("Method '" + expr.method + "' of class '" + obj_type->name + "' expects "
+                                     + std::to_string(mi.param_types.size()) + " argument(s), but received "
+                                     + std::to_string(arg_types.size()) + ".",
+                                 expr.loc);
+                } else {
+                    for (size_t i = 0; i < arg_types.size(); ++i) {
+                        if (!mi.param_types[i]->is_assignable_from(arg_types[i])) {
+                            report_error("Argument " + std::to_string(i + 1) + " of method '" + expr.method
+                                             + "': Cannot pass '" + arg_types[i]->to_string() + "' to parameter of type '"
+                                             + mi.param_types[i]->to_string() + "'.",
+                                         expr.loc);
+                        }
+                    }
+                }
+                return mi.return_type ? mi.return_type : Type::make_any();
+            }
+            if ((*cursor)->super_name.empty()) break;
+            auto sit = type_defs_.find((*cursor)->super_name);
+            if (sit == type_defs_.end()) break;
+            cursor = &sit->second;
+            ++depth;
+        }
+        report_error("Class '" + obj_type->name + "' has no method '" + expr.method + "'.", expr.loc);
+        return Type::make_any();
     }
 
     return Type::make_any();

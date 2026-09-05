@@ -1,0 +1,146 @@
+// ============================================================================
+//  TERSUN 1.0.3 SCIENTIFIC VISUALIZATION LAB - AUTOMATED TEST SUITE (test_visualization.stn)
+//  Kiểm thử toàn diện các tính năng Hướng 2:
+//  - ScrollView & Culling
+//  - 2D Waveform & Pulse Logic
+//  - 3D Qutrit Bloch Sphere Projection & Probability conservation
+//  - Native File Dialog host binding
+// ============================================================================
+
+import "../Projects/std/gui.stn";
+import "../Projects/std/fs.stn";
+import "../Projects/ScientificLab/waveform_plotter.stn";
+import "../Projects/ScientificLab/qutrit_3d.stn";
+
+fn main() -> int {
+    println("===================================================================");
+    println("  [Tersun 1.0.3] Scientific Visualization Lab Automated Test Suite ");
+    println("===================================================================");
+
+    // ------------------------------------------------------------------------
+    // Test 1: ScrollView Scrolling, Clamping & Culling
+    // ------------------------------------------------------------------------
+    println("\n[Test 1/4] Testing ScrollView Scrolling, Clamping & Culling...");
+    let scroll = ScrollView();
+    scroll.init(100, 100, 300, 200);
+    scroll.set_content_height(600); // 600px content in 200px viewport
+
+    // Ban dau scroll_y = 0
+    if (scroll.scroll_y != 0) {
+        println("  -> FAILED: Initial scroll_y is not 0!");
+        return 1;
+    }
+
+    // Cuon xuong 100px
+    scroll.scroll_y = 100;
+    scroll.clamp_scroll();
+    if (scroll.scroll_y != 100) {
+        println("  -> FAILED: scroll_y clamp error!");
+        return 1;
+    }
+
+    // Cuon qua da (max_scroll = 600 - 200 = 400)
+    scroll.scroll_y = 999;
+    scroll.clamp_scroll();
+    if (scroll.scroll_y != 400) {
+        println("  -> FAILED: Max scroll clamping failed (expected 400, got " + scroll.scroll_y + ")!");
+        return 1;
+    }
+
+    // Cuon nguoc len am
+    scroll.scroll_y = -50;
+    scroll.clamp_scroll();
+    if (scroll.scroll_y != 0) {
+        println("  -> FAILED: Min scroll clamping failed!");
+        return 1;
+    }
+
+    // Kiem tra Culling: scroll_y = 100, item tai y=50, cao 30
+    scroll.scroll_y = 100;
+    // screen_y = (100 + 50) - 100 = 50 -> Nam ben tren viewport (100..300)
+    let vis_top = scroll.is_visible(50, 30); // 50 + 30 = 80 < 100
+    if (vis_top) {
+        println("  -> FAILED: Out-of-bounds item should not be visible!");
+        return 1;
+    }
+
+    // Item tai y=150, cao 30 -> screen_y = (100 + 150) - 100 = 150 -> Nam trong viewport (100..300)
+    let vis_in = scroll.is_visible(150, 30);
+    if (vis_in == false) {
+        println("  -> FAILED: In-bounds item should be visible!");
+        return 1;
+    }
+    println("  -> PASSED: ScrollView clamping, bounds, and viewport culling verified!");
+
+    // ------------------------------------------------------------------------
+    // Test 2: Qutrit State Probabilities (Born Rule Conservation)
+    // ------------------------------------------------------------------------
+    println("\n[Test 2/4] Testing Qutrit Quantum Probabilities (Born Rule)...");
+    let qstate = QutritState();
+    // Superposition (1/sqrt(3), 1/sqrt(3), 1/sqrt(3))
+    qstate.init(577, 577, 577);
+    let p_m = qstate.get_prob_minus();
+    let p_z = qstate.get_prob_zero();
+    let p_p = qstate.get_prob_plus();
+
+    let sum_p = p_m + p_z + p_p;
+    if (sum_p < 98) {
+        println("  -> FAILED: Total quantum probability sum != 100% (got " + sum_p + ")!");
+        return 1;
+    }
+    if (sum_p > 102) {
+        println("  -> FAILED: Total quantum probability sum != 100% (got " + sum_p + ")!");
+        return 1;
+    }
+
+    // Pure State |+1>
+    let q_pure = QutritState();
+    q_pure.init(0, 0, 1000);
+    if (q_pure.get_prob_plus() != 100) {
+        println("  -> FAILED: Pure state |+1> must have 100% probability!");
+        return 1;
+    }
+    if (q_pure.get_prob_zero() != 0) {
+        println("  -> FAILED: Pure state |+1> must have 0% zero probability!");
+        return 1;
+    }
+    println("  -> PASSED: Qutrit state probability normalization sum(Pi)=100% verified!");
+
+    // ------------------------------------------------------------------------
+    // Test 3: 3D Coordinate Projection Invariants
+    // ------------------------------------------------------------------------
+    println("\n[Test 3/4] Testing 3D Bloch Sphere Coordinate Projections...");
+    let sphere = QutritBlochSphere();
+    sphere.init(100, 100, 400, 400);
+
+    // Khi yaw=0, pitch=0: p3(0, 50, 0) phai chieu ra cx, cy - 50
+    sphere.yaw = 0;
+    sphere.pitch = 0;
+    let px = sphere.project_x(0, 50, 0);
+    let py = sphere.project_y(0, 50, 0);
+
+    if (px != sphere.cx) {
+        println("  -> FAILED: X projection on center alignment failed (got " + px + ", expected " + sphere.cx + ")!");
+        return 1;
+    }
+    if (py != (sphere.cy - 50)) {
+        println("  -> FAILED: Y projection on center alignment failed (got " + py + ", expected " + (sphere.cy - 50) + ")!");
+        return 1;
+    }
+    println("  -> PASSED: 3D to 2D screen coordinate projection geometry verified!");
+
+    // ------------------------------------------------------------------------
+    // Test 4: File Dialog & Native Host Bindings
+    // ------------------------------------------------------------------------
+    println("\n[Test 4/4] Testing Native Host FFI Bindings...");
+    let host_fs = HostFs();
+    // Host method call test
+    let dummy_save = host_fs.file_dialog_save("", "");
+    let dummy_open = host_fs.file_dialog_open("");
+    println("  -> PASSED: Host FFI file dialog hooks callable via OP_INVOKE_METHOD (0xA4)!");
+
+    println("\n===================================================================");
+    println("  ALL 4 SCIENTIFIC VISUALIZATION LAB TESTS PASSED (100%)!          ");
+    println("===================================================================");
+    return 0;
+}

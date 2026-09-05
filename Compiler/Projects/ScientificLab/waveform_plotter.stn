@@ -1,0 +1,242 @@
+// ============================================================================
+//  TERSUN 1.0.3 SCIENTIFIC LAB - WAVEFORM & PULSE TRAIN PLOTTER (waveform_plotter.stn)
+//  Trực quan hóa dao động ký thời gian thực (Real-time Oscilloscope):
+//  1. Ternary Pulse Train (+V, 0V, -V) với vạch chia nhịp thời gian Tk
+//  2. CORDIC Continuous Trigonometry Waveform với các điểm bất biến Q(sqrt(3))
+//  100% Backward Compatible với ISA 1.0.1 (Zero Opcode Bloat)
+// ============================================================================
+
+import "../std/gui.stn";
+import "../std/mouse.stn";
+import "ternary_math_engine.stn";
+
+// ----------------------------------------------------------------------------
+// 1. TERNARY PULSE TRAIN OSCILLOSCOPE (DAO DONG KY XUNG TAM PHAN)
+// ----------------------------------------------------------------------------
+class TernaryPulsePlotter {
+    pub x: int;
+    pub y: int;
+    pub w: int;
+    pub h: int;
+    pub scan_offset: int;
+    pub col_bg: int;
+    pub col_border: int;
+    pub col_grid: int;
+    pub col_wave: int;
+    pub col_scan: int;
+
+    def init(self, px: int, py: int, pw: int, ph: int) {
+        self.x = px;
+        self.y = py;
+        self.w = pw;
+        self.h = ph;
+        self.scan_offset = 0;
+        self.col_bg = 526360;       // 0x080818 (Cyber dark)
+        self.col_border = 1648710;  // 0x192846
+        self.col_grid = 1054760;    // 0x101828
+        self.col_wave = 62932;      // 0x00f5d4 (Cyan pulse)
+        self.col_scan = 16724838;   // 0xff3366 (Red scanline)
+    }
+
+    def update(self) {
+        self.scan_offset = self.scan_offset + 2;
+        let inner_w = self.w - 80;
+        if (inner_w > 0) {
+            if (self.scan_offset >= inner_w) {
+                self.scan_offset = 0;
+            }
+        }
+    }
+
+    def draw(self, trit_str: string) {
+        // Khung ngoai
+        setun2d_draw_rect(self.x, self.y, self.w, self.h, self.col_border);
+        setun2d_draw_rect(self.x + 2, self.y + 2, self.w - 4, self.h - 4, self.col_bg);
+
+        // Tieu de
+        setun2d_draw_rect(self.x + 2, self.y + 2, self.w - 4, 26, 1648710);
+        setun2d_draw_text(self.x + 12, self.y + 6, "TERNARY PULSE TRAIN OSCILLOSCOPE [+V, 0V, -V]", 62932);
+
+        let plot_x = self.x + 60;
+        let plot_y = self.y + 35;
+        let plot_w = self.w - 75;
+        let plot_h = self.h - 50;
+
+        // 3 muc dien the: +V (tren), 0V (giua), -V (duoi)
+        let y_plus = plot_y + (plot_h / 4);
+        let y_zero = plot_y + (plot_h / 2);
+        let y_minus = plot_y + ((plot_h * 3) / 4);
+
+        // Nhan dien ap ben trai
+        setun2d_draw_text(self.x + 8, y_plus - 6, "+V (+1)", 16704576);  // Gold
+        setun2d_draw_text(self.x + 8, y_zero - 6, " 0V ( 0)", 8952234);   // Gray
+        setun2d_draw_text(self.x + 8, y_minus - 6, "-V (-1)", 16724838); // Red
+
+        // Duong luoi ngang
+        draw_line(plot_x, y_plus, plot_x + plot_w, y_plus, 1054760);
+        draw_line(plot_x, y_zero, plot_x + plot_w, y_zero, 2174526); // Zero reference line
+        draw_line(plot_x, y_minus, plot_x + plot_w, y_minus, 1054760);
+
+        // Ve cac xung nhip tam phan tu chuoi trit
+        let slen = trit_str.len();
+        if (slen == 0) {
+            trit_str = "+0-+-0+";
+            slen = 7;
+        }
+
+        let pulse_w = plot_w / slen;
+        if (pulse_w < 16) { pulse_w = 16; }
+
+        let mut prev_y = y_zero;
+        let mut i = 0;
+        while (i < slen) {
+            let ch = trit_str.substr(i, 1);
+            let mut curr_y = y_zero;
+            if (ch == "+") {
+                curr_y = y_plus;
+            } else if (ch == "-") {
+                curr_y = y_minus;
+            } else {
+                curr_y = y_zero;
+            }
+
+            let seg_x1 = plot_x + (i * pulse_w);
+            let seg_x2 = seg_x1 + pulse_w;
+
+            // Vach ngan xung nhip Tk (Dotted Vertical Grid)
+            draw_line(seg_x1, plot_y, seg_x1, plot_y + plot_h, self.col_grid);
+            setun2d_draw_text(seg_x1 + 2, plot_y + plot_h - 14, "T" + i, 8952234);
+
+            // Neu dien the thay doi: ve canh dung (Vertical pulse transition)
+            if (i > 0) {
+                if (curr_y != prev_y) {
+                    draw_line(seg_x1, prev_y, seg_x1, curr_y, self.col_wave);
+                    draw_line(seg_x1 + 1, prev_y, seg_x1 + 1, curr_y, self.col_wave);
+                }
+            }
+
+            // Ve doan ngang cua xung (Horizontal pulse level)
+            draw_line(seg_x1, curr_y, seg_x2, curr_y, self.col_wave);
+            draw_line(seg_x1, curr_y + 1, seg_x2, curr_y + 1, self.col_wave);
+
+            // Ve diem gia tri trit
+            setun2d_draw_circle(seg_x1 + (pulse_w / 2), curr_y, 3, 16777215);
+
+            prev_y = curr_y;
+            i = i + 1;
+        }
+
+        // Duong quet thoi gian thuc (Animated oscilloscope scanline)
+        let cur_scan_x = plot_x + self.scan_offset;
+        draw_line(cur_scan_x, plot_y, cur_scan_x, plot_y + plot_h, self.col_scan);
+    }
+}
+
+// ----------------------------------------------------------------------------
+// 2. CORDIC CONTINUOUS TRIGONOMETRY WAVEFORM PLOTTER
+// ----------------------------------------------------------------------------
+class CordicWavePlotter {
+    pub x: int;
+    pub y: int;
+    pub w: int;
+    pub h: int;
+    pub current_angle: int;
+    pub col_bg: int;
+    pub col_border: int;
+    pub col_sin: int;
+    pub col_cos: int;
+
+    def init(self, px: int, py: int, pw: int, ph: int) {
+        self.x = px;
+        self.y = py;
+        self.w = pw;
+        self.h = ph;
+        self.current_angle = 30;
+        self.col_bg = 526360;      // 0x080818
+        self.col_border = 1648710; // 0x192846
+        self.col_sin = 62932;      // Cyan (sin)
+        self.col_cos = 16704576;   // Gold (cos)
+    }
+
+    def draw(self) {
+        setun2d_draw_rect(self.x, self.y, self.w, self.h, self.col_border);
+        setun2d_draw_rect(self.x + 2, self.y + 2, self.w - 4, self.h - 4, self.col_bg);
+
+        // Header Title
+        setun2d_draw_rect(self.x + 2, self.y + 2, self.w - 4, 26, 1648710);
+        setun2d_draw_text(self.x + 12, self.y + 6, "EXACT Q(sqrt(3)) CORDIC HARMONIC WAVEFORM [sin/cos]", 62932);
+
+        let plot_x = self.x + 40;
+        let plot_y = self.y + 35;
+        let plot_w = self.w - 60;
+        let plot_h = self.h - 50;
+
+        let mid_y = plot_y + (plot_h / 2);
+        let amp = (plot_h / 2) - 15;
+
+        // Reference axes
+        draw_line(plot_x, mid_y, plot_x + plot_w, mid_y, 8952234);
+        draw_line(plot_x, plot_y, plot_x, plot_y + plot_h, 8952234);
+
+        // Labels
+        setun2d_draw_text(self.x + 8, mid_y - amp - 6, "+1", 16704576);
+        setun2d_draw_text(self.x + 8, mid_y - 6, " 0", 8952234);
+        setun2d_draw_text(self.x + 8, mid_y + amp - 6, "-1", 16724838);
+
+        // Legend
+        setun2d_draw_rect(self.x + self.w - 180, self.y + 6, 12, 12, self.col_sin);
+        setun2d_draw_text(self.x + self.w - 162, self.y + 5, "sin(theta)", self.col_sin);
+        setun2d_draw_rect(self.x + self.w - 90, self.y + 6, 12, 12, self.col_cos);
+        setun2d_draw_text(self.x + self.w - 72, self.y + 5, "cos(theta)", self.col_cos);
+
+        // Sample continuous points from 0 to 360 deg
+        let mut prev_sx = plot_x;
+        let mut prev_sy_sin = mid_y;
+        let mut prev_sy_cos = mid_y - amp;
+
+        let step_deg = 5;
+        let mut deg = 0;
+        while (deg <= 360) {
+            let trig = cordic_exact_angle(deg);
+            // sin = (trig.sin_val.a + trig.sin_val.b * 1.732) / trig.denom
+            // Scaled integer arithmetic (nhan voi 1000)
+            let sin_scaled = ((trig.sin_val.a * 1000) + (trig.sin_val.b * 1732)) / trig.denom;
+            let cos_scaled = ((trig.cos_val.a * 1000) + (trig.cos_val.b * 1732)) / trig.denom;
+
+            let cur_sx = plot_x + ((deg * plot_w) / 360);
+            let cur_sy_sin = mid_y - ((sin_scaled * amp) / 1000);
+            let cur_sy_cos = mid_y - ((cos_scaled * amp) / 1000);
+
+            if (deg > 0) {
+                draw_line(prev_sx, prev_sy_sin, cur_sx, cur_sy_sin, self.col_sin);
+                draw_line(prev_sx, prev_sy_cos, cur_sx, cur_sy_cos, self.col_cos);
+            }
+
+            // Highlight exact invariant points (0, 30, 60, 90, 180, 270, 360)
+            let mut is_hl = false;
+            if (deg == 0) { is_hl = true; }
+            if (deg == 30) { is_hl = true; }
+            if (deg == 60) { is_hl = true; }
+            if (deg == 90) { is_hl = true; }
+            if (deg == 180) { is_hl = true; }
+            if (deg == 270) { is_hl = true; }
+            if (deg == 360) { is_hl = true; }
+            if (is_hl) {
+                setun2d_draw_circle(cur_sx, cur_sy_sin, 3, 62932);
+                setun2d_draw_circle(cur_sx, cur_sy_cos, 3, 16704576);
+                draw_line(cur_sx, plot_y, cur_sx, plot_y + plot_h, 1054760);
+                setun2d_draw_text(cur_sx - 8, plot_y + plot_h - 14, "" + deg + "o", 8952234);
+            }
+
+            prev_sx = cur_sx;
+            prev_sy_sin = cur_sy_sin;
+            prev_sy_cos = cur_sy_cos;
+            deg = deg + step_deg;
+        }
+
+        // Active highlighted angle marker
+        let cur_mark_x = plot_x + ((self.current_angle * plot_w) / 360);
+        draw_line(cur_mark_x, plot_y, cur_mark_x, plot_y + plot_h, 16724838);
+        setun2d_draw_text(cur_mark_x - 14, plot_y + 4, "Angle: " + self.current_angle + "o", 16724838);
+    }
+}

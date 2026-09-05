@@ -1,0 +1,782 @@
+// ============================================================================
+//  TERSUN 1.0.3 SCIENTIFIC LAB - TERNARY MATH & EXACT ALGEBRA ENGINE
+//  Modules:
+//  - Balanced Ternary (Dec <-> Ternary string '+', '0', '-')
+//  - Tritwise Logic (T-NOT, T-MIN, T-MAX, CMP, ADD, SUB, Hamming Energy)
+//  - Exact Algebraic Field Q(sqrt(3)): Powers, Norm, Conjugate, Inverse
+//  - Exact CORDIC Trigonometry: 30, 60, 90 deg rotation matrices in Q(sqrt(3))
+//  - Exact 2x2 Matrix Spectral Analysis: Trace, Det, Eigenvalues, Cayley-Hamilton
+//  - Multi-Representation Expression Parser & Evaluator
+//  Tuong thich nguoc 100% ISA 1.0.1 - Zero Opcode Bloat
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// 1. CAU TRUC DU LIEU KET QUA & MO PHONG
+// ----------------------------------------------------------------------------
+
+class TernaryEvalResult {
+    pub dec_val: int;
+    pub ternary_str: string;
+    pub taf_a: int;
+    pub taf_b: int;
+    pub taf_s: int;
+    pub norm_val: int;
+    pub trit_count: int;
+    pub weight: int;
+    pub status_msg: string;
+    pub is_error: bool;
+
+    def init(self) {
+        self.dec_val = 0;
+        self.ternary_str = "0";
+        self.taf_a = 0;
+        self.taf_b = 0;
+        self.taf_s = 0;
+        self.norm_val = 0;
+        self.trit_count = 1;
+        self.weight = 0;
+        self.status_msg = "OK";
+        self.is_error = false;
+    }
+}
+
+class Matrix2x2Exact {
+    pub a11: taf3;
+    pub a12: taf3;
+    pub a21: taf3;
+    pub a22: taf3;
+
+    pub m_trace: taf3;
+    pub m_det: taf3;
+    pub delta: taf3;
+    pub eig1: taf3;
+    pub eig2: taf3;
+    pub has_exact_eigs: bool;
+    pub cayley_hamilton_ok: bool;
+
+    def init(self, m11: taf3, m12: taf3, m21: taf3, m22: taf3) {
+        self.a11 = m11;
+        self.a12 = m12;
+        self.a21 = m21;
+        self.a22 = m22;
+        self.m_trace = [0, 0, 0];
+        self.m_det = [0, 0, 0];
+        self.delta = [0, 0, 0];
+        self.eig1 = [0, 0, 0];
+        self.eig2 = [0, 0, 0];
+        self.has_exact_eigs = false;
+        self.cayley_hamilton_ok = false;
+    }
+}
+
+class TrigRotationExact {
+    pub deg: int;
+    pub cos_val: taf3;
+    pub sin_val: taf3;
+    pub tan_val: taf3;
+    pub denom: int;
+    pub is_exact: bool;
+
+    def init(self, d: int) {
+        self.deg = d;
+        self.cos_val = [1, 0, 0];
+        self.sin_val = [0, 0, 0];
+        self.tan_val = [0, 0, 0];
+        self.denom = 1;
+        self.is_exact = true;
+    }
+}
+
+// ----------------------------------------------------------------------------
+// 2. CHUYEN DOI THAP PHAN <-> TAM PHAN CAN BANG (BALANCED TERNARY)
+// ----------------------------------------------------------------------------
+
+fn dec_to_bternary(val: int) -> string {
+    if (val == 0) {
+        return "0";
+    }
+
+    let mut is_neg = false;
+    let mut n = val;
+    if (n < 0) {
+        is_neg = true;
+        n = 0 - n;
+    }
+
+    let mut res = "";
+    while (n > 0) {
+        let q = n / 3;
+        let r = n - (3 * q); // r = n % 3
+
+        if (r == 0) {
+            res = "0" + res;
+            n = q;
+        } else if (r == 1) {
+            res = "+" + res;
+            n = (n - 1) / 3;
+        } else {
+            // r == 2 => balanced trit is -1, carry +1
+            res = "-" + res;
+            n = (n + 1) / 3;
+        }
+    }
+
+    if (is_neg) {
+        let mut inverted = "";
+        let len = res.len();
+        let mut i = 0;
+        while (i < len) {
+            let ch = res.substr(i, 1);
+            if (ch == "+") {
+                inverted = inverted + "-";
+            } else if (ch == "-") {
+                inverted = inverted + "+";
+            } else {
+                inverted = inverted + "0";
+            }
+            i = i + 1;
+        }
+        return inverted;
+    }
+
+    return res;
+}
+
+fn bternary_to_dec(s: string) -> int {
+    let len = s.len();
+    let mut acc = 0;
+    let mut i = 0;
+    while (i < len) {
+        let ch = s.substr(i, 1);
+        let mut trit = 0;
+        if (ch == "+") {
+            trit = 1;
+        } else if (ch == "-") {
+            trit = -1;
+        } else if (ch == "T") {
+            trit = -1;
+        } else if (ch == "1") {
+            trit = 1;
+        }
+        acc = (acc * 3) + trit;
+        i = i + 1;
+    }
+    return acc;
+}
+
+fn trit_weight(s: string) -> int {
+    let len = s.len();
+    let mut w = 0;
+    let mut i = 0;
+    while (i < len) {
+        let ch = s.substr(i, 1);
+        if (ch == "+") {
+            w = w + 1;
+        } else if (ch == "-") {
+            w = w + 1;
+        }
+        i = i + 1;
+    }
+    return w;
+}
+
+// ----------------------------------------------------------------------------
+// 3. TOAN TU LOGIC VA SO HOC TAM PHAN (TRITWISE LOGIC & MULTI-TRIT)
+// ----------------------------------------------------------------------------
+
+fn trit_not_str(s: string) -> string {
+    let len = s.len();
+    let mut res = "";
+    let mut i = 0;
+    while (i < len) {
+        let ch = s.substr(i, 1);
+        if (ch == "+") {
+            res = res + "-";
+        } else if (ch == "-") {
+            res = res + "+";
+        } else {
+            res = res + "0";
+        }
+        i = i + 1;
+    }
+    return res;
+}
+
+fn trit_min_str(s1: string, s2: string) -> string {
+    let v1 = bternary_to_dec(s1);
+    let v2 = bternary_to_dec(s2);
+    let mut min_val = v1;
+    if (v2 < v1) {
+        min_val = v2;
+    }
+    return dec_to_bternary(min_val);
+}
+
+fn trit_max_str(s1: string, s2: string) -> string {
+    let v1 = bternary_to_dec(s1);
+    let v2 = bternary_to_dec(s2);
+    let mut max_val = v1;
+    if (v2 > v1) {
+        max_val = v2;
+    }
+    return dec_to_bternary(max_val);
+}
+
+fn trit_add_str(s1: string, s2: string) -> string {
+    let v1 = bternary_to_dec(s1);
+    let v2 = bternary_to_dec(s2);
+    return dec_to_bternary(v1 + v2);
+}
+
+fn trit_sub_str(s1: string, s2: string) -> string {
+    let v1 = bternary_to_dec(s1);
+    let v2 = bternary_to_dec(s2);
+    return dec_to_bternary(v1 - v2);
+}
+
+// ----------------------------------------------------------------------------
+// 4. DAI SO CHINH XAC TRONG TRUONG Q(sqrt(3)) - TAFPU RING INVARIANTS
+// ----------------------------------------------------------------------------
+
+fn tafpu_norm_exact(x: taf3) -> int {
+    let a: int = x.a;
+    let b: int = x.b;
+    let norm = (a * a) - (3 * b * b);
+    return norm;
+}
+
+fn tafpu_conjugate_exact(x: taf3) -> taf3 {
+    let a: int = x.a;
+    let b: int = x.b;
+    let s: int = x.s;
+    let conj: taf3 = [a, 0 - b, s];
+    return conj;
+}
+
+fn tafpu_inverse_exact(x: taf3) -> taf3 {
+    let one: taf3 = [1, 0, 0];
+    return one / x;
+}
+
+fn tafpu_power_exact(base: taf3, exp: int) -> taf3 {
+    if (exp == 0) {
+        let one: taf3 = [1, 0, 0];
+        return one;
+    }
+    if (exp < 0) {
+        let p_inv = tafpu_power_exact(base, 0 - exp);
+        let one: taf3 = [1, 0, 0];
+        return one / p_inv;
+    }
+
+    let mut res: taf3 = [1, 0, 0];
+    let mut cur = base;
+    let mut p = exp;
+
+    while (p > 0) {
+        let q = p / 2;
+        let r = p - (2 * q);
+        if (r == 1) {
+            res = res * cur;
+        }
+        cur = cur * cur;
+        p = q;
+    }
+    return res;
+}
+
+// ----------------------------------------------------------------------------
+// 5. LUONG GIAC CORDIC CHINH XAC TUYET DOI TRONG Q(sqrt(3))
+//    Goc dac biet: 0, 30, 60, 90, 120, 150, 180 do
+// ----------------------------------------------------------------------------
+
+fn cordic_exact_angle(deg_in: int) -> TrigRotationExact {
+    let mut d = deg_in;
+    // Normalization vao [0, 360)
+    while (d < 0) { d = d + 360; }
+    while (d >= 360) { d = d - 360; }
+
+    let res = TrigRotationExact();
+    res.init(d);
+
+    if (d == 0) {
+        res.cos_val = [1, 0, 0];
+        res.sin_val = [0, 0, 0];
+        res.tan_val = [0, 0, 0];
+        res.denom = 1;
+    } else if (d == 30) {
+        // cos(30) = sqrt(3)/2, sin(30) = 1/2, tan(30) = 1/sqrt(3)
+        res.cos_val = [0, 1, 0]; // sqrt(3)
+        res.sin_val = [1, 0, 0]; // 1
+        res.tan_val = [1, 0, 0] / [0, 1, 0];
+        res.denom = 2;
+    } else if (d == 60) {
+        // cos(60) = 1/2, sin(60) = sqrt(3)/2, tan(60) = sqrt(3)
+        res.cos_val = [1, 0, 0]; // 1
+        res.sin_val = [0, 1, 0]; // sqrt(3)
+        res.tan_val = [0, 1, 0];
+        res.denom = 2;
+    } else if (d == 90) {
+        // cos(90) = 0, sin(90) = 1
+        res.cos_val = [0, 0, 0];
+        res.sin_val = [1, 0, 0];
+        res.tan_val = [999999, 0, 0]; // Infinity
+        res.denom = 1;
+    } else if (d == 120) {
+        res.cos_val = [-1, 0, 0];
+        res.sin_val = [0, 1, 0];
+        res.tan_val = [0, -1, 0];
+        res.denom = 2;
+    } else if (d == 150) {
+        res.cos_val = [0, -1, 0];
+        res.sin_val = [1, 0, 0];
+        res.tan_val = [-1, 0, 0] / [0, 1, 0];
+        res.denom = 2;
+    } else if (d == 180) {
+        res.cos_val = [-1, 0, 0];
+        res.sin_val = [0, 0, 0];
+        res.tan_val = [0, 0, 0];
+        res.denom = 1;
+    } else {
+        res.is_exact = false;
+        res.cos_val = [1, 0, 0];
+        res.sin_val = [0, 0, 0];
+        res.denom = 1;
+    }
+
+    return res;
+}
+
+// ----------------------------------------------------------------------------
+// 6. GIAI TICH PHO MA TRAN 2x2: VET, DINH THUC, TRI RIENG & CAYLEY-HAMILTON
+// ----------------------------------------------------------------------------
+
+fn analyze_matrix_2x2(a11: taf3, a12: taf3, a21: taf3, a22: taf3) -> Matrix2x2Exact {
+    let m = Matrix2x2Exact();
+    m.init(a11, a12, a21, a22);
+
+    // Trace = a11 + a22
+    let tr = a11 + a22;
+    m.m_trace = tr;
+
+    // Det = a11*a22 - a12*a21
+    let dt = (a11 * a22) - (a12 * a21);
+    m.m_det = dt;
+
+    // Delta = Trace^2 - 4*Det
+    let four: taf3 = [4, 0, 0];
+    let dl = (tr * tr) - (four * dt);
+    m.delta = dl;
+
+    // Kiem tra nghiem dong chinh xac trong Q(sqrt(3))
+    // Truong hop 1: delta la so chinh phuong thuan k^2 (b == 0, a >= 0)
+    let da: int = dl.a;
+    let db: int = dl.b;
+    let ds: int = dl.s;
+
+    let two: taf3 = [2, 0, 0];
+
+    if (db == 0) {
+        if (ds == 0) {
+            // Tim can nguyen cua da
+            let mut k = 0;
+            let mut found = false;
+            let mut keep_searching = true;
+            while (keep_searching) {
+                if ((k * k) == da) {
+                    found = true;
+                    keep_searching = false;
+                } else if ((k * k) > da) {
+                    keep_searching = false;
+                } else {
+                    k = k + 1;
+                }
+            }
+            if (found) {
+                let sqrt_dl: taf3 = [k, 0, 0];
+                m.eig1 = (tr + sqrt_dl) / two;
+                m.eig2 = (tr - sqrt_dl) / two;
+                m.has_exact_eigs = true;
+            }
+        }
+    }
+
+    // Truong hop 2: delta co dang 3 * k^2 (can delta = k * sqrt(3))
+    if (m.has_exact_eigs == false) {
+        if (db == 0) {
+            if (ds == 0) {
+                let q3 = da / 3;
+                let r3 = da - (3 * q3);
+                if (r3 == 0) {
+                    let mut k2 = 0;
+                    let mut found2 = false;
+                    let mut keep_searching2 = true;
+                    while (keep_searching2) {
+                        if ((k2 * k2) == q3) {
+                            found2 = true;
+                            keep_searching2 = false;
+                        } else if ((k2 * k2) > q3) {
+                            keep_searching2 = false;
+                        } else {
+                            k2 = k2 + 1;
+                        }
+                    }
+                    if (found2) {
+                        let sqrt_dl2: taf3 = [0, k2, 0]; // k * sqrt(3)
+                        m.eig1 = (tr + sqrt_dl2) / two;
+                        m.eig2 = (tr - sqrt_dl2) / two;
+                        m.has_exact_eigs = true;
+                    }
+                }
+            }
+        }
+    }
+
+    // Kiem chung Dinh ly Cayley-Hamilton: M^2 - tr*M + det*I = 0
+    // M^2:
+    let m2_11 = (a11 * a11) + (a12 * a21);
+    let m2_12 = (a11 * a12) + (a12 * a22);
+    let m2_21 = (a21 * a11) + (a22 * a21);
+    let m2_22 = (a21 * a12) + (a22 * a22);
+
+    // M^2 - tr*M:
+    let sub_11 = m2_11 - (tr * a11);
+    let sub_12 = m2_12 - (tr * a12);
+    let sub_21 = m2_21 - (tr * a21);
+    let sub_22 = m2_22 - (tr * a22);
+
+    // + det*I:
+    let zero: taf3 = [0, 0, 0];
+    let ch_11 = sub_11 + dt;
+    let ch_12 = sub_12;
+    let ch_21 = sub_21;
+    let ch_22 = sub_22 + dt;
+
+    if (ch_11 == zero) {
+        if (ch_12 == zero) {
+            if (ch_21 == zero) {
+                if (ch_22 == zero) {
+                    m.cayley_hamilton_ok = true;
+                }
+            }
+        }
+    }
+
+    return m;
+}
+
+// ----------------------------------------------------------------------------
+// 7. BO PHAN TICH VA TINH TOAN BIEU THUC (EXPRESSION EVALUATOR)
+// ----------------------------------------------------------------------------
+
+fn is_digit_char(c: string) -> bool {
+    if (c == "0") { return true; }
+    if (c == "1") { return true; }
+    if (c == "2") { return true; }
+    if (c == "3") { return true; }
+    if (c == "4") { return true; }
+    if (c == "5") { return true; }
+    if (c == "6") { return true; }
+    if (c == "7") { return true; }
+    if (c == "8") { return true; }
+    if (c == "9") { return true; }
+    return false;
+}
+
+fn is_bternary_str(s: string) -> bool {
+    let len = s.len();
+    if (len == 0) { return false; }
+    let mut i = 0;
+    while (i < len) {
+        let ch = s.substr(i, 1);
+        if (ch != "+") {
+            if (ch != "-") {
+                if (ch != "0") {
+                    return false;
+                }
+            }
+        }
+        i = i + 1;
+    }
+    return true;
+}
+
+fn parse_integer_prefix(s: string, start_idx: int) -> int {
+    let len = s.len();
+    let mut acc = 0;
+    let mut i = start_idx;
+    while (i < len) {
+        let ch = s.substr(i, 1);
+        if (is_digit_char(ch)) {
+            let mut d = 0;
+            if (ch == "1") { d = 1; }
+            if (ch == "2") { d = 2; }
+            if (ch == "3") { d = 3; }
+            if (ch == "4") { d = 4; }
+            if (ch == "5") { d = 5; }
+            if (ch == "6") { d = 6; }
+            if (ch == "7") { d = 7; }
+            if (ch == "8") { d = 8; }
+            if (ch == "9") { d = 9; }
+            acc = (acc * 10) + d;
+            i = i + 1;
+        } else {
+            return acc;
+        }
+    }
+    return acc;
+}
+
+// Danh gia chuoi bieu thuc toan hoc tong quat
+fn evaluate_math_expression(input_raw: string) -> TernaryEvalResult {
+    let res = TernaryEvalResult();
+    res.init();
+
+    // Loc bo khoang trang
+    let raw_len = input_raw.len();
+    let mut s = "";
+    let mut idx = 0;
+    while (idx < raw_len) {
+        let c = input_raw.substr(idx, 1);
+        if (c != " ") {
+            s = s + c;
+        }
+        idx = idx + 1;
+    }
+
+    let len = s.len();
+    if (len == 0) {
+        res.status_msg = "Empty Expression";
+        res.is_error = true;
+        return res;
+    }
+
+    // 1. Kiem tra cac lenh goi ham dac biet
+    // a) not <trits>
+    if (len >= 4) {
+        if (s.substr(0, 3) == "not") {
+            let arg = s.substr(3, len - 3);
+            let not_str = trit_not_str(arg);
+            res.ternary_str = not_str;
+            res.dec_val = bternary_to_dec(not_str);
+            res.taf_a = res.dec_val;
+            res.norm_val = res.dec_val * res.dec_val;
+            res.weight = trit_weight(not_str);
+            res.trit_count = not_str.len();
+            res.status_msg = "Tritwise Inversion (NOT): " + arg + " -> " + not_str;
+            return res;
+        }
+    }
+
+    // b) cordic <deg>
+    if (len >= 7) {
+        if (s.substr(0, 6) == "cordic") {
+            let deg_num = parse_integer_prefix(s, 6);
+            let rot = cordic_exact_angle(deg_num);
+            let ca: int = rot.cos_val.a;
+            let cb: int = rot.cos_val.b;
+            let cs: int = rot.cos_val.s;
+            res.taf_a = ca;
+            res.taf_b = cb;
+            res.taf_s = cs;
+            res.dec_val = ca;
+            let t_ca = dec_to_bternary(ca);
+            res.ternary_str = t_ca;
+            res.status_msg = "CORDIC Exact Rotation at " + deg_num + " deg: cos=[" + ca + "," + cb + "," + cs + "]";
+            return res;
+        }
+    }
+
+    // c) norm <a> <b> -> norm(a + b*sqrt(3)) = a^2 - 3*b^2
+    if (len >= 5) {
+        if (s.substr(0, 4) == "norm") {
+            // Cu phap: norm<a_val>,<b_val>
+            let mut sep = 4;
+            while (sep < len) {
+                if (s.substr(sep, 1) == ",") {
+                    let a_val = parse_integer_prefix(s, 4);
+                    let b_val = parse_integer_prefix(s, sep + 1);
+                    let n = (a_val * a_val) - (3 * b_val * b_val);
+                    res.dec_val = n;
+                    res.norm_val = n;
+                    let t_n = dec_to_bternary(n);
+                    res.ternary_str = t_n;
+                    res.taf_a = a_val;
+                    res.taf_b = b_val;
+                    let w_n = trit_weight(t_n);
+                    res.weight = w_n;
+                    res.trit_count = t_n.len();
+                    res.status_msg = "Algebraic Norm N(" + a_val + " + " + b_val + "*sqrt(3)) = " + n;
+                    return res;
+                }
+                sep = sep + 1;
+            }
+        }
+    }
+
+    // d) pow <a> <b> <exp> -> (a + b*sqrt(3))^exp
+    if (len >= 4) {
+        if (s.substr(0, 3) == "pow") {
+            // Tim 2 dau phay
+            let mut c1 = 3;
+            let mut comma1 = -1;
+            let mut comma2 = -1;
+            while (c1 < len) {
+                if (s.substr(c1, 1) == ",") {
+                    if (comma1 == -1) {
+                        comma1 = c1;
+                    } else if (comma2 == -1) {
+                        comma2 = c1;
+                    }
+                }
+                c1 = c1 + 1;
+            }
+            if (comma1 != -1) {
+                if (comma2 != -1) {
+                    let a_val = parse_integer_prefix(s, 3);
+                    let b_val = parse_integer_prefix(s, comma1 + 1);
+                    let exp_val = parse_integer_prefix(s, comma2 + 1);
+                    let base: taf3 = [a_val, b_val, 0];
+                    let pw = tafpu_power_exact(base, exp_val);
+                    let pa: int = pw.a;
+                    let pb: int = pw.b;
+                    let ps: int = pw.s;
+                    res.taf_a = pa;
+                    res.taf_b = pb;
+                    res.taf_s = ps;
+                    let nw = tafpu_norm_exact(pw);
+                    res.norm_val = nw;
+                    res.dec_val = pa;
+                    let t_pa = dec_to_bternary(pa);
+                    res.ternary_str = t_pa;
+                    res.status_msg = "Exact Power (" + a_val + "+" + b_val + "*sqrt(3))^" + exp_val + " = [" + pa + "," + pb + "," + ps + "]";
+                    return res;
+                }
+            }
+        }
+    }
+
+    // 2. Kiem tra phep tinh 2 ngoi: v1 [op] v2 (voi op thuoc +, -, *, /, ^)
+    let mut op_idx = -1;
+    let mut op_char = "";
+    let mut i = 1; // Bo qua ky tu dau phong truong hop so am '-42'
+    while (i < len) {
+        let ch = s.substr(i, 1);
+        if (ch == "+") {
+            // Can than neu la chuoi tam phan thuan '+0-'
+            if (is_bternary_str(s) == false) {
+                op_idx = i;
+                op_char = "+";
+            }
+        } else if (ch == "-") {
+            if (is_bternary_str(s) == false) {
+                op_idx = i;
+                op_char = "-";
+            }
+        } else if (ch == "*") {
+            op_idx = i;
+            op_char = "*";
+        } else if (ch == "/") {
+            op_idx = i;
+            op_char = "/";
+        } else if (ch == "^") {
+            op_idx = i;
+            op_char = "^";
+        }
+        i = i + 1;
+    }
+
+    if (op_idx != -1) {
+        let part1 = s.substr(0, op_idx);
+        let part2 = s.substr(op_idx + 1, len - op_idx - 1);
+
+        let mut v1 = 0;
+        let mut v2 = 0;
+
+        if (is_bternary_str(part1)) {
+            v1 = bternary_to_dec(part1);
+        } else {
+            v1 = parse_integer_prefix(part1, 0);
+            if (part1.substr(0, 1) == "-") {
+                v1 = 0 - parse_integer_prefix(part1, 1);
+            }
+        }
+
+        if (is_bternary_str(part2)) {
+            v2 = bternary_to_dec(part2);
+        } else {
+            v2 = parse_integer_prefix(part2, 0);
+            if (part2.substr(0, 1) == "-") {
+                v2 = 0 - parse_integer_prefix(part2, 1);
+            }
+        }
+
+        let mut computed = 0;
+        if (op_char == "+") { computed = v1 + v2; }
+        if (op_char == "-") { computed = v1 - v2; }
+        if (op_char == "*") { computed = v1 * v2; }
+        if (op_char == "/") {
+            if (v2 == 0) {
+                res.status_msg = "Error: Division by Zero!";
+                res.is_error = true;
+                return res;
+            }
+            computed = v1 / v2;
+        }
+        if (op_char == "^") {
+            let mut pw_acc = 1;
+            let mut e = v2;
+            while (e > 0) {
+                pw_acc = pw_acc * v1;
+                e = e - 1;
+            }
+            computed = pw_acc;
+        }
+
+        res.dec_val = computed;
+        let t_comp = dec_to_bternary(computed);
+        res.ternary_str = t_comp;
+        res.taf_a = computed;
+        res.taf_b = 0;
+        res.taf_s = 0;
+        res.norm_val = computed * computed;
+        let w_comp = trit_weight(t_comp);
+        res.weight = w_comp;
+        res.trit_count = t_comp.len();
+        res.status_msg = "Evaluated: " + part1 + " " + op_char + " " + part2 + " = " + computed;
+        return res;
+    }
+
+    // 3. Gia tri don le: Chuoi tam phan hoac So thap phan
+    if (is_bternary_str(s)) {
+        let dec = bternary_to_dec(s);
+        res.dec_val = dec;
+        res.ternary_str = s;
+        res.taf_a = dec;
+        res.taf_b = 0;
+        res.taf_s = 0;
+        res.norm_val = dec * dec;
+        res.weight = trit_weight(s);
+        res.trit_count = s.len();
+        res.status_msg = "Parsed Balanced Ternary String: " + s + " -> " + dec;
+        return res;
+    }
+
+    // So thap phan thuan
+    let mut num = parse_integer_prefix(s, 0);
+    if (s.substr(0, 1) == "-") {
+        num = 0 - parse_integer_prefix(s, 1);
+    }
+    res.dec_val = num;
+    let t_num = dec_to_bternary(num);
+    res.ternary_str = t_num;
+    res.taf_a = num;
+    res.taf_b = 0;
+    res.taf_s = 0;
+    res.norm_val = num * num;
+    let w_num = trit_weight(t_num);
+    res.weight = w_num;
+    res.trit_count = t_num.len();
+    res.status_msg = "Decimal parsed: " + num + " -> B-Ternary: " + t_num;
+    return res;
+}

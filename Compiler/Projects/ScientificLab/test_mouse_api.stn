@@ -1,0 +1,63 @@
+// ============================================================================
+//  TERSUN 1.0.2 - NATIVE MOUSE CAPABILITY UNIT TEST
+//  Kiem thu goi phuong thuc Native Host va Dispatcher
+// ============================================================================
+
+class Host {
+    pub dummy: int;
+
+    def mouse_get_x(self) -> int { return 0; }
+    def mouse_get_y(self) -> int { return 0; }
+    def mouse_get_btn(self) -> int { return 99; }
+    def is_mouse_down(self, btn: int) -> bool { return false; }
+    def mouse_move(self, x: int, y: int) {}
+    def mouse_click(self, btn: int, x: int, y: int) {}
+    def syscall(self, id: int, a1: int, a2: int, a3: int) -> int { return 0; }
+}
+
+fn main() {
+    println("=== TEST D: NATIVE MOUSE DISPATCHER UNIT TEST ===");
+    let host = Host();
+
+    let x = host.mouse_get_x();
+    let y = host.mouse_get_y();
+    let btn = host.mouse_get_btn();
+    let is_down = host.is_mouse_down(-1);
+
+    print("Initial Mouse X: ");
+    println(x);
+    print("Initial Mouse Y: ");
+    println(y);
+    print("Initial Button: ");
+    println(btn);
+    print("Initial Left Down: ");
+    println(is_down);
+
+    println("\nTesting Syscall Dispatch (ID 101, 102, 103, 104)...");
+    let sys_x = host.syscall(101, 0, 0, 0);
+    let sys_y = host.syscall(102, 0, 0, 0);
+    let sys_btn = host.syscall(103, 0, 0, 0);
+    let sys_down = host.syscall(104, -1, 0, 0);
+
+    print("Syscall X (101): ");
+    println(sys_x);
+    print("Syscall Y (102): ");
+    println(sys_y);
+    print("Syscall Btn (103): ");
+    println(sys_btn);
+    print("Syscall Down (104): ");
+    println(sys_down);
+
+    assert_eq(x, sys_x);
+    assert_eq(y, sys_y);
+    assert_eq(btn, sys_btn);
+
+    println("\nTesting Mouse Move & Click via Host Call...");
+    host.mouse_move(150, 250);
+    println("Mouse Move (150, 250) executed successfully.");
+
+    host.mouse_click(-1, 150, 250);
+    println("Mouse Click (btn -1, 150, 250) executed successfully.");
+
+    println("\n=== ALL NATIVE MOUSE DISPATCH TESTS PASSED 100%! ===");
+}

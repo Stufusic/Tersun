@@ -523,18 +523,22 @@ Stmt* Parser::parse_match_stmt() {
 Stmt* Parser::parse_import_stmt() {
     SourceLocation loc = previous().location;
     std::string mod_path;
-    do {
-        Token seg = consume(TokenType::IDENTIFIER, "Expected module path segment in import statement.");
-        mod_path += seg.lexeme;
-        if (match(TokenType::DOT)) {
-            mod_path += ".";
-        } else {
-            break;
-        }
-    } while (true);
+    if (check(TokenType::STRING_LITERAL)) {
+        mod_path = advance().string_val;
+    } else {
+        do {
+            Token seg = consume(TokenType::IDENTIFIER, "Expected module path segment in import statement.");
+            mod_path += seg.lexeme;
+            if (match(TokenType::DOT)) {
+                mod_path += ".";
+            } else {
+                break;
+            }
+        } while (true);
 
-    if (match(TokenType::COLON) && match(TokenType::COLON) && match(TokenType::STAR)) {
-        mod_path += "::*";
+        if (match(TokenType::COLON) && match(TokenType::COLON) && match(TokenType::STAR)) {
+            mod_path += "::*";
+        }
     }
     consume(TokenType::SEMICOLON, "Expected ';' after import statement.");
 
@@ -740,6 +744,8 @@ Stmt* Parser::parse_expr_stmt() {
 int Parser::get_infix_precedence(TokenType type) const {
     switch (type) {
         case TokenType::QUESTION_QUESTION: return PREC_NULL_COALESCE;
+        case TokenType::PIPE_PIPE: return PREC_LOGICAL_OR;
+        case TokenType::AMP_AMP: return PREC_LOGICAL_AND;
         case TokenType::SPACESHIP: return PREC_TERNARY_CMP;
         case TokenType::EQ_EQ:
         case TokenType::BANG_EQ:
@@ -943,7 +949,8 @@ Expr* Parser::parse_infix(Expr* left) {
         case TokenType::STAR: b_op = BinaryOp::MUL; break;
         case TokenType::SLASH: b_op = BinaryOp::DIV; break;
         case TokenType::AT: b_op = BinaryOp::MATMUL; break;
-        case TokenType::QUESTION_QUESTION: b_op = BinaryOp::NULL_COALESCE; break;
+        case TokenType::QUESTION_QUESTION:
+            throw CompilerException("The '?\?' (null-coalescing) operator is not supported yet; use an explicit if statement instead.");
         case TokenType::EQ_EQ: b_op = BinaryOp::EQ; break;
         case TokenType::BANG_EQ: b_op = BinaryOp::NEQ; break;
         case TokenType::LESS: b_op = BinaryOp::LT; break;
@@ -951,6 +958,8 @@ Expr* Parser::parse_infix(Expr* left) {
         case TokenType::GREATER: b_op = BinaryOp::GT; break;
         case TokenType::GREATER_EQ: b_op = BinaryOp::GE; break;
         case TokenType::SPACESHIP: b_op = BinaryOp::SPACESHIP; break;
+        case TokenType::AMP_AMP: b_op = BinaryOp::LOGICAL_AND; break;
+        case TokenType::PIPE_PIPE: b_op = BinaryOp::LOGICAL_OR; break;
         case TokenType::KW_MIN: b_op = BinaryOp::MIN; break;
         case TokenType::KW_MAX: b_op = BinaryOp::MAX; break;
         default:

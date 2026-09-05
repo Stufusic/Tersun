@@ -1,0 +1,143 @@
+// ============================================================================
+//  TERSUN 1.0.3 TEST SUITE: ADVANCED MOUSE & INTERACTION ENGINE
+//  (tests/test_advanced_mouse.stn)
+//  Kiem tra: Double Click, Drag Tracker, Mouse Wheel, ContextMenu,
+//            BoxSelector, HoverTooltip, DraggablePanel
+// ============================================================================
+
+import "mouse.stn";
+import "gui.stn";
+
+fn main() -> int {
+    println("===================================================================");
+    println("  [Tersun 1.0.3] Advanced Mouse Interaction Verification Suite    ");
+    println("===================================================================");
+
+    // 1. Kiem tra Mouse Wheel polling
+    println("[Test 1/7] Testing Mouse Wheel Polling...");
+    let w = mouse_get_wheel();
+    if (w != 0) {
+        println("  -> FAILED: initial wheel expected 0, got: " + w);
+        return 1;
+    }
+    println("  -> PASSED: mouse_get_wheel() initial value is 0.");
+
+    // 2. Kiem tra MouseTracker (Frame counter, Hold & Double Click)
+    println("[Test 2/7] Testing MouseTracker & Hold Counter...");
+    let tracker = MouseTracker();
+    tracker.init();
+    tracker.update();
+    tracker.update();
+    if (tracker.frame_count != 2) {
+        println("  -> FAILED: tracker frame_count expected 2, got: " + tracker.frame_count);
+        return 1;
+    }
+    let h_frames = tracker.get_hold_frames(-1);
+    if (h_frames != 0) {
+        println("  -> FAILED: hold_frames expected 0 when not pressed");
+        return 1;
+    }
+    println("  -> PASSED: MouseTracker frame timing & hold state verified.");
+
+    // 3. Kiem tra MouseDragTracker
+    println("[Test 3/7] Testing MouseDragTracker (Lifecycle & Threshold)...");
+    let drag = MouseDragTracker();
+    drag.init();
+    if (drag.is_dragging != false) {
+        println("  -> FAILED: initial is_dragging should be false");
+        return 1;
+    }
+    if (drag.threshold != 4) {
+        println("  -> FAILED: default threshold expected 4");
+        return 1;
+    }
+    println("  -> PASSED: MouseDragTracker initialized cleanly.");
+
+    // 4. Kiem tra DraggablePanel
+    println("[Test 4/7] Testing DraggablePanel...");
+    let dpanel = DraggablePanel();
+    dpanel.init(100, 150, 320, 240, "Floating Matrix Inspector");
+    if (dpanel.x != 100) {
+        println("  -> FAILED: dpanel.x mismatch");
+        return 1;
+    }
+    if (dpanel.title != "Floating Matrix Inspector") {
+        println("  -> FAILED: dpanel.title mismatch");
+        return 1;
+    }
+    println("  -> PASSED: DraggablePanel properties and title bar verified.");
+
+    // 5. Kiem tra ContextMenu
+    println("[Test 5/7] Testing ContextMenu (Popup, Items & Hit-testing)...");
+    let cmenu = ContextMenu();
+    cmenu.init(160);
+    cmenu.set_items("Copy Vector", "Invert Sign", "Export Row", "Clear Cell");
+    if (cmenu.is_visible != false) {
+        println("  -> FAILED: menu should be hidden initially");
+        return 1;
+    }
+    cmenu.show(250, 300);
+    if (cmenu.is_visible != true) {
+        println("  -> FAILED: menu should be visible after show()");
+        return 1;
+    }
+    if (cmenu.item2 != "Invert Sign") {
+        println("  -> FAILED: menu item2 mismatch");
+        return 1;
+    }
+    cmenu.hide();
+    if (cmenu.is_visible != false) {
+        println("  -> FAILED: menu should be hidden after hide()");
+        return 1;
+    }
+    println("  -> PASSED: ContextMenu popup lifecycle and item mapping verified.");
+
+    // 6. Kiem tra BoxSelector (Selection Intersection)
+    println("[Test 6/7] Testing BoxSelector (Rubberband Selection)...");
+    let bsel = BoxSelector();
+    bsel.init();
+    bsel.is_selecting = true;
+    bsel.start_x = 50;
+    bsel.start_y = 50;
+    bsel.curr_x = 200;
+    bsel.curr_y = 200;
+
+    let inside = bsel.contains(80, 80, 40, 40);
+    let outside = bsel.contains(250, 250, 40, 40);
+    if (inside != true) {
+        println("  -> FAILED: rect (80, 80, 40, 40) should be inside box (50..200)");
+        return 1;
+    }
+    if (outside != false) {
+        println("  -> FAILED: rect (250, 250, 40, 40) should be outside box");
+        return 1;
+    }
+    println("  -> PASSED: BoxSelector bounding intersection math verified.");
+
+    // 7. Kiem tra HoverTooltip (Time Threshold Delay)
+    println("[Test 7/7] Testing HoverTooltip (Delay Threshold)...");
+    let tip = HoverTooltip();
+    tip.init(10); // 10 frames delay threshold
+    tip.update(true, "Exact in Q(sqrt(3)): 1 + sqrt(3)");
+    if (tip.is_active != false) {
+        println("  -> FAILED: tooltip should not be active after 1 frame");
+        return 1;
+    }
+    // Simulate 10 frames of continuous hovering
+    let f = 0;
+    while (f < 10) {
+        tip.update(true, "Exact in Q(sqrt(3)): 1 + sqrt(3)");
+        f = f + 1;
+    }
+    if (tip.is_active != true) {
+        println("  -> FAILED: tooltip should be active after 10 frames");
+        return 1;
+    }
+    println("  -> Tooltip Text: '" + tip.text + "'");
+    println("  -> PASSED: HoverTooltip delay trigger verified.");
+
+    println("===================================================================");
+    println("  ALL TERSUN 1.0.3 ADVANCED MOUSE TESTS PASSED (7/7 SUCCESS)!     ");
+    println("===================================================================");
+    return 0;
+}

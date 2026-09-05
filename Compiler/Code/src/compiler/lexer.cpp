@@ -454,7 +454,16 @@ Token Lexer::next_token() {
         case '~': return Token{TokenType::TILDE, "~", loc};
         case '*': return Token{TokenType::STAR, "*", loc};
         case '/': return Token{TokenType::SLASH, "/", loc};
-        case '|': return Token{TokenType::PIPE, "|", loc};
+        case '|':
+            if (match('|')) {
+                return Token{TokenType::PIPE_PIPE, "||", loc};
+            }
+            return Token{TokenType::PIPE, "|", loc};
+        case '&':
+            if (match('&')) {
+                return Token{TokenType::AMP_AMP, "&&", loc};
+            }
+            break;
         case '.':
             if (match('.')) {
                 return Token{TokenType::DOT_DOT, "..", loc};

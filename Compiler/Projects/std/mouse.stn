@@ -1,0 +1,442 @@
+// ============================================================================
+//  TERSUN 1.0.3 STANDARD LIBRARY - ADVANCED MOUSE & INTERACTION MODULE (std/mouse.stn)
+//  Tuong thich nguoc 100% voi ISA 1.0.1 - Ha cap qua OP_INVOKE_METHOD (0xA4)
+//  Thao tac nang cao: Single Click, Double Click, Drag & Drop, Hold, Wheel
+// ============================================================================
+
+class Host {
+    pub dummy: int;
+
+    def mouse_get_x(self) -> int {
+        return 0;
+    }
+    def mouse_get_y(self) -> int {
+        return 0;
+    }
+    def mouse_get_btn(self) -> int {
+        return 99;
+    }
+    def is_mouse_down(self, btn: int) -> bool {
+        return false;
+    }
+    def mouse_move(self, x: int, y: int) {
+    }
+    def mouse_click(self, btn: int, x: int, y: int) {
+    }
+    def mouse_get_wheel(self) -> int {
+        return 0;
+    }
+    def chr(self, c: int) -> string {
+        return "";
+    }
+    def draw_line(self, x1: int, y1: int, x2: int, y2: int, rgb: int) {
+    }
+    def file_dialog_save(self, filter: string, def_ext: string) -> string {
+        return "";
+    }
+    def file_dialog_open(self, filter: string) -> string {
+        return "";
+    }
+    def syscall(self, id: int, a1: int, a2: int, a3: int) -> int {
+        return 0;
+    }
+}
+
+class MouseState {
+    pub x: int;
+    pub y: int;
+    pub left_down: bool;
+    pub mid_down: bool;
+    pub right_down: bool;
+    pub last_btn: int;
+    pub wheel: int;
+}
+
+// ----------------------------------------------------------------------------
+// HANG SO NUT CHUOT TAM PHAN CAN BANG (Balanced Ternary Buttons)
+// ----------------------------------------------------------------------------
+fn btn_left() -> int { return -1; }
+fn btn_middle() -> int { return 0; }
+fn btn_right() -> int { return 1; }
+fn btn_none() -> int { return 99; }
+
+// ----------------------------------------------------------------------------
+// PHAN HE 1: QUERY & POLLING (TRUY VAN VI TRI & TRANG THAI CLIENT CANVAS)
+// ----------------------------------------------------------------------------
+fn mouse_get_x() -> int {
+    let host = Host();
+    return host.mouse_get_x();
+}
+
+fn mouse_get_y() -> int {
+    let host = Host();
+    return host.mouse_get_y();
+}
+
+fn mouse_get_button() -> int {
+    let host = Host();
+    return host.mouse_get_btn();
+}
+
+fn is_mouse_down(btn: int) -> bool {
+    let host = Host();
+    return host.is_mouse_down(btn);
+}
+
+fn mouse_get_wheel() -> int {
+    let host = Host();
+    return host.mouse_get_wheel();
+}
+
+fn poll_mouse() -> MouseState {
+    let host = Host();
+    let state = MouseState();
+    state.x = host.mouse_get_x();
+    state.y = host.mouse_get_y();
+    state.left_down = host.is_mouse_down(-1);
+    state.mid_down = host.is_mouse_down(0);
+    state.right_down = host.is_mouse_down(1);
+    state.last_btn = host.mouse_get_btn();
+    state.wheel = host.mouse_get_wheel();
+    return state;
+}
+
+// ----------------------------------------------------------------------------
+// PHAN HE 2: EDGE DETECTOR, DOUBLE CLICK & HOLD SEMANTICS
+// ----------------------------------------------------------------------------
+class MouseTracker {
+    pub prev_left: bool;
+    pub prev_mid: bool;
+    pub prev_right: bool;
+    pub curr_left: bool;
+    pub curr_mid: bool;
+    pub curr_right: bool;
+    pub last_x: int;
+    pub last_y: int;
+
+    pub frame_count: int;
+    pub last_click_frame: int;
+    pub last_click_btn: int;
+    pub last_click_x: int;
+    pub last_click_y: int;
+
+    pub hold_left: int;
+    pub hold_mid: int;
+    pub hold_right: int;
+
+    def init(self) {
+        self.prev_left = false;
+        self.prev_mid = false;
+        self.prev_right = false;
+        self.curr_left = false;
+        self.curr_mid = false;
+        self.curr_right = false;
+        self.last_x = 0;
+        self.last_y = 0;
+
+        self.frame_count = 0;
+        self.last_click_frame = 0 - 999;
+        self.last_click_btn = 99;
+        self.last_click_x = 0;
+        self.last_click_y = 0;
+
+        self.hold_left = 0;
+        self.hold_mid = 0;
+        self.hold_right = 0;
+    }
+
+    def update(self) {
+        self.frame_count = self.frame_count + 1;
+        self.prev_left = self.curr_left;
+        self.prev_mid = self.curr_mid;
+        self.prev_right = self.curr_right;
+
+        self.curr_left = is_mouse_down(-1);
+        self.curr_mid = is_mouse_down(0);
+        self.curr_right = is_mouse_down(1);
+        self.last_x = mouse_get_x();
+        self.last_y = mouse_get_y();
+
+        if (self.curr_left) {
+            self.hold_left = self.hold_left + 1;
+        } else {
+            self.hold_left = 0;
+        }
+
+        if (self.curr_mid) {
+            self.hold_mid = self.hold_mid + 1;
+        } else {
+            self.hold_mid = 0;
+        }
+
+        if (self.curr_right) {
+            self.hold_right = self.hold_right + 1;
+        } else {
+            self.hold_right = 0;
+        }
+    }
+
+    def is_pressed(self, btn: int) -> bool {
+        if (btn == -1) {
+            if (self.curr_left) {
+                if (self.prev_left == false) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        if (btn == 0) {
+            if (self.curr_mid) {
+                if (self.prev_mid == false) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        if (btn == 1) {
+            if (self.curr_right) {
+                if (self.prev_right == false) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        return false;
+    }
+
+    def is_released(self, btn: int) -> bool {
+        if (btn == -1) {
+            if (self.curr_left == false) {
+                if (self.prev_left) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        if (btn == 0) {
+            if (self.curr_mid == false) {
+                if (self.prev_mid) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        if (btn == 1) {
+            if (self.curr_right == false) {
+                if (self.prev_right) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        return false;
+    }
+
+    def was_clicked(self, btn: int, x: int, y: int, w: int, h: int) -> bool {
+        let hit = self.is_pressed(btn);
+        if (hit) {
+            let mx = self.last_x;
+            let my = self.last_y;
+            if (mx >= x) {
+                if (mx <= (x + w)) {
+                    if (my >= y) {
+                        if (my <= (y + h)) {
+                            self.last_click_frame = self.frame_count;
+                            self.last_click_btn = btn;
+                            self.last_click_x = mx;
+                            self.last_click_y = my;
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    def was_double_clicked(self, btn: int, x: int, y: int, w: int, h: int) -> bool {
+        let prev_frame = self.last_click_frame;
+        let prev_btn = self.last_click_btn;
+        let prev_x = self.last_click_x;
+        let prev_y = self.last_click_y;
+
+        let clicked = self.was_clicked(btn, x, y, w, h);
+        if (clicked) {
+            if (prev_btn == btn) {
+                let dt = self.frame_count - prev_frame;
+                if (dt > 0) {
+                    if (dt <= 24) { // ~400ms o 60 FPS
+                        let dx = self.last_x - prev_x;
+                        if (dx < 0) { dx = 0 - dx; }
+                        let dy = self.last_y - prev_y;
+                        if (dy < 0) { dy = 0 - dy; }
+                        if (dx <= 10) {
+                            if (dy <= 10) {
+                                self.last_click_frame = 0 - 999;
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    def is_held(self, btn: int, min_frames: int) -> bool {
+        if (btn == -1) {
+            if (self.hold_left >= min_frames) { return true; }
+        }
+        if (btn == 0) {
+            if (self.hold_mid >= min_frames) { return true; }
+        }
+        if (btn == 1) {
+            if (self.hold_right >= min_frames) { return true; }
+        }
+        return false;
+    }
+
+    def get_hold_frames(self, btn: int) -> int {
+        if (btn == -1) { return self.hold_left; }
+        if (btn == 0) { return self.hold_mid; }
+        if (btn == 1) { return self.hold_right; }
+        return 0;
+    }
+}
+
+// ----------------------------------------------------------------------------
+// PHAN HE 3: DRAG & DROP ENGINE (BO MAY KEO VA THA)
+// ----------------------------------------------------------------------------
+class MouseDragTracker {
+    pub is_dragging: bool;
+    pub has_started: bool;
+    pub start_x: int;
+    pub start_y: int;
+    pub curr_x: int;
+    pub curr_y: int;
+    pub prev_x: int;
+    pub prev_y: int;
+    pub delta_x: int;
+    pub delta_y: int;
+    pub total_dx: int;
+    pub total_dy: int;
+    pub threshold: int;
+
+    def init(self) {
+        self.is_dragging = false;
+        self.has_started = false;
+        self.start_x = 0;
+        self.start_y = 0;
+        self.curr_x = 0;
+        self.curr_y = 0;
+        self.prev_x = 0;
+        self.prev_y = 0;
+        self.delta_x = 0;
+        self.delta_y = 0;
+        self.total_dx = 0;
+        self.total_dy = 0;
+        self.threshold = 4;
+    }
+
+    def update(self, btn: int) {
+        let mx = mouse_get_x();
+        let my = mouse_get_y();
+        let down = is_mouse_down(btn);
+
+        if (down) {
+            if (self.has_started == false) {
+                self.has_started = true;
+                self.start_x = mx;
+                self.start_y = my;
+                self.prev_x = mx;
+                self.prev_y = my;
+                self.curr_x = mx;
+                self.curr_y = my;
+                self.delta_x = 0;
+                self.delta_y = 0;
+                self.total_dx = 0;
+                self.total_dy = 0;
+                self.is_dragging = false;
+            } else {
+                self.delta_x = mx - self.prev_x;
+                self.delta_y = my - self.prev_y;
+                self.prev_x = mx;
+                self.prev_y = my;
+                self.curr_x = mx;
+                self.curr_y = my;
+                self.total_dx = mx - self.start_x;
+                self.total_dy = my - self.start_y;
+
+                let abs_dx = self.total_dx;
+                if (abs_dx < 0) { abs_dx = 0 - abs_dx; }
+                let abs_dy = self.total_dy;
+                if (abs_dy < 0) { abs_dy = 0 - abs_dy; }
+
+                if (abs_dx >= self.threshold) {
+                    self.is_dragging = true;
+                }
+                if (abs_dy >= self.threshold) {
+                    self.is_dragging = true;
+                }
+            }
+        } else {
+            self.is_dragging = false;
+            self.has_started = false;
+            self.delta_x = 0;
+            self.delta_y = 0;
+        }
+    }
+
+    def on_drag_start(self, btn: int, x: int, y: int, w: int, h: int) -> bool {
+        let down = is_mouse_down(btn);
+        if (down) {
+            let mx = mouse_get_x();
+            let my = mouse_get_y();
+            if (self.has_started == false) {
+                if (mx >= x) {
+                    if (mx <= (x + w)) {
+                        if (my >= y) {
+                            if (my <= (y + h)) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    def on_drop(self, tracker: MouseTracker, btn: int, tx: int, ty: int, tw: int, th: int) -> bool {
+        let released = tracker.is_released(btn);
+        if (released) {
+            if (self.is_dragging) {
+                let mx = tracker.last_x;
+                let my = tracker.last_y;
+                if (mx >= tx) {
+                    if (mx <= (tx + tw)) {
+                        if (my >= ty) {
+                            if (my <= (ty + th)) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+}
+
+// ----------------------------------------------------------------------------
+// PHAN HE 4: OS AUTOMATION & INJECTION (DIEU KHIEN CHUOT)
+// ----------------------------------------------------------------------------
+fn mouse_move(x: int, y: int) {
+    let host = Host();
+    host.mouse_move(x, y);
+}
+
+fn mouse_click(btn: int, x: int, y: int) {
+    let host = Host();
+    host.mouse_click(btn, x, y);
+}
