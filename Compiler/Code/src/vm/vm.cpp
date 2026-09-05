@@ -1,5 +1,7 @@
 #include "vm/vm.hpp"
+#include "vm/text.hpp"
 #include "graphics/setun2d_bridge.hpp"
+#include "compiler/types.hpp"
 #include "tafpu/bitnet_engine.hpp"
 #include "tafpu/exception.hpp"
 #include <iostream>
@@ -1156,6 +1158,46 @@ void VM::handle_invoke_method(const Chunk& chunk) {
                 stack_.push(VMValue(s.substr(b, e - b + 1)));
             }
             return;
+        } else if (method_name == "ulen") {
+            // Unicode codepoint count (len() stays byte-based for compat).
+            stack_.push(VMValue(static_cast<int64_t>(text::utf8_codepoint_count(s))));
+            return;
+        } else if (method_name == "uslice") {
+            int64_t start = (!args.empty()) ? args[0].as_int() : 0;
+            int64_t count = (args.size() >= 2) ? args[1].as_int() : INT64_MAX;
+            std::string out;
+            int64_t idx = 0;
+            size_t i = 0;
+            if (start < 0) start = 0;
+            while (i < s.size()) {
+                auto [cp, next] = text::utf8_decode_next(s, i);
+                if (idx >= start && idx < start + count) {
+                    out += text::utf8_encode(cp);
+                }
+                i = next;
+                ++idx;
+            }
+            stack_.push(VMValue(out));
+            return;
+        } else if (method_name == "uindex") {
+            int64_t want = (!args.empty()) ? args[0].as_int() : 0;
+            int64_t idx = 0;
+            size_t i = 0;
+            while (i < s.size()) {
+                auto [cp, next] = text::utf8_decode_next(s, i);
+                if (idx == want) {
+                    stack_.push(VMValue(text::utf8_encode(cp)));
+                    return;
+                }
+                i = next;
+                ++idx;
+            }
+            stack_.push(VMValue(""));
+            return;
+        } else if (method_name == "text_width") {
+            stack_.push(VMValue(static_cast<int64_t>(
+                graphics::Setun2DBridge::instance().text_width(s))));
+            return;
         }
     }
 
@@ -1207,9 +1249,10 @@ void VM::handle_invoke_method(const Chunk& chunk) {
                     stack_.push(VMValue(down ? 1LL : 0LL));
                     return;
                 } else if (method_name == "chr" || method_name == "char_to_str") {
-                    int c = (!args.empty()) ? static_cast<int>(args[0].as_int()) : 0;
-                    if (c > 0 && c < 256) {
-                        stack_.push(VMValue(std::string(1, static_cast<char>(c))));
+                    // Encode a Unicode codepoint as UTF-8 (ASCII identical to before).
+                    uint32_t cp = (!args.empty()) ? static_cast<uint32_t>(args[0].as_int()) : 0;
+                    if (cp > 0 && cp <= 0x7FFF) {
+                        stack_.push(VMValue(text::utf8_encode(cp)));
                     } else {
                         stack_.push(VMValue(""));
                     }

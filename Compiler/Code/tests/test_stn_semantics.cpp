@@ -234,6 +234,11 @@ void test_stn_compound_assign() {
     assert(vm.last_output().find("ELIF_OK") != std::string::npos);
 }
 
+void test_stn_unicode() {
+    VM vm = run_stn_file("unicode.stn");
+    assert(vm.last_output().find("UNI_OK") != std::string::npos);
+}
+
 } // namespace
 
 void test_stn_semantics_suite() {
@@ -247,6 +252,7 @@ void test_stn_semantics_suite() {
     test_stn_taf3_syntax();
     test_stn_fstring();
     test_stn_compound_assign();
+    test_stn_unicode();
 }
 
 } // namespace setun

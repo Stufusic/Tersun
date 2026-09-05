@@ -279,14 +279,14 @@ class TextInput {
 
     def handle_char(self, ch: int) {
         if (self.is_focused) {
-            if (ch == 8) { // Backspace
-                let l = self.text.len();
-                if (l > 0) {
-                    self.text = self.text.substr(0, l - 1);
+            if (ch == 8) { // Backspace: strip one full Unicode codepoint
+                let n = self.text.ulen();
+                if (n > 0) {
+                    self.text = self.text.uslice(0, n - 1);
                 }
             } else {
                 if (ch >= 32) {
-                    if (ch <= 126) {
+                    if (ch != 127) {
                         let host = Host();
                         let s = host.chr(ch);
                         self.text = self.text + s;
@@ -560,7 +560,7 @@ class HoverTooltip {
 
     def draw(self, mx: int, my: int) {
         if (self.is_active) {
-            let tw = (self.text.len() * 8) + 16;
+            let tw = (self.text.ulen() * 8) + 16;
             let th = 24;
             let tx = mx + 12;
             let ty = my + 16;

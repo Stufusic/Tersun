@@ -17,6 +17,17 @@
 namespace setun::graphics {
 
 #if defined(_WIN32)
+// UTF-8 (Tersun strings) -> UTF-16 (Win32 W API boundary).
+static std::wstring utf8_to_utf16(const std::string& s) {
+    if (s.empty()) return std::wstring();
+    int n = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), static_cast<int>(s.size()), nullptr, 0);
+    std::wstring w(static_cast<size_t>(n > 0 ? n : 0), L'\0');
+    if (n > 0) {
+        MultiByteToWideChar(CP_UTF8, 0, s.c_str(), static_cast<int>(s.size()), &w[0], n);
+    }
+    return w;
+}
+
 static LRESULT CALLBACK Setun2DWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
         case WM_CLOSE:
@@ -26,7 +37,7 @@ static LRESULT CALLBACK Setun2DWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
         case WM_ERASEBKGND:
             return 1; // Prevent background flicker (double-buffering handles it)
         default:
-            return DefWindowProcA(hwnd, msg, wParam, lParam);
+            return DefWindowProcW(hwnd, msg, wParam, lParam);
     }
 }
 #endif
@@ -52,17 +63,17 @@ bool Setun2DBridge::init(int width, int height, const std::string& title) {
 #if defined(_WIN32)
     HINSTANCE hInstance = GetModuleHandleA(NULL);
 
-    WNDCLASSEXA wc;
+    WNDCLASSEXW wc;
     ZeroMemory(&wc, sizeof(wc));
-    wc.cbSize = sizeof(WNDCLASSEXA);
+    wc.cbSize = sizeof(WNDCLASSEXW);
     wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
     wc.lpfnWndProc = Setun2DWndProc;
     wc.hInstance = hInstance;
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
     wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
-    wc.lpszClassName = "Setun2DNativeWindowClass";
+    wc.lpszClassName = L"Setun2DNativeWindowClassW";
 
-    RegisterClassExA(&wc);
+    RegisterClassExW(&wc);
 
     // Adjust window size so client area matches exact width x height
     RECT r = { 0, 0, width, height };
@@ -76,10 +87,12 @@ bool Setun2DBridge::init(int width, int height, const std::string& title) {
     int pos_x = (screen_w - win_w) / 2;
     int pos_y = (screen_h - win_h) / 2;
 
-    HWND hwnd = CreateWindowExA(
+    // W window: WM_CHAR delivers UTF-16 code units for any keyboard layout.
+    std::wstring wtitle = utf8_to_utf16(title);
+    HWND hwnd = CreateWindowExW(
         0,
-        "Setun2DNativeWindowClass",
-        title.c_str(),
+        L"Setun2DNativeWindowClassW",
+        wtitle.c_str(),
         dwStyle,
         pos_x, pos_y, win_w, win_h,
         NULL, NULL, hInstance, NULL
@@ -119,6 +132,17 @@ bool Setun2DBridge::init(int width, int height, const std::string& title) {
     old_bm_ = (void*)old_bm;
     dib_pixels_ = (uint32_t*)bits;
 
+    // Unicode-capable UI font (Segoe UI covers Vietnamese + Latin fully).
+    // Previously no font was selected: windows rendered the stock bitmap font.
+    HFONT font = CreateFontW(
+        -16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
+    if (font) {
+        old_font_ = (void*)SelectObject(mem_dc, (HGDIOBJ)font);
+        font_ = (void*)font;
+    }
+
     running_ = true;
     return true;
 #else
@@ -138,7 +162,7 @@ void Setun2DBridge::process_window_events() {
 #if defined(_WIN32)
     if (!hwnd_) return;
     MSG msg;
-    while (PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE)) {
+    while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE)) {
         if (msg.message == WM_QUIT) {
             running_ = false;
         }
@@ -155,7 +179,23 @@ void Setun2DBridge::process_window_events() {
             WPARAM key = msg.wParam;
             if (key < 256) keys_down_[key] = false;
         } else if (msg.message == WM_CHAR) {
-            char_queue_.push_back(static_cast<int>(msg.wParam));
+            // W window: wParam is a UTF-16 code unit. Combine surrogate pairs
+            // and queue full Unicode codepoints.
+            uint32_t cp = static_cast<uint32_t>(msg.wParam);
+            if (cp >= 0xD800 && cp <= 0xDBFF) {
+                pending_surrogate_ = cp;
+            } else if (cp >= 0xDC00 && cp <= 0xDFFF) {
+                if (pending_surrogate_ != 0) {
+                    cp = 0x10000 + ((pending_surrogate_ - 0xD800) << 10) + (cp - 0xDC00);
+                    pending_surrogate_ = 0;
+                } else {
+                    cp = 0xFFFD;
+                }
+                char_queue_.push_back(static_cast<int>(cp));
+            } else {
+                pending_surrogate_ = 0;
+                char_queue_.push_back(static_cast<int>(cp));
+            }
         } else if (msg.message == WM_MOUSEWHEEL) {
             short delta = GET_WHEEL_DELTA_WPARAM(msg.wParam);
             if (delta > 0) wheel_delta_ += 1;
@@ -342,8 +382,24 @@ void Setun2DBridge::draw_text(int x, int y, const std::string& text, uint32_t rg
     SetBkMode(hdc, TRANSPARENT);
     COLORREF color = RGB((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF);
     SetTextColor(hdc, color);
-    TextOutA(hdc, x, y, text.c_str(), static_cast<int>(text.length()));
+    // UTF-8 -> UTF-16 so any script (Vietnamese included) renders correctly.
+    std::wstring w = utf8_to_utf16(text);
+    if (!w.empty()) {
+        TextOutW(hdc, x, y, w.c_str(), static_cast<int>(w.size()));
+    }
 #endif
+}
+
+int Setun2DBridge::text_width(const std::string& text) {
+#if defined(_WIN32)
+    if (!mem_dc_) return 0;
+    std::wstring w = utf8_to_utf16(text);
+    SIZE sz = { 0, 0 };
+    if (GetTextExtentPoint32W((HDC)mem_dc_, w.c_str(), static_cast<int>(w.size()), &sz)) {
+        return sz.cx;
+    }
+#endif
+    return static_cast<int>(text.size()) * 8;
 }
 
 int Setun2DBridge::flip() {
@@ -388,6 +444,14 @@ int Setun2DBridge::get_key() {
 void Setun2DBridge::close() {
     running_ = false;
 #if defined(_WIN32)
+    if (mem_dc_ && old_font_) {
+        SelectObject((HDC)mem_dc_, (HGDIOBJ)old_font_);
+        old_font_ = nullptr;
+    }
+    if (font_) {
+        DeleteObject((HFONT)font_);
+        font_ = nullptr;
+    }
     if (mem_dc_ && old_bm_) {
         SelectObject((HDC)mem_dc_, (HGDIOBJ)old_bm_);
         old_bm_ = nullptr;
@@ -559,6 +623,10 @@ extern "C" {
 
     void setun2d_close() {
         Setun2DBridge::instance().close();
+    }
+
+    int setun2d_text_width(const char* text) {
+        return Setun2DBridge::instance().text_width(text ? text : "");
     }
 
     // Mouse C API (Tersun 1.0.2 Native Host Extension)

@@ -31,6 +31,11 @@
 #include <iomanip>
 #include <cstring>
 
+#if defined(_WIN32)
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
+
 using namespace setun;
 
 void print_banner() {
@@ -581,6 +586,11 @@ int cmd_repl() {
 int run_all_tests();
 
 int main(int argc, char* argv[]) {
+#if defined(_WIN32)
+    // UTF-8 console so println renders Vietnamese and other scripts.
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+#endif
     if (argc < 2) {
         print_help(argv[0]);
         return 0;

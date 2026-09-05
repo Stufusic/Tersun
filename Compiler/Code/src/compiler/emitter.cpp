@@ -1,4 +1,5 @@
 #include "compiler/emitter.hpp"
+#include "compiler/types.hpp"
 #include "tafpu/exception.hpp"
 #include <sstream>
 #include <fstream>
@@ -790,12 +791,23 @@ void BytecodeEmitter::emit_for_stmt(const ForStmt& stmt) {
         const uint16_t idx_slot = next_local_slot_++;
         store_slot(idx_slot);
 
-        // Cached element count (collection.len()) — pushing during the loop
-        // will not extend the iteration, mirroring Python snapshot semantics.
+        // Strings iterate by Unicode codepoint when the type checker tagged
+        // the iterable as STRING; unchecked paths keep byte semantics.
+        bool string_iter = stmt.iterable && stmt.iterable->inferred_type
+                           && stmt.iterable->inferred_type->kind == TypeKind::STRING;
+
+        // Cached element count
         load_slot(coll_slot);
-        uint16_t len_fid = chunk_.add_string("length");
-        chunk_.write_opcode(OpCode::OP_GET_FIELD, stmt.loc.line);
-        chunk_.write_int16(static_cast<int16_t>(len_fid), stmt.loc.line);
+        if (string_iter) {
+            uint16_t mid = chunk_.add_string("ulen");
+            chunk_.write_opcode(OpCode::OP_INVOKE_METHOD, stmt.loc.line);
+            chunk_.write_int16(static_cast<int16_t>(mid), stmt.loc.line);
+            chunk_.write_byte(0, stmt.loc.line);
+        } else {
+            uint16_t len_fid = chunk_.add_string("length");
+            chunk_.write_opcode(OpCode::OP_GET_FIELD, stmt.loc.line);
+            chunk_.write_int16(static_cast<int16_t>(len_fid), stmt.loc.line);
+        }
         const uint16_t len_slot = next_local_slot_++;
         store_slot(len_slot);
 
@@ -811,10 +823,17 @@ void BytecodeEmitter::emit_for_stmt(const ForStmt& stmt) {
         chunk_.write_opcode(OpCode::OP_LT, stmt.loc.line);
         size_t exit_jump = chunk_.emit_jump(OpCode::OP_JUMP_IF_FALSE, stmt.loc.line);
 
-        // Loop variable = collection[idx]
+        // Loop variable = collection[idx] (strings: codepoint via uindex)
         load_slot(coll_slot);
         load_slot(idx_slot);
-        chunk_.write_opcode(OpCode::OP_GET_INDEX, stmt.loc.line);
+        if (string_iter) {
+            uint16_t mid = chunk_.add_string("uindex");
+            chunk_.write_opcode(OpCode::OP_INVOKE_METHOD, stmt.loc.line);
+            chunk_.write_int16(static_cast<int16_t>(mid), stmt.loc.line);
+            chunk_.write_byte(1, stmt.loc.line);
+        } else {
+            chunk_.write_opcode(OpCode::OP_GET_INDEX, stmt.loc.line);
+        }
         store_slot(var_slot);
 
         if (stmt.body) emit_stmt(stmt.body);

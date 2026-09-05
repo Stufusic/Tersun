@@ -1078,11 +1078,11 @@ TypePtr TypeChecker::check_method_call(MethodCallExpr& expr) {
 
     if (obj_type && obj_type->kind == TypeKind::STRING) {
         if (expr.method == "len" || expr.method == "length" || expr.method == "size"
-            || expr.method == "index_of") {
+            || expr.method == "index_of" || expr.method == "ulen" || expr.method == "text_width") {
             return Type::make_int();
         }
         if (expr.method == "pop" || expr.method == "slice" || expr.method == "substr"
-            || expr.method == "trim") {
+            || expr.method == "trim" || expr.method == "uslice" || expr.method == "uindex") {
             return Type::make_string();
         }
         if (expr.method == "split") {

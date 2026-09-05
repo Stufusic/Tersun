@@ -29,6 +29,9 @@ class Host {
     def chr(self, c: int) -> string {
         return "";
     }
+    def text_width(self, s: string) -> int {
+        return 0;
+    }
     def draw_line(self, x1: int, y1: int, x2: int, y2: int, rgb: int) {
     }
     def file_dialog_save(self, filter: string, def_ext: string) -> string {

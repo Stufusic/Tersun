@@ -18,6 +18,7 @@ public:
     void draw_circle(int cx, int cy, int r, uint32_t rgb);
     void draw_line(int x1, int y1, int x2, int y2, uint32_t rgb);
     void draw_text(int x, int y, const std::string& text, uint32_t rgb);
+    int text_width(const std::string& text); // pixel width via GDI (W API)
     int flip();
     int get_key();
     void close();
@@ -80,6 +81,9 @@ private:
 
 #if defined(_WIN32)
     void* hwnd_ = nullptr;
+    void* font_ = nullptr;      // Unicode UI font (Segoe UI)
+    void* old_font_ = nullptr;
+    uint32_t pending_surrogate_ = 0; // high surrogate awaiting its pair
     void* hdc_ = nullptr;
     void* mem_dc_ = nullptr;
     void* hbm_ = nullptr;
@@ -102,6 +106,7 @@ extern "C" {
     void setun2d_draw_circle(int cx, int cy, int r, int rgb);
     void setun2d_draw_line(int x1, int y1, int x2, int y2, int rgb);
     void setun2d_draw_text(int x, int y, const char* text, int rgb);
+    int setun2d_text_width(const char* text);
     int setun2d_flip();
     int setun2d_get_key();
     void setun2d_close();
