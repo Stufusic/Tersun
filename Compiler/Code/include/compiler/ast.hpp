@@ -306,6 +306,7 @@ struct ReturnStmt {
 struct Parameter {
     std::string name;
     DataType type{DataType::ANY};
+    std::string custom_type_name; // original identifier for user-defined types
     TypePtr resolved_type{nullptr};
 };
 

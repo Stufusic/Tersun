@@ -254,7 +254,7 @@ Stmt* Parser::parse_fn_decl(bool is_async, int priority) {
             if (match(TokenType::COLON)) {
                 p_type = parse_type();
             }
-            params.push_back(Parameter{p_tok.lexeme, p_type});
+            params.push_back(Parameter{p_tok.lexeme, p_type, last_type_name_});
         } while (match(TokenType::COMMA));
     }
     consume(TokenType::RPAREN, "Expected ')' after parameters.");
@@ -336,7 +336,7 @@ Stmt* Parser::parse_struct_decl() {
                     Token p_tok = consume(TokenType::IDENTIFIER, "Expected parameter name.");
                     DataType p_type = DataType::ANY;
                     if (match(TokenType::COLON)) p_type = parse_type();
-                    mparams.push_back(Parameter{p_tok.lexeme, p_type});
+                    mparams.push_back(Parameter{p_tok.lexeme, p_type, last_type_name_});
                 } while (match(TokenType::COMMA));
             }
             consume(TokenType::RPAREN, "Expected ')' after parameters.");
@@ -424,7 +424,7 @@ Stmt* Parser::parse_class_decl() {
                     Token p_tok = consume(TokenType::IDENTIFIER, "Expected parameter name.");
                     DataType p_type = DataType::ANY;
                     if (match(TokenType::COLON)) p_type = parse_type();
-                    mparams.push_back(Parameter{p_tok.lexeme, p_type});
+                    mparams.push_back(Parameter{p_tok.lexeme, p_type, last_type_name_});
                 } while (match(TokenType::COMMA));
             }
             consume(TokenType::RPAREN, "Expected ')' after parameters.");
@@ -463,7 +463,7 @@ Stmt* Parser::parse_interface_decl() {
                     Token p_tok = consume(TokenType::IDENTIFIER, "Expected parameter name.");
                     DataType p_type = DataType::ANY;
                     if (match(TokenType::COLON)) p_type = parse_type();
-                    mparams.push_back(Parameter{p_tok.lexeme, p_type});
+                    mparams.push_back(Parameter{p_tok.lexeme, p_type, last_type_name_});
                 } while (match(TokenType::COMMA));
             }
             consume(TokenType::RPAREN, "Expected ')' after parameters.");
@@ -589,7 +589,7 @@ Stmt* Parser::parse_extern_decl() {
             if (match(TokenType::COLON)) {
                 p_type = parse_type();
             }
-            params.push_back(Parameter{p_tok.lexeme, p_type});
+            params.push_back(Parameter{p_tok.lexeme, p_type, last_type_name_});
         } while (match(TokenType::COMMA));
     }
     consume(TokenType::RPAREN, "Expected ')' after parameters.");

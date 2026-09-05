@@ -987,7 +987,11 @@ void BytecodeEmitter::emit_unary(const UnaryExpr& expr) {
             chunk_.write_opcode(OpCode::OP_TERNARY_NOT, expr.loc.line);
             break;
         case UnaryOp::NOT:
-            chunk_.write_opcode(OpCode::OP_NEG, expr.loc.line);
+            // Logical not: lower to (operand == false) so bools and truthy
+            // values negate correctly (OP_NEG is arithmetic sign-flip).
+            chunk_.write_opcode(OpCode::OP_PUSH_BOOL, expr.loc.line);
+            chunk_.write_byte(0, expr.loc.line);
+            chunk_.write_opcode(OpCode::OP_EQ, expr.loc.line);
             break;
     }
 }

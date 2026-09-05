@@ -50,6 +50,10 @@ private:
     void report_error(const std::string& message, SourceLocation loc);
     void report_warning(const std::string& message, SourceLocation loc);
 
+    // Builds a method signature, resolving user-defined parameter types
+    // (e.g. 'tracker: MouseTracker') against type_defs_.
+    MethodTypeInfo make_method_info(const MethodDecl& m);
+
     // AST visitors
     void check_stmt(Stmt* stmt);
     void check_var_decl(VarDeclStmt& stmt);

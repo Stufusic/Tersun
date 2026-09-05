@@ -4,21 +4,6 @@
 
 namespace setun {
 
-// Build a MethodTypeInfo signature from a method declaration, excluding the
-// implicit 'self'/'this' receiver so it matches call-site argument lists.
-static MethodTypeInfo make_method_info(const MethodDecl& m) {
-    MethodTypeInfo mi;
-    mi.name = m.name;
-    for (const auto& p : m.params) {
-        if (p.name == "self" || p.name == "this") continue;
-        mi.param_types.push_back(Type::from_data_type(p.type));
-        mi.param_names.push_back(p.name);
-    }
-    mi.return_type = Type::from_data_type(m.return_type);
-    mi.is_pub = m.is_pub;
-    return mi;
-}
-
 TypeChecker::TypeChecker() {
     init_builtins();
 }
@@ -115,8 +100,24 @@ TypePtr TypeChecker::resolve_type_from_data_type(DataType dt, const std::string&
     return Type::from_data_type(dt);
 }
 
-void TypeChecker::report_error(const std::string& message, SourceLocation loc) {
-    errors_.push_back(TypeError{message, loc, false});
+// Build a MethodTypeInfo signature from a method declaration, excluding the
+// implicit 'self'/'this' receiver so it matches call-site argument lists.
+// User-defined parameter types are resolved against type_defs_ so methods
+// receive real class types instead of generic 'any'.
+MethodTypeInfo TypeChecker::make_method_info(const MethodDecl& m) {
+    MethodTypeInfo mi;
+    mi.name = m.name;
+    for (const auto& p : m.params) {
+        if (p.name == "self" || p.name == "this") continue;
+        mi.param_types.push_back(resolve_type_from_data_type(p.type, p.custom_type_name));
+        mi.param_names.push_back(p.name);
+    }
+    mi.return_type = Type::from_data_type(m.return_type);
+    mi.is_pub = m.is_pub;
+    return mi;
+}
+
+void TypeChecker::report_error(const std::string& message, SourceLocation loc) {    errors_.push_back(TypeError{message, loc, false});
 }
 
 void TypeChecker::report_warning(const std::string& message, SourceLocation loc) {
@@ -210,7 +211,7 @@ bool TypeChecker::check_program(Program& program) {
             }
             std::vector<TypePtr> param_types;
             for (const auto& p : f.params) {
-                param_types.push_back(Type::from_data_type(p.type));
+                param_types.push_back(resolve_type_from_data_type(p.type, p.custom_type_name));
             }
             TypePtr ret_type = Type::from_data_type(f.return_type);
             functions_[f.name] = Type::make_function(param_types, ret_type);
@@ -607,7 +608,7 @@ void TypeChecker::check_fn_decl(FnDeclStmt& stmt) {
 
     std::vector<TypePtr> param_types;
     for (auto& p : stmt.params) {
-        TypePtr pt = Type::from_data_type(p.type);
+        TypePtr pt = resolve_type_from_data_type(p.type, p.custom_type_name);
         p.resolved_type = pt;
         param_types.push_back(pt);
     }
@@ -696,7 +697,7 @@ void TypeChecker::check_class_decl(ClassDeclStmt& stmt) {
         std::vector<TypePtr> param_types;
         for (const auto& p : m.params) {
             if (p.name == "self" || p.name == "this") continue;
-            TypePtr pt = Type::from_data_type(p.type);
+            TypePtr pt = resolve_type_from_data_type(p.type, p.custom_type_name);
             define_symbol(p.name, pt, true, false, stmt.loc);
             param_types.push_back(pt);
         }
@@ -1003,15 +1004,36 @@ TypePtr TypeChecker::check_method_call(MethodCallExpr& expr) {
         if (expr.method == "len") {
             return Type::make_int();
         }
+        if (expr.method == "slice" || expr.method == "sort" || expr.method == "reverse"
+            || expr.method == "concat") {
+            return Type::make_array(Type::make_any());
+        }
+        if (expr.method == "contains") {
+            return Type::make_bool();
+        }
+        if (expr.method == "index_of") {
+            return Type::make_int();
+        }
+        if (expr.method == "join") {
+            return Type::make_string();
+        }
         return Type::make_any();
     }
 
     if (obj_type && obj_type->kind == TypeKind::STRING) {
-        if (expr.method == "len" || expr.method == "length" || expr.method == "size") {
+        if (expr.method == "len" || expr.method == "length" || expr.method == "size"
+            || expr.method == "index_of") {
             return Type::make_int();
         }
-        if (expr.method == "pop" || expr.method == "slice" || expr.method == "substr") {
+        if (expr.method == "pop" || expr.method == "slice" || expr.method == "substr"
+            || expr.method == "trim") {
             return Type::make_string();
+        }
+        if (expr.method == "split") {
+            return Type::make_array(Type::make_string());
+        }
+        if (expr.method == "contains") {
+            return Type::make_bool();
         }
         report_error("string has no method '" + expr.method + "'.", expr.loc);
         return Type::make_any();

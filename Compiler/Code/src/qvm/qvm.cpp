@@ -1,6 +1,10 @@
 #include "qvm/qvm.hpp"
 #include <fstream>
 #include <sstream>
+#include <cstring>
+#include <cstdio>
+#include <map>
+#include <iomanip>
 
 namespace tersun {
 namespace qvm {
@@ -42,6 +46,10 @@ bool QChunk::load_from_file(const std::string& path, QChunk& out_chunk) {
     if (magic != MAGIC || ver != VERSION) {
         return false;
     }
+    // Untrusted-file guards (mirrors the .tbc loader policy).
+    if (nq > 1024u || code_size > 67108864u) {
+        return false;
+    }
 
     out_chunk.num_qubits = nq;
     out_chunk.code.resize(code_size);
@@ -61,11 +69,37 @@ std::string QChunk::disassemble(const std::string& name) const {
     oss << " Offset | Opcode            | Operands & Semantics\n";
     oss << "--------------------------------------------------------------------------------\n";
 
+    // Operand readers mirror QVM::run exactly (u16 little-endian, f64 for
+    // rotations, absolute pc targets for jumps) so the listing can never
+    // desynchronize from the executed ISA.
     size_t i = 0;
-    while (i < code.size()) {
+    bool truncated = false;
+    auto read_u8 = [&]() -> uint8_t {
+        if (i >= code.size()) { truncated = true; return 0; }
+        return code[i++];
+    };
+    auto read_u16 = [&]() -> uint16_t {
+        uint8_t b0 = read_u8();
+        uint8_t b1 = read_u8();
+        return static_cast<uint16_t>(b0 | (b1 << 8));
+    };
+    auto read_f64 = [&]() -> double {
+        uint64_t bits = 0;
+        for (int k = 0; k < 8; ++k) {
+            bits |= (static_cast<uint64_t>(read_u8()) << (k * 8));
+        }
+        double v = 0.0;
+        std::memcpy(&v, &bits, sizeof(double));
+        return v;
+    };
+
+    std::map<std::string, int> op_counts;
+    auto note = [&](const char* g) { op_counts[g]++; };
+
+    while (i < code.size() && !truncated) {
         size_t offset = i;
         uint8_t op = code[i++];
-        
+
         char buf[32];
         std::snprintf(buf, sizeof(buf), " 0x%04zX | ", offset);
         oss << buf;
@@ -76,108 +110,178 @@ std::string QChunk::disassemble(const std::string& name) const {
                 oss << "OP_NOP           |\n";
                 break;
             case QOpCode::OP_INIT: {
-                uint8_t n = (i < code.size()) ? code[i++] : 0;
+                uint8_t n = read_u8();
                 oss << "OP_INIT          | qubits=" << (int)n << "\n";
+                note("INIT");
                 break;
             }
             case QOpCode::OP_PACK2: {
-                uint8_t q = (i < code.size()) ? code[i++] : 0;
-                uint8_t r = (i < code.size()) ? code[i++] : 0;
+                uint8_t q = read_u8();
+                uint8_t r = read_u8();
                 oss << "OP_PACK2         | q[" << (int)q << "] <- r[" << (int)r << "] (2-bit packing)\n";
+                note("PACK2");
                 break;
             }
             case QOpCode::OP_UNPACK2: {
-                uint8_t r = (i < code.size()) ? code[i++] : 0;
-                uint8_t q = (i < code.size()) ? code[i++] : 0;
+                uint8_t r = read_u8();
+                uint8_t q = read_u8();
                 oss << "OP_UNPACK2       | r[" << (int)r << "] <- q[" << (int)q << "] (unpack to classical)\n";
+                note("UNPACK2");
                 break;
             }
             case QOpCode::OP_H: {
-                uint8_t q = (i < code.size()) ? code[i++] : 0;
+                uint8_t q = read_u8();
                 oss << "OP_H             | q[" << (int)q << "] (Hadamard Superposition)\n";
+                note("H");
                 break;
             }
             case QOpCode::OP_X: {
-                uint8_t q = (i < code.size()) ? code[i++] : 0;
+                uint8_t q = read_u8();
                 oss << "OP_X             | q[" << (int)q << "] (Pauli-X / NOT)\n";
+                note("X");
                 break;
             }
             case QOpCode::OP_Y: {
-                uint8_t q = (i < code.size()) ? code[i++] : 0;
+                uint8_t q = read_u8();
                 oss << "OP_Y             | q[" << (int)q << "] (Pauli-Y)\n";
+                note("Y");
                 break;
             }
             case QOpCode::OP_Z: {
-                uint8_t q = (i < code.size()) ? code[i++] : 0;
+                uint8_t q = read_u8();
                 oss << "OP_Z             | q[" << (int)q << "] (Pauli-Z Phase Flip)\n";
+                note("Z");
                 break;
             }
             case QOpCode::OP_S: {
-                uint8_t q = (i < code.size()) ? code[i++] : 0;
+                uint8_t q = read_u8();
                 oss << "OP_S             | q[" << (int)q << "] (Phase pi/2)\n";
+                note("S");
                 break;
             }
             case QOpCode::OP_T: {
-                uint8_t q = (i < code.size()) ? code[i++] : 0;
+                uint8_t q = read_u8();
                 oss << "OP_T             | q[" << (int)q << "] (Phase pi/4)\n";
+                note("T");
+                break;
+            }
+            case QOpCode::OP_RX: {
+                uint8_t q = read_u8();
+                double ang = read_f64();
+                oss << "OP_RX            | q[" << (int)q << "] <- Rx(" << ang << " rad)\n";
+                note("RX");
+                break;
+            }
+            case QOpCode::OP_RY: {
+                uint8_t q = read_u8();
+                double ang = read_f64();
+                oss << "OP_RY            | q[" << (int)q << "] <- Ry(" << ang << " rad)\n";
+                note("RY");
+                break;
+            }
+            case QOpCode::OP_RZ: {
+                uint8_t q = read_u8();
+                double ang = read_f64();
+                oss << "OP_RZ            | q[" << (int)q << "] <- Rz(" << ang << " rad)\n";
+                note("RZ");
                 break;
             }
             case QOpCode::OP_CNOT: {
-                uint8_t ctrl = (i < code.size()) ? code[i++] : 0;
-                uint8_t tgt  = (i < code.size()) ? code[i++] : 0;
+                uint8_t ctrl = read_u8();
+                uint8_t tgt  = read_u8();
                 oss << "OP_CNOT          | ctrl=q[" << (int)ctrl << "], target=q[" << (int)tgt << "]\n";
+                note("CNOT");
                 break;
             }
             case QOpCode::OP_CZ: {
-                uint8_t ctrl = (i < code.size()) ? code[i++] : 0;
-                uint8_t tgt  = (i < code.size()) ? code[i++] : 0;
+                uint8_t ctrl = read_u8();
+                uint8_t tgt  = read_u8();
                 oss << "OP_CZ            | ctrl=q[" << (int)ctrl << "], target=q[" << (int)tgt << "]\n";
+                note("CZ");
                 break;
             }
             case QOpCode::OP_SWAP: {
-                uint8_t q1 = (i < code.size()) ? code[i++] : 0;
-                uint8_t q2 = (i < code.size()) ? code[i++] : 0;
+                uint8_t q1 = read_u8();
+                uint8_t q2 = read_u8();
                 oss << "OP_SWAP          | q[" << (int)q1 << "] <-> q[" << (int)q2 << "]\n";
+                note("SWAP");
                 break;
             }
             case QOpCode::OP_TOFFOLI: {
-                uint8_t c1 = (i < code.size()) ? code[i++] : 0;
-                uint8_t c2 = (i < code.size()) ? code[i++] : 0;
-                uint8_t tgt = (i < code.size()) ? code[i++] : 0;
+                uint8_t c1 = read_u8();
+                uint8_t c2 = read_u8();
+                uint8_t tgt = read_u8();
                 oss << "OP_TOFFOLI       | c1=q[" << (int)c1 << "], c2=q[" << (int)c2 << "], target=q[" << (int)tgt << "]\n";
+                note("TOFFOLI");
                 break;
             }
             case QOpCode::OP_TRIT_CYCLE: {
-                uint8_t q = (i < code.size()) ? code[i++] : 0;
+                uint8_t q = read_u8();
                 oss << "OP_TRIT_CYCLE    | q[" << (int)q << "] (Ternary Permutation 0->+1->-1->0)\n";
+                note("TRIT_CYCLE");
                 break;
             }
             case QOpCode::OP_TRIT_INV: {
-                uint8_t q = (i < code.size()) ? code[i++] : 0;
+                uint8_t q = read_u8();
                 oss << "OP_TRIT_INV      | q[" << (int)q << "] (Ternary Invert +1 <-> -1)\n";
+                note("TRIT_INV");
                 break;
             }
             case QOpCode::OP_MEASURE: {
-                uint8_t r = (i < code.size()) ? code[i++] : 0;
-                uint8_t q = (i < code.size()) ? code[i++] : 0;
+                uint8_t r = read_u8();
+                uint8_t q = read_u8();
                 oss << "OP_MEASURE       | r[" << (int)r << "] <- measure(q[" << (int)q << "])\n";
+                note("MEASURE");
                 break;
             }
             case QOpCode::OP_MEASURE_TRIT: {
-                uint8_t r = (i < code.size()) ? code[i++] : 0;
-                uint8_t q = (i < code.size()) ? code[i++] : 0;
+                uint8_t r = read_u8();
+                uint8_t q = read_u8();
                 oss << "OP_MEASURE_TRIT  | r[" << (int)r << "] <- trit_project(q[" << (int)q << "]) {-1, 0, +1}\n";
+                note("MEASURE_TRIT");
+                break;
+            }
+            case QOpCode::OP_JUMP: {
+                uint16_t target = read_u16();
+                oss << "OP_JUMP          | -> 0x" << std::hex << std::setw(4) << std::setfill('0')
+                    << (int)target << std::dec << "\n";
+                note("JUMP");
+                break;
+            }
+            case QOpCode::OP_BRANCH3: {
+                uint8_t q = read_u8();
+                uint16_t off_neg = read_u16();
+                uint16_t off_zero = read_u16();
+                uint16_t off_pos = read_u16();
+                oss << "OP_BRANCH3       | trit=measure_trit(q[" << (int)q << "]) -> "
+                    << "neg=0x" << std::hex << std::setw(4) << std::setfill('0') << (int)off_neg
+                    << ", zero=0x" << std::setw(4) << std::setfill('0') << (int)off_zero
+                    << ", pos=0x" << std::setw(4) << std::setfill('0') << (int)off_pos
+                    << std::dec << "\n";
+                note("BRANCH3");
                 break;
             }
             case QOpCode::OP_HALT:
                 oss << "OP_HALT          | (Terminate QVM execution)\n";
+                note("HALT");
                 break;
             default:
                 oss << "UNKNOWN (0x" << std::hex << (int)op << std::dec << ") |\n";
+                note("UNKNOWN");
                 break;
         }
+        if (truncated) {
+            oss << "<truncated: operand runs past end of code>\n";
+        }
     }
+
     oss << "--------------------------------------------------------------------------------\n";
+    oss << "Gate summary:";
+    if (op_counts.empty()) oss << " (empty)";
+    for (const auto& [g, n] : op_counts) {
+        oss << "  " << g << "x" << n;
+    }
+    oss << "\n";
     return oss.str();
 }
 

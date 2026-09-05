@@ -9,6 +9,7 @@
 #include <iomanip>
 #include <cstring>
 #include <cmath>
+#include <algorithm>
 #include <chrono>
 
 namespace setun {
@@ -980,6 +981,11 @@ void VM::handle_invoke_method(const Chunk& chunk) {
     if (target.is_array()) {
         auto arr = target.as_array();
         if (arr) {
+            auto values_equal = [](const VMValue& a, const VMValue& b) {
+                if (a.is_string() || b.is_string()) return a.to_string() == b.to_string();
+                if (a.is_tafpu() || b.is_tafpu()) return tafpu_cmp(a.as_tafpu(), b.as_tafpu()) == 0;
+                return a.as_int() == b.as_int();
+            };
             if (method_name == "push" || method_name == "append") {
                 if (!args.empty()) arr->push_back(args[0]);
                 stack_.push(target);
@@ -995,6 +1001,77 @@ void VM::handle_invoke_method(const Chunk& chunk) {
                 return;
             } else if (method_name == "len" || method_name == "length") {
                 stack_.push(VMValue(static_cast<int64_t>(arr->size())));
+                return;
+            } else if (method_name == "slice") {
+                int64_t start = (!args.empty()) ? args[0].as_int() : 0;
+                int64_t count = (args.size() >= 2) ? args[1].as_int()
+                                                   : static_cast<int64_t>(arr->size());
+                if (start < 0) start += static_cast<int64_t>(arr->size());
+                if (start < 0) start = 0;
+                if (start > static_cast<int64_t>(arr->size())) start = static_cast<int64_t>(arr->size());
+                if (count < 0) count = 0;
+                auto out = std::make_shared<std::vector<VMValue>>();
+                for (int64_t k = start; k < start + count && k < static_cast<int64_t>(arr->size()); ++k) {
+                    out->push_back((*arr)[static_cast<size_t>(k)]);
+                }
+                stack_.push(VMValue(out));
+                return;
+            } else if (method_name == "sort") {
+                bool all_string = true;
+                bool all_numeric = true;
+                for (const auto& v : *arr) {
+                    if (!v.is_string()) all_string = false;
+                    if (!(v.is_int() || v.is_tryte() || v.is_float() || v.is_bool())) all_numeric = false;
+                }
+                if (!all_string && !all_numeric) {
+                    throw VMException("sort: array contains mixed or non-comparable element types.");
+                }
+                auto out = std::make_shared<std::vector<VMValue>>(*arr);
+                std::sort(out->begin(), out->end(), [](const VMValue& a, const VMValue& b) {
+                    if (a.is_string()) return a.to_string() < b.to_string();
+                    if (a.is_float() || b.is_float()) return a.as_float() < b.as_float();
+                    return a.as_int() < b.as_int();
+                });
+                stack_.push(VMValue(out));
+                return;
+            } else if (method_name == "reverse") {
+                auto out = std::make_shared<std::vector<VMValue>>(*arr);
+                std::reverse(out->begin(), out->end());
+                stack_.push(VMValue(out));
+                return;
+            } else if (method_name == "contains") {
+                bool found = false;
+                if (!args.empty()) {
+                    for (const auto& v : *arr) {
+                        if (values_equal(v, args[0])) { found = true; break; }
+                    }
+                }
+                stack_.push(VMValue(found));
+                return;
+            } else if (method_name == "index_of") {
+                int64_t idx = -1;
+                if (!args.empty()) {
+                    for (size_t k = 0; k < arr->size(); ++k) {
+                        if (values_equal((*arr)[k], args[0])) { idx = static_cast<int64_t>(k); break; }
+                    }
+                }
+                stack_.push(VMValue(idx));
+                return;
+            } else if (method_name == "concat") {
+                auto out = std::make_shared<std::vector<VMValue>>(*arr);
+                if (!args.empty() && args[0].is_array()) {
+                    for (const auto& v : *args[0].as_array()) out->push_back(v);
+                }
+                stack_.push(VMValue(out));
+                return;
+            } else if (method_name == "join") {
+                std::string sep = (!args.empty()) ? args[0].to_string() : "";
+                std::string out;
+                for (size_t k = 0; k < arr->size(); ++k) {
+                    if (k > 0) out += sep;
+                    out += (*arr)[k].to_string();
+                }
+                stack_.push(VMValue(out));
                 return;
             }
         }
@@ -1022,6 +1099,44 @@ void VM::handle_invoke_method(const Chunk& chunk) {
                 stack_.push(VMValue(s.substr(start, count)));
             } else {
                 stack_.push(VMValue(""));
+            }
+            return;
+        } else if (method_name == "split") {
+            std::string sep = (!args.empty()) ? args[0].to_string() : "";
+            if (sep.empty()) {
+                throw VMException("split: separator must not be empty.");
+            }
+            auto out = std::make_shared<std::vector<VMValue>>();
+            size_t pos = 0;
+            while (true) {
+                size_t hit = s.find(sep, pos);
+                if (hit == std::string::npos) {
+                    out->push_back(VMValue(s.substr(pos)));
+                    break;
+                }
+                out->push_back(VMValue(s.substr(pos, hit - pos)));
+                pos = hit + sep.size();
+            }
+            stack_.push(VMValue(out));
+            return;
+        } else if (method_name == "contains") {
+            std::string sub = (!args.empty()) ? args[0].to_string() : "";
+            stack_.push(VMValue(s.find(sub) != std::string::npos));
+            return;
+        } else if (method_name == "index_of") {
+            std::string sub = (!args.empty()) ? args[0].to_string() : "";
+            size_t hit = s.find(sub);
+            stack_.push(VMValue(hit == std::string::npos ? static_cast<int64_t>(-1)
+                                                         : static_cast<int64_t>(hit)));
+            return;
+        } else if (method_name == "trim") {
+            const char* ws = " \t\r\n";
+            size_t b = s.find_first_not_of(ws);
+            if (b == std::string::npos) {
+                stack_.push(VMValue(""));
+            } else {
+                size_t e = s.find_last_not_of(ws);
+                stack_.push(VMValue(s.substr(b, e - b + 1)));
             }
             return;
         }
