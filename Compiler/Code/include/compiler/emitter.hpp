@@ -9,6 +9,7 @@
 #include <tuple>
 
 #include <unordered_map>
+#include <unordered_set>
 
 namespace setun {
 
@@ -70,6 +71,8 @@ private:
     void emit_while(const WhileStmt& stmt);
     void emit_for_stmt(const ForStmt& stmt);
     void emit_break_continue(const BreakContinueStmt& stmt);
+    void emit_try_catch(const TryCatchStmt& stmt);
+    void emit_throw_stmt(const ThrowStmt& stmt);
     void emit_return(const ReturnStmt& stmt);
     void emit_fn_decl(const FnDeclStmt& stmt);
     void emit_match(const MatchStmt& stmt);
@@ -84,6 +87,8 @@ private:
     void emit_unary(const UnaryExpr& expr);
     void emit_binary(const BinaryExpr& expr);
     void emit_call(const CallExpr& expr);
+    void emit_class_ctor(const std::string& callee, const std::vector<Expr*>& args,
+                         const SourceLocation& loc);
     void emit_tafpu_construct(const TafpuConstructExpr& expr);
     void emit_ambiguous_triple(const AmbiguousTripleExpr& expr);
     void emit_fstring_lit(const FStringExpr& expr);
@@ -111,6 +116,9 @@ private:
     // init() arity per class (excluding 'self'); -1 when the class has no init.
     std::unordered_map<std::string, int> class_init_arity_;
 
+    // Aliased imports: gui.fn(...) lowers to an OP_CALL of "gui.fn".
+    std::unordered_set<std::string> import_aliases_;
+
     // Break/continue landing info for the lexically enclosing loops.
     struct LoopContext {
         std::string label;
@@ -118,6 +126,10 @@ private:
         std::vector<size_t> continue_jumps;  // OP_JUMP placeholders patched at the increment/condition point
     };
     std::vector<LoopContext> loop_stack_;
+
+    // Nesting depth of try bodies: break/continue/return crossing a try
+    // boundary must pop its frame (OP_POP_TRY) before jumping away.
+    int try_depth_{0};
 };
 
 } // namespace setun

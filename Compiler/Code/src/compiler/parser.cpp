@@ -91,8 +91,11 @@ Program Parser::parse_program() {
 
 Stmt* Parser::parse_declaration() {
     try {
-        if (match(TokenType::KW_PUB) || match(TokenType::KW_PRIV)) {
-            // Visibility modifiers
+        bool is_pub = true;
+        if (match(TokenType::KW_PUB)) {
+            is_pub = true;
+        } else if (match(TokenType::KW_PRIV)) {
+            is_pub = false;
         }
         if (match(TokenType::KW_LET)) {
             return parse_var_decl(false);
@@ -101,7 +104,7 @@ Stmt* Parser::parse_declaration() {
             return parse_var_decl(true);
         }
         if (match(TokenType::KW_FN) || match(TokenType::KW_DEF)) {
-            return parse_fn_decl(false, 0);
+            return parse_fn_decl(false, 0, is_pub);
         }
         if (match(TokenType::KW_ASYNC)) {
             int priority = 0;
@@ -122,14 +125,14 @@ Stmt* Parser::parse_declaration() {
                 consume(TokenType::RPAREN, "Expected ')' after async options");
             }
             if (match(TokenType::KW_FN) || match(TokenType::KW_DEF)) {
-                return parse_fn_decl(true, priority);
+                return parse_fn_decl(true, priority, is_pub);
             }
         }
         if (match(TokenType::KW_STRUCT)) {
-            return parse_struct_decl();
+            return parse_struct_decl(is_pub);
         }
         if (match(TokenType::KW_CLASS)) {
-            return parse_class_decl();
+            return parse_class_decl(is_pub);
         }
         if (match(TokenType::KW_INTERFACE) || match(TokenType::KW_TRAIT)) {
             return parse_interface_decl();
@@ -230,7 +233,7 @@ Stmt* Parser::parse_var_decl(bool is_const) {
     return arena_.make<Stmt>(VarDeclStmt{name, type, init, is_const, loc, nullptr, custom_type_name}, loc);
 }
 
-Stmt* Parser::parse_fn_decl(bool is_async, int priority) {
+Stmt* Parser::parse_fn_decl(bool is_async, int priority, bool is_pub) {
     SourceLocation loc = previous().location;
     Token name_tok = consume(TokenType::IDENTIFIER, "Expected function name after 'fn' or 'def'.");
     std::string name = name_tok.lexeme;
@@ -269,10 +272,10 @@ Stmt* Parser::parse_fn_decl(bool is_async, int priority) {
     current_--; // back to LBRACE so parse_block_stmt can consume it
     Stmt* body = parse_block_stmt();
 
-    return arena_.make<Stmt>(FnDeclStmt{name, std::move(params), return_type, body, is_async, priority, loc, std::move(generic_params), nullptr}, loc);
+    return arena_.make<Stmt>(FnDeclStmt{name, is_pub, std::move(params), return_type, body, is_async, priority, loc, std::move(generic_params), nullptr}, loc);
 }
 
-Stmt* Parser::parse_struct_decl() {
+Stmt* Parser::parse_struct_decl(bool is_pub) {
     SourceLocation loc = previous().location;
     Token name_tok = consume(TokenType::IDENTIFIER, "Expected struct name.");
     std::string name = name_tok.lexeme;
@@ -354,10 +357,10 @@ Stmt* Parser::parse_struct_decl() {
     }
     consume(TokenType::RBRACE, "Expected '}' after struct body.");
 
-    return arena_.make<Stmt>(StructDeclStmt{name, std::move(interfaces), std::move(fields), std::move(methods), loc, std::move(generic_params)}, loc);
+    return arena_.make<Stmt>(StructDeclStmt{name, is_pub, std::move(interfaces), std::move(fields), std::move(methods), loc, std::move(generic_params)}, loc);
 }
 
-Stmt* Parser::parse_class_decl() {
+Stmt* Parser::parse_class_decl(bool is_pub) {
     SourceLocation loc = previous().location;
     Token name_tok = consume(TokenType::IDENTIFIER, "Expected class name.");
     std::string name = name_tok.lexeme;
@@ -442,7 +445,7 @@ Stmt* Parser::parse_class_decl() {
     }
     consume(TokenType::RBRACE, "Expected '}' after class body.");
 
-    return arena_.make<Stmt>(ClassDeclStmt{name, super_class, std::move(interfaces), std::move(fields), std::move(methods), loc, std::move(generic_params)}, loc);
+    return arena_.make<Stmt>(ClassDeclStmt{name, is_pub, super_class, std::move(interfaces), std::move(fields), std::move(methods), loc, std::move(generic_params)}, loc);
 }
 
 Stmt* Parser::parse_interface_decl() {
@@ -563,9 +566,13 @@ Stmt* Parser::parse_import_stmt() {
             mod_path += "::*";
         }
     }
+    std::string alias;
+    if (match(TokenType::KW_AS)) {
+        alias = consume(TokenType::IDENTIFIER, "Expected alias name after 'as'.").lexeme;
+    }
     consume(TokenType::SEMICOLON, "Expected ';' after import statement.");
 
-    return arena_.make<Stmt>(ImportStmt{mod_path, loc}, loc);
+    return arena_.make<Stmt>(ImportStmt{mod_path, alias, loc}, loc);
 }
 
 Stmt* Parser::parse_extern_decl() {
@@ -600,7 +607,7 @@ Stmt* Parser::parse_extern_decl() {
     }
 
     consume(TokenType::SEMICOLON, "Expected ';' after extern function declaration.");
-    return arena_.make<Stmt>(FnDeclStmt{name, std::move(params), return_type, nullptr, false, 0, loc}, loc);
+    return arena_.make<Stmt>(FnDeclStmt{name, true, std::move(params), return_type, nullptr, false, 0, loc}, loc);
 }
 
 Stmt* Parser::parse_statement() {
@@ -629,6 +636,8 @@ Stmt* Parser::parse_statement() {
     if (match(TokenType::KW_FOR)) return parse_for_stmt();
     if (match(TokenType::KW_BREAK)) return parse_break_continue(true);
     if (match(TokenType::KW_CONTINUE)) return parse_break_continue(false);
+    if (match(TokenType::KW_TRY)) return parse_try_stmt();
+    if (match(TokenType::KW_THROW)) return parse_throw_stmt();
     if (match(TokenType::KW_RETURN)) return parse_return_stmt();
     if (match(TokenType::LBRACE)) {
         current_--;
@@ -840,6 +849,36 @@ Stmt* Parser::parse_break_continue(bool is_break) {
     }
     consume(TokenType::SEMICOLON, std::string("Expected ';' after '") + (is_break ? "break" : "continue") + "'.");
     return arena_.make<Stmt>(BreakContinueStmt{is_break, label, loc}, loc);
+}
+
+Stmt* Parser::parse_try_stmt() {
+    SourceLocation loc = previous().location;
+    Stmt* try_body = parse_statement();
+    std::string catch_var;
+    Stmt* catch_body = nullptr;
+    if (match(TokenType::KW_CATCH)) {
+        if (match(TokenType::LPAREN)) {
+            if (!check(TokenType::RPAREN)) {
+                catch_var = consume(TokenType::IDENTIFIER, "Expected catch variable name.").lexeme;
+            }
+            consume(TokenType::RPAREN, "Expected ')' after catch variable.");
+        }
+        catch_body = parse_statement();
+    } else {
+        throw CompilerException("[Parser Error] " + format_loc(peek().location)
+                                + " - Expected 'catch' after 'try' block.");
+    }
+    return arena_.make<Stmt>(TryCatchStmt{try_body, catch_var, catch_body, loc}, loc);
+}
+
+Stmt* Parser::parse_throw_stmt() {
+    SourceLocation loc = previous().location;
+    Expr* value = nullptr;
+    if (!check(TokenType::SEMICOLON)) {
+        value = parse_expression();
+    }
+    consume(TokenType::SEMICOLON, "Expected ';' after throw value.");
+    return arena_.make<Stmt>(ThrowStmt{value, loc}, loc);
 }
 
 Stmt* Parser::parse_return_stmt() {

@@ -41,9 +41,9 @@ public:
     Stmt* parse_statement();
     Stmt* parse_declaration();
     Stmt* parse_var_decl(bool is_const = false);
-    Stmt* parse_fn_decl(bool is_async = false, int priority = 0);
-    Stmt* parse_struct_decl();
-    Stmt* parse_class_decl();
+    Stmt* parse_fn_decl(bool is_async = false, int priority = 0, bool is_pub = true);
+    Stmt* parse_struct_decl(bool is_pub = true);
+    Stmt* parse_class_decl(bool is_pub = true);
     Stmt* parse_interface_decl();
     Stmt* parse_enum_decl();
     Stmt* parse_match_stmt();
@@ -54,6 +54,8 @@ public:
     Stmt* parse_while_stmt();
     Stmt* parse_for_stmt();     // C-style + for-in hybrid
     Stmt* parse_break_continue(bool is_break);
+    Stmt* parse_try_stmt();
+    Stmt* parse_throw_stmt();
     Stmt* parse_return_stmt();
     Stmt* parse_block_stmt();
     Stmt* parse_expr_stmt();

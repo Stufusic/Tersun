@@ -91,6 +91,10 @@ enum class TokenType {
     KW_BREAK,         // break
     KW_CONTINUE,      // continue
     KW_ELIF,          // elif (else-if sugar)
+    KW_TRY,           // try
+    KW_CATCH,         // catch
+    KW_THROW,         // throw
+    KW_AS,            // as (import alias)
 
     // Delimiters & Navigation
     LPAREN,           // (

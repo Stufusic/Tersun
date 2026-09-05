@@ -17,6 +17,14 @@ struct CallFrame {
     size_t local_base{0};
 };
 
+// Active try block: where to land on exception + machine state to restore.
+struct TryFrame {
+    size_t catch_ip{0};
+    size_t stack_depth{0};
+    size_t locals_len{0};
+    size_t call_depth{0};
+};
+
 class VM {
 public:
     VM();
@@ -130,6 +138,9 @@ private:
     void handle_set_field(const Chunk& chunk);
     void handle_invoke_method(const Chunk& chunk);
     void handle_set_index(const Chunk& chunk);
+    void handle_try(const Chunk& chunk);
+    void handle_throw(const Chunk& chunk);
+    void handle_pop_try(const Chunk& chunk);
     void handle_new_array(const Chunk& chunk);
 
     void register_vtable(const std::string& name, std::shared_ptr<VTable> vt) {
@@ -151,6 +162,7 @@ private:
     std::vector<VMValue> locals_;
     std::vector<VMValue> globals_;
     std::vector<CallFrame> call_stack_;
+    std::vector<TryFrame> try_stack_;
 
     // Setun-70 Registers
     std::array<TafpuNum, 8> tafpu_regs_{};

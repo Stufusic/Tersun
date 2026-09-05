@@ -143,6 +143,7 @@ bool TypeChecker::check_program(Program& program) {
     errors_.clear();
     declared_fn_locs_.clear();
     declared_type_locs_.clear();
+    import_aliases_.clear();
     init_builtins();
 
     // Pass 1: Register all Struct, Class, Interface, Enum and Function forward signatures
@@ -201,6 +202,11 @@ bool TypeChecker::check_program(Program& program) {
                 en_type->variants[v.name] = ev;
             }
             type_defs_[e.name] = en_type;
+        } else if (std::holds_alternative<ImportStmt>(stmt->data)) {
+            auto& imp = std::get<ImportStmt>(stmt->data);
+            if (!imp.alias.empty()) {
+                import_aliases_.insert(imp.alias);
+            }
         } else if (std::holds_alternative<FnDeclStmt>(stmt->data)) {
             auto& f = std::get<FnDeclStmt>(stmt->data);
             if (declared_fn_locs_.count(f.name)) {
@@ -258,6 +264,16 @@ void TypeChecker::check_stmt(Stmt* stmt) {
             check_for(s);
         } else if constexpr (std::is_same_v<T, BreakContinueStmt>) {
             // Pure control flow; legality (inside a loop) is enforced by the emitter.
+        } else if constexpr (std::is_same_v<T, TryCatchStmt>) {
+            check_stmt(s.try_body);
+            enter_scope();
+            if (!s.catch_var.empty()) {
+                define_symbol(s.catch_var, Type::make_string(), true, false, s.loc);
+            }
+            check_stmt(s.catch_body);
+            exit_scope();
+        } else if constexpr (std::is_same_v<T, ThrowStmt>) {
+            if (s.value) check_expr(s.value);
         } else if constexpr (std::is_same_v<T, ReturnStmt>) {
             check_return(s);
         } else if constexpr (std::is_same_v<T, FnDeclStmt>) {
@@ -991,6 +1007,46 @@ TypePtr TypeChecker::check_member_access(MemberAccessExpr& expr) {
 }
 
 TypePtr TypeChecker::check_method_call(MethodCallExpr& expr) {
+    // Aliased import: gui.fn(args) checks as a plain function call.
+    if (expr.object && std::holds_alternative<IdentifierExpr>(expr.object->data)) {
+        const auto& obj_name = std::get<IdentifierExpr>(expr.object->data).name;
+        if (import_aliases_.count(obj_name)) {
+            std::vector<TypePtr> arg_types;
+            for (Expr* arg : expr.args) {
+                arg_types.push_back(check_expr(arg));
+            }
+            std::string callee = obj_name + "." + expr.method;
+            auto it = functions_.find(callee);
+            if (it == functions_.end()) {
+                report_error("Unknown function '" + callee + "' (module '"
+                                 + obj_name + "' has no public function '" + expr.method + "').",
+                             expr.loc);
+                return Type::make_any();
+            }
+            TypePtr fn_type = it->second;
+            if (fn_type && fn_type->kind == TypeKind::FUNCTION) {
+                if (arg_types.size() != fn_type->param_types.size()) {
+                    report_error("Function '" + callee + "' expects "
+                                     + std::to_string(fn_type->param_types.size())
+                                     + " argument(s), but received " + std::to_string(arg_types.size()) + ".",
+                                 expr.loc);
+                } else {
+                    for (size_t i = 0; i < arg_types.size(); ++i) {
+                        if (!fn_type->param_types[i]->is_assignable_from(arg_types[i])) {
+                            report_error("Argument " + std::to_string(i + 1) + " of function '"
+                                             + callee + "': Cannot pass '" + arg_types[i]->to_string()
+                                             + "' to parameter of type '"
+                                             + fn_type->param_types[i]->to_string() + "'.",
+                                         expr.loc);
+                        }
+                    }
+                }
+                return fn_type->return_type;
+            }
+            return Type::make_any();
+        }
+    }
+
     TypePtr obj_type = check_expr(expr.object);
     std::vector<TypePtr> arg_types;
     for (Expr* arg : expr.args) {

@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 #include <memory>
 #include <optional>
 
@@ -98,6 +99,9 @@ private:
     std::vector<std::unordered_map<std::string, ScopedSymbol>> scopes_;
     std::unordered_map<std::string, TypePtr> type_defs_;
     std::unordered_map<std::string, TypePtr> functions_;
+
+    // Aliased imports: `import "x.stn" as gui;` makes gui.fn(...) a function call
+    std::unordered_set<std::string> import_aliases_;
 
     // First-declaration sites of user functions / types, for duplicate
     // detection when imported modules are merged into one program.

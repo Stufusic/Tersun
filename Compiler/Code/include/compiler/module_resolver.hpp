@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <unordered_set>
+#include <unordered_map>
 
 namespace setun {
 
@@ -21,6 +22,13 @@ public:
 
 private:
     std::string resolve_path(const std::string& module_spec, const std::string& current_dir);
+
+    // Rewrites call sites inside an aliased module after its top-level
+    // declarations were renamed (pub -> alias.Name, priv -> alias__Name).
+    void rewrite_module_references(Program& program,
+                                   const std::unordered_map<std::string, std::string>& rename_map);
+    void rewrite_expr_references(Expr* expr,
+                                 const std::unordered_map<std::string, std::string>& rename_map);
 
     ArenaAllocator& arena_;
     std::vector<std::string> include_paths_;

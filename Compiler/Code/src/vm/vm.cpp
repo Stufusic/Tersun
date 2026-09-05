@@ -71,6 +71,7 @@ void VM::reset() {
     stack_.clear();
     std::fill(locals_.begin(), locals_.end(), VMValue{});
     std::fill(globals_.begin(), globals_.end(), VMValue{});
+    try_stack_.clear();
     call_stack_.clear();
     for (auto& r : tafpu_regs_) r = TafpuNum{};
     for (auto& r : tryte_regs_) r = 0;
@@ -159,6 +160,9 @@ void VM::init_dispatch_table() {
     dispatch_table_[static_cast<uint8_t>(OpCode::OP_INVOKE_METHOD)] = &VM::handle_invoke_method;
     dispatch_table_[static_cast<uint8_t>(OpCode::OP_SET_INDEX)] = &VM::handle_set_index;
     dispatch_table_[static_cast<uint8_t>(OpCode::OP_NEW_ARRAY)] = &VM::handle_new_array;
+    dispatch_table_[static_cast<uint8_t>(OpCode::OP_TRY)] = &VM::handle_try;
+    dispatch_table_[static_cast<uint8_t>(OpCode::OP_THROW)] = &VM::handle_throw;
+    dispatch_table_[static_cast<uint8_t>(OpCode::OP_POP_TRY)] = &VM::handle_pop_try;
 }
 
 void VM::run(const Chunk& chunk) {
@@ -180,7 +184,20 @@ void VM::run(const Chunk& chunk) {
             oss << "VM Exception: Unknown opcode 0x" << std::hex << static_cast<int>(opcode_byte) << " at offset " << std::dec << (ip_ - 1);
             throw VMException(oss.str());
         }
-        (this->*handler)(chunk);
+        try {
+            (this->*handler)(chunk);
+        } catch (const VMException& e) {
+            // Unwind to the innermost try frame; with none active the error
+            // propagates out of run() as before.
+            if (try_stack_.empty()) throw;
+            TryFrame frame = try_stack_.back();
+            try_stack_.pop_back();
+            stack_.truncate(frame.stack_depth);
+            if (frame.locals_len <= locals_.size()) locals_.resize(frame.locals_len);
+            if (frame.call_depth <= call_stack_.size()) call_stack_.resize(frame.call_depth);
+            ip_ = frame.catch_ip;
+            stack_.push(VMValue(std::string(e.what())));
+        }
     }
 }
 
@@ -1416,6 +1433,27 @@ void VM::handle_new_array(const Chunk& chunk) {
         (*arr)[i] = stack_.pop();
     }
     stack_.push(VMValue(arr));
+}
+
+void VM::handle_try(const Chunk& chunk) {
+    int16_t offset = read_int16(chunk);
+    TryFrame frame;
+    frame.catch_ip = static_cast<size_t>(ip_ + offset);
+    frame.stack_depth = stack_.size();
+    frame.locals_len = locals_.size();
+    frame.call_depth = call_stack_.size();
+    try_stack_.push_back(frame);
+}
+
+void VM::handle_throw(const Chunk&) {
+    VMValue msg = stack_.pop();
+    throw VMException(msg.to_string());
+}
+
+void VM::handle_pop_try(const Chunk&) {
+    if (!try_stack_.empty()) {
+        try_stack_.pop_back();
+    }
 }
 
 } // namespace setun

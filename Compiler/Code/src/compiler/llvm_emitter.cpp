@@ -353,6 +353,9 @@ void LLVMEmitter::transpile_stmt(Stmt* stmt, std::ostringstream& oss, int indent
                 oss << pad << "}\n";
             }
         }
+        else if constexpr (std::is_same_v<T, TryCatchStmt> || std::is_same_v<T, ThrowStmt>) {
+            throw CompilerException("[emit-c] exceptions (try/catch/throw) are not supported by the C transpiler yet.");
+        }
         else if constexpr (std::is_same_v<T, BreakContinueStmt>) {
             oss << pad << (s.is_break ? "break" : "continue") << ";";
             if (!s.is_break) oss << " // NOTE: lands on the condition, not the update clause";
@@ -1620,6 +1623,9 @@ void LLVMEmitter::emit_llvm_stmt(Stmt* stmt, std::ostringstream& oss) {
             oss << "    br label %" << cond_lbl << "\n";
 
             oss << exit_lbl << ":\n";
+        }
+        else if constexpr (std::is_same_v<T, TryCatchStmt> || std::is_same_v<T, ThrowStmt>) {
+            throw CompilerException("[LLVM AOT] exceptions (try/catch/throw) are not supported on the native target yet.");
         }
         else if constexpr (std::is_same_v<T, BreakContinueStmt>) {
             const IrLoop* target = nullptr;

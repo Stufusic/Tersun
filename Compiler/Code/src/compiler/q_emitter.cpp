@@ -374,6 +374,10 @@ void QEmitter::emit_stmt(Stmt* stmt, qvm::QChunk& chunk) {
         else if constexpr (std::is_same_v<T, ForStmt>) {
             emit_for_unroll(s, chunk);
         }
+        else if constexpr (std::is_same_v<T, TryCatchStmt>
+                           || std::is_same_v<T, ThrowStmt>) {
+            throw CompilerException("[Q-ISA] exceptions (try/catch/throw) are not supported on the quantum target.");
+        }
         else if constexpr (std::is_same_v<T, BreakContinueStmt>) {
             if (unroll_stack_.empty()) {
                 throw CompilerException("[Q-ISA] 'break'/'continue' outside of an unrolled for loop.");

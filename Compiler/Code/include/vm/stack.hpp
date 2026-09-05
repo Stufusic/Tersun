@@ -44,6 +44,13 @@ public:
     bool empty() const { return stack_.empty(); }
     void clear() { stack_.clear(); }
 
+    // Drop values above depth (exception unwinding).
+    void truncate(size_t depth) {
+        if (depth < stack_.size()) {
+            stack_.resize(depth);
+        }
+    }
+
     const std::vector<VMValue>& raw_stack() const { return stack_; }
 
 private:

@@ -86,6 +86,9 @@ enum class OpCode : uint8_t {
     OP_INVOKE_METHOD   = 0xA4, // uint16_t method_name_string_id, uint8_t argc
     OP_SET_INDEX       = 0xA5, // Pops value, index, array -> array[index] = value
     OP_NEW_ARRAY       = 0xA6, // uint16_t element_count (pops elements -> pushes VMArray)
+    OP_TRY             = 0xA7, // int16_t catch_offset (pushes a try frame)
+    OP_THROW           = 0xA8, // Pops error message string -> raises VMException
+    OP_POP_TRY         = 0xA9, // Pops the innermost try frame (normal path)
 
     OP_HALT            = 0xFF
 };

@@ -87,6 +87,9 @@ std::string_view opcode_name(OpCode op) {
         case OpCode::OP_INVOKE_METHOD: return "OP_INVOKE_METHOD";
         case OpCode::OP_SET_INDEX: return "OP_SET_INDEX";
         case OpCode::OP_NEW_ARRAY: return "OP_NEW_ARRAY";
+        case OpCode::OP_TRY: return "OP_TRY";
+        case OpCode::OP_THROW: return "OP_THROW";
+        case OpCode::OP_POP_TRY: return "OP_POP_TRY";
         case OpCode::OP_HALT: return "OP_HALT";
     }
     return "UNKNOWN_OP";
@@ -259,6 +262,15 @@ std::string Chunk::disassemble(const std::string& name) const {
                 oss << " \"" << s << "\" (argc " << static_cast<int>(argc) << ")";
                 break;
             }
+            case OpCode::OP_TRY: {
+                int16_t off = static_cast<int16_t>(code[offset] | (code[offset + 1] << 8));
+                offset += 2;
+                oss << " catch -> " << (offset + off);
+                break;
+            }
+            case OpCode::OP_THROW:
+            case OpCode::OP_POP_TRY:
+                break;
             case OpCode::OP_NEW_ARRAY: {
                 uint16_t count = static_cast<uint16_t>(code[offset] | (code[offset + 1] << 8));
                 offset += 2;
@@ -413,9 +425,18 @@ Chunk BytecodeEmitter::compile(const Program& program) {
     next_global_slot_ = 0;
     functions_.clear();
     unresolved_calls_.clear();
+    import_aliases_.clear();
     class_fields_.clear();
     class_methods_.clear();
     class_init_arity_.clear();
+
+    // Collect aliased imports for dotted-call lowering
+    for (Stmt* stmt : program.statements) {
+        if (stmt && std::holds_alternative<ImportStmt>(stmt->data)) {
+            auto& imp = std::get<ImportStmt>(stmt->data);
+            if (!imp.alias.empty()) import_aliases_.insert(imp.alias);
+        }
+    }
 
     for (Stmt* stmt : program.statements) {
         emit_stmt(stmt);
@@ -477,6 +498,8 @@ void BytecodeEmitter::emit_stmt(Stmt* stmt) {
         else if constexpr (std::is_same_v<T, WhileStmt>) emit_while(s);
         else if constexpr (std::is_same_v<T, ForStmt>) emit_for_stmt(s);
         else if constexpr (std::is_same_v<T, BreakContinueStmt>) emit_break_continue(s);
+        else if constexpr (std::is_same_v<T, TryCatchStmt>) emit_try_catch(s);
+        else if constexpr (std::is_same_v<T, ThrowStmt>) emit_throw_stmt(s);
         else if constexpr (std::is_same_v<T, ReturnStmt>) emit_return(s);
         else if constexpr (std::is_same_v<T, FnDeclStmt>) emit_fn_decl(s);
         else if constexpr (std::is_same_v<T, MatchStmt>) emit_match(s);
@@ -850,11 +873,56 @@ void BytecodeEmitter::emit_for_stmt(const ForStmt& stmt) {
     symbol_table_.exit_scope();
 }
 
+void BytecodeEmitter::emit_try_catch(const TryCatchStmt& stmt) {
+    chunk_.write_opcode(OpCode::OP_TRY, stmt.loc.line);
+    size_t catch_patch = chunk_.code.size();
+    chunk_.write_int16(0, stmt.loc.line); // catch target placeholder
+
+    ++try_depth_;
+    emit_stmt(stmt.try_body);
+    --try_depth_;
+
+    chunk_.write_opcode(OpCode::OP_POP_TRY, stmt.loc.line); // normal path
+    size_t end_jump = chunk_.emit_jump(OpCode::OP_JUMP, stmt.loc.line);
+
+    size_t catch_target = chunk_.code.size();
+    chunk_.patch_jump_to(catch_patch, catch_target);
+    // The VM pushes the error message string before landing here.
+
+    symbol_table_.enter_scope();
+    if (!stmt.catch_var.empty()) {
+        uint16_t slot = next_local_slot_++;
+        symbol_table_.define(stmt.catch_var, DataType::STRING, false, slot);
+        chunk_.write_opcode(OpCode::OP_STORE_LOCAL, stmt.loc.line);
+        chunk_.write_int16(static_cast<int16_t>(slot), stmt.loc.line);
+    }
+    emit_stmt(stmt.catch_body);
+    symbol_table_.exit_scope();
+
+    chunk_.patch_jump(end_jump);
+}
+
+void BytecodeEmitter::emit_throw_stmt(const ThrowStmt& stmt) {
+    if (stmt.value) {
+        emit_expr(stmt.value);
+    } else {
+        uint16_t id = chunk_.add_string("error");
+        chunk_.write_opcode(OpCode::OP_PUSH_STRING, stmt.loc.line);
+        chunk_.write_int16(static_cast<int16_t>(id), stmt.loc.line);
+    }
+    chunk_.write_opcode(OpCode::OP_THROW, stmt.loc.line);
+}
+
 void BytecodeEmitter::emit_break_continue(const BreakContinueStmt& stmt) {
     if (loop_stack_.empty()) {
         throw CompilerException("[Emitter Error] " + loc_str(stmt.loc) + " - '"
                                 + (stmt.is_break ? std::string("break") : std::string("continue"))
                                 + "' outside of a loop.");
+    }
+
+    // Escaping the loop also escapes any enclosing try bodies.
+    for (int t = 0; t < try_depth_; ++t) {
+        chunk_.write_opcode(OpCode::OP_POP_TRY, stmt.loc.line);
     }
 
     auto emit_jump_to = [&](LoopContext& loop, bool is_break) {
@@ -887,6 +955,10 @@ void BytecodeEmitter::emit_return(const ReturnStmt& stmt) {
         // Push 0 / void default
         chunk_.write_opcode(OpCode::OP_PUSH_INT, stmt.loc.line);
         chunk_.write_int64(0, stmt.loc.line);
+    }
+    // Returning also escapes any enclosing try bodies.
+    for (int t = 0; t < try_depth_; ++t) {
+        chunk_.write_opcode(OpCode::OP_POP_TRY, stmt.loc.line);
     }
     chunk_.write_opcode(OpCode::OP_RET, stmt.loc.line);
 }
@@ -1128,44 +1200,7 @@ void BytecodeEmitter::emit_call(const CallExpr& expr) {
     }
     // User-defined Class or Struct construction e.g. Point(10, 20)
     if (class_fields_.find(expr.callee) != class_fields_.end()) {
-        auto arity_it = class_init_arity_.find(expr.callee);
-        int init_arity = (arity_it != class_init_arity_.end()) ? arity_it->second : -1;
-
-        if (expr.args.empty()) {
-            // Legacy pattern: X() then obj.init(...) called manually.
-            uint16_t tid = chunk_.add_string(expr.callee);
-            chunk_.write_opcode(OpCode::OP_NEW_INSTANCE, expr.loc.line);
-            chunk_.write_int16(static_cast<int16_t>(tid), expr.loc.line);
-            chunk_.write_byte(0, expr.loc.line);
-            return;
-        }
-
-        if (init_arity < 0) {
-            throw CompilerException("[Emitter Error] " + loc_str(expr.loc) + " - Class '" + expr.callee + "' has no init() method; construct it with '" + expr.callee + "()' and set its fields afterwards.");
-        }
-        if (init_arity == 0) {
-            throw CompilerException("[Emitter Error] " + loc_str(expr.loc) + " - init() of class '" + expr.callee + "' takes no arguments; construct with '" + expr.callee + "()' then call init().");
-        }
-        if (static_cast<int>(expr.args.size()) != init_arity) {
-            throw CompilerException("[Emitter Error] " + loc_str(expr.loc) + " - Constructor of class '" + expr.callee + "' (init) expects " + std::to_string(init_arity)
-                                    + " argument(s), but received " + std::to_string(expr.args.size()) + ".");
-        }
-
-        // X(args...) lowers to: obj = X(); obj.init(args...)
-        uint16_t tid = chunk_.add_string(expr.callee);
-        chunk_.write_opcode(OpCode::OP_NEW_INSTANCE, expr.loc.line);
-        chunk_.write_int16(static_cast<int16_t>(tid), expr.loc.line);
-        chunk_.write_byte(0, expr.loc.line);
-        chunk_.write_opcode(OpCode::OP_DUP, expr.loc.line);
-        for (Expr* arg : expr.args) {
-            emit_expr(arg);
-        }
-        uint16_t iid = chunk_.add_string("init");
-        chunk_.write_opcode(OpCode::OP_INVOKE_METHOD, expr.loc.line);
-        chunk_.write_int16(static_cast<int16_t>(iid), expr.loc.line);
-        chunk_.write_byte(static_cast<uint8_t>(expr.args.size()), expr.loc.line);
-        // Discard init's default return value; the object stays on the stack.
-        chunk_.write_opcode(OpCode::OP_POP, expr.loc.line);
+        emit_class_ctor(expr.callee, expr.args, expr.loc);
         return;
     }
     if (expr.callee == "trace") {
@@ -1342,6 +1377,51 @@ void BytecodeEmitter::emit_call(const CallExpr& expr) {
     }
 }
 
+// Shared class-construction lowering: X() (legacy manual-init) or
+// X(args...) which auto-calls init(args...).
+void BytecodeEmitter::emit_class_ctor(const std::string& callee,
+                                      const std::vector<Expr*>& args,
+                                      const SourceLocation& loc) {
+    auto arity_it = class_init_arity_.find(callee);
+    int init_arity = (arity_it != class_init_arity_.end()) ? arity_it->second : -1;
+
+    if (args.empty()) {
+        // Legacy pattern: X() then obj.init(...) called manually.
+        uint16_t tid = chunk_.add_string(callee);
+        chunk_.write_opcode(OpCode::OP_NEW_INSTANCE, loc.line);
+        chunk_.write_int16(static_cast<int16_t>(tid), loc.line);
+        chunk_.write_byte(0, loc.line);
+        return;
+    }
+
+    if (init_arity < 0) {
+        throw CompilerException("[Emitter Error] " + loc_str(loc) + " - Class '" + callee + "' has no init() method; construct it with '" + callee + "()' and set its fields afterwards.");
+    }
+    if (init_arity == 0) {
+        throw CompilerException("[Emitter Error] " + loc_str(loc) + " - init() of class '" + callee + "' takes no arguments; construct with '" + callee + "()' then call init().");
+    }
+    if (static_cast<int>(args.size()) != init_arity) {
+        throw CompilerException("[Emitter Error] " + loc_str(loc) + " - Constructor of class '" + callee + "' (init) expects " + std::to_string(init_arity)
+                                + " argument(s), but received " + std::to_string(args.size()) + ".");
+    }
+
+    // X(args...) lowers to: obj = X(); obj.init(args...)
+    uint16_t tid = chunk_.add_string(callee);
+    chunk_.write_opcode(OpCode::OP_NEW_INSTANCE, loc.line);
+    chunk_.write_int16(static_cast<int16_t>(tid), loc.line);
+    chunk_.write_byte(0, loc.line);
+    chunk_.write_opcode(OpCode::OP_DUP, loc.line);
+    for (Expr* arg : args) {
+        emit_expr(arg);
+    }
+    uint16_t iid = chunk_.add_string("init");
+    chunk_.write_opcode(OpCode::OP_INVOKE_METHOD, loc.line);
+    chunk_.write_int16(static_cast<int16_t>(iid), loc.line);
+    chunk_.write_byte(static_cast<uint8_t>(args.size()), loc.line);
+    // Discard init's default return value; the object stays on the stack.
+    chunk_.write_opcode(OpCode::OP_POP, loc.line);
+}
+
 void BytecodeEmitter::emit_tafpu_construct(const TafpuConstructExpr& expr) {
     // Evaluate A, B, S on stack
     emit_expr(expr.a);
@@ -1413,6 +1493,38 @@ void BytecodeEmitter::emit_member_access(const MemberAccessExpr& expr) {
 }
 
 void BytecodeEmitter::emit_method_call(const MethodCallExpr& expr) {
+    // Aliased import call: gui.fn(args) is a plain function call of "gui.fn",
+    // or a namespaced constructor when callee names a known class.
+    if (expr.object && std::holds_alternative<IdentifierExpr>(expr.object->data)) {
+        const auto& obj_name = std::get<IdentifierExpr>(expr.object->data).name;
+        if (import_aliases_.count(obj_name)) {
+            std::string callee = obj_name + "." + expr.method;
+
+            if (class_fields_.count(callee)) {
+                // Namespaced constructor: mx.Meter(100)
+                emit_class_ctor(callee, expr.args, expr.loc);
+                return;
+            }
+
+            for (Expr* arg : expr.args) {
+                emit_expr(arg);
+            }
+            chunk_.write_opcode(OpCode::OP_CALL, expr.loc.line);
+            size_t patch_offset = chunk_.code.size();
+            chunk_.write_int16(0, expr.loc.line);
+            chunk_.write_byte(static_cast<uint8_t>(expr.args.size()), expr.loc.line);
+            auto it = functions_.find(callee);
+            if (it != functions_.end()) {
+                uint16_t fn_entry = it->second;
+                chunk_.code[patch_offset] = static_cast<uint8_t>(fn_entry & 0xFF);
+                chunk_.code[patch_offset + 1] = static_cast<uint8_t>((fn_entry >> 8) & 0xFF);
+            } else {
+                unresolved_calls_.push_back({patch_offset, callee, expr.loc});
+            }
+            return;
+        }
+    }
+
     if (expr.object) emit_expr(expr.object);
     for (Expr* arg : expr.args) {
         emit_expr(arg);

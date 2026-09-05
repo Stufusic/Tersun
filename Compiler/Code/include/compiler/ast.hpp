@@ -298,6 +298,18 @@ struct BreakContinueStmt {
     SourceLocation loc;
 };
 
+struct TryCatchStmt {
+    Stmt* try_body{nullptr};
+    std::string catch_var;   // empty = errors are not bound
+    Stmt* catch_body{nullptr};
+    SourceLocation loc;
+};
+
+struct ThrowStmt {
+    Expr* value{nullptr};    // error message expression
+    SourceLocation loc;
+};
+
 struct ReturnStmt {
     Expr* value{nullptr}; // Optional
     SourceLocation loc;
@@ -312,6 +324,7 @@ struct Parameter {
 
 struct FnDeclStmt {
     std::string name;
+    bool is_pub{true};       // pub/priv visibility (priv = module-private)
     std::vector<Parameter> params;
     DataType return_type{DataType::VOID};
     Stmt* body{nullptr};
@@ -343,6 +356,7 @@ struct MethodDecl {
 
 struct StructDeclStmt {
     std::string name;
+    bool is_pub{true};       // pub/priv visibility
     std::vector<std::string> interfaces;
     std::vector<FieldDecl> fields;
     std::vector<MethodDecl> methods;
@@ -352,6 +366,7 @@ struct StructDeclStmt {
 
 struct ClassDeclStmt {
     std::string name;
+    bool is_pub{true};       // pub/priv visibility
     std::string super_class;
     std::vector<std::string> interfaces;
     std::vector<FieldDecl> fields;
@@ -391,6 +406,7 @@ struct MatchStmt {
 
 struct ImportStmt {
     std::string module_path;
+    std::string alias;      // non-empty for `import "x.stn" as alias;`
     SourceLocation loc;
 };
 
@@ -413,7 +429,9 @@ using StmtData = std::variant<
     MatchStmt,
     ImportStmt,
     ForStmt,
-    BreakContinueStmt
+    BreakContinueStmt,
+    TryCatchStmt,
+    ThrowStmt
 >;
 
 struct Stmt {
