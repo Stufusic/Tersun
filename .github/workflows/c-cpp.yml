@@ -7,17 +7,35 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
-
-    runs-on: ubuntu-latest
-
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
     steps:
     - uses: actions/checkout@v4
-    - name: configure
-      run: ./configure
-    - name: make
-      run: make
-    - name: make check
-      run: make check
-    - name: make distcheck
-      run: make distcheck
+
+    - name: Set up MinGW GCC
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: false
+        install: mingw-w64-x86_64-gcc
+
+    - name: Build toolchain (setunc.exe + setunc_test.exe)
+      working-directory: Compiler/Code
+      run: cmd //c build_toolchain.bat
+
+    - name: Run self-test suite (includes .stn semantics scripts)
+      working-directory: Compiler/Code
+      run: ./setunc_test.exe
+
+    - name: Upload toolchain binaries
+      uses: actions/upload-artifact@v4
+      with:
+        name: tersun-toolchain
+        path: |
+          Compiler/Code/setunc.exe
+          Compiler/Code/setunc_test.exe
+          Compiler/Code/libtersun_rt.a
+        if-no-files-found: error

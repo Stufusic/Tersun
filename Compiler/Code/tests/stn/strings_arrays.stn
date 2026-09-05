@@ -1,0 +1,27 @@
+// Built-in string & array semantics.
+fn main() {
+    let s = "hello";
+    assert_eq(s.len(), 5);
+    assert_eq(s.substr(1, 3), "ell");
+    assert_eq(s.pop(), "o");
+    // Strings are immutable: pop/substr must not mutate s
+    assert_eq(s.len(), 5);
+    assert_eq(s.substr(0, 1) + s.pop(), "ho");
+
+    // NOTE: a 3-element all-int literal [a, b, c] is parsed as a TAFPU
+    // construct, so use 4 elements for a plain array here.
+    let arr = [10, 20, 30, 50];
+    assert_eq(arr.len(), 4);
+    arr.push(60);
+    assert_eq(arr.len(), 5);
+    assert_eq(arr[4], 60);
+    assert_eq(arr[-1], 60);
+    assert_eq(arr[0], 10);
+    let popped = arr.pop();
+    assert_eq(popped, 60);
+    assert_eq(arr.len(), 4);
+
+    let empty = "";
+    assert_eq(empty.len(), 0);
+    println("STRARR_OK");
+}

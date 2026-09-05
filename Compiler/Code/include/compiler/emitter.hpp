@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <cstdint>
+#include <tuple>
 
 #include <unordered_map>
 
@@ -98,7 +99,8 @@ private:
 
     // Functions table for address resolution & recursion
     std::unordered_map<std::string, uint16_t> functions_;
-    std::vector<std::pair<size_t, std::string>> unresolved_calls_;
+    // (patch_offset, callee name, call-site location) for diagnostics
+    std::vector<std::tuple<size_t, std::string, SourceLocation>> unresolved_calls_;
 
     // OOP Classes & Structs registry
     std::unordered_map<std::string, std::vector<std::string>> class_fields_;

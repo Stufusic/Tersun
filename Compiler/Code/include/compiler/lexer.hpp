@@ -9,7 +9,7 @@ namespace setun {
 
 class Lexer {
 public:
-    explicit Lexer(std::string_view source);
+    explicit Lexer(std::string_view source, std::string file = "");
 
     // Tokenize full source code into a list of tokens in O(N)
     std::vector<Token> tokenize();
@@ -32,6 +32,7 @@ private:
     Token scan_ternary_literal();
 
     std::string_view source_;
+    std::string file_;
     size_t start_{0};
     size_t current_{0};
     size_t line_{1};

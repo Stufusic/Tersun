@@ -1,0 +1,10 @@
+// Module import resolution, helper functions/classes, and library main
+// namespacing. The runner asserts the captured output is exactly MOD_OK.
+import "stn_helper.stn";
+
+fn main() {
+    assert_eq(helper_double(21), 42);
+    let b = HelperBox("h");
+    assert_eq(b.label, "h");
+    println("MOD_OK");
+}

@@ -123,8 +123,13 @@ void TypeChecker::report_warning(const std::string& message, SourceLocation loc)
 std::string TypeChecker::format_diagnostics(const std::string& /*source_code*/) const {
     std::ostringstream oss;
     for (const auto& err : errors_) {
-        oss << (err.is_warning ? "[Warning]" : "[Type Error]")
-            << " Line " << err.loc.line << ":" << err.loc.column << " - "
+        oss << (err.is_warning ? "[Warning]" : "[Type Error]") << " ";
+        if (!err.loc.file.empty()) {
+            oss << err.loc.file << ":";
+        } else {
+            oss << "Line ";
+        }
+        oss << err.loc.line << ":" << err.loc.column << " - "
             << err.message << "\n";
     }
     return oss.str();

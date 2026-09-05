@@ -64,6 +64,9 @@ void run_phase1_type_checker_tests();
 // Tersun 1.0.1 Full LLVM Native AOT Backend Verification
 void run_tersun_101_llvm_tests();
 
+// Tersun 1.0.3 Core Semantics (.stn scripts + negative compile tests)
+void test_stn_semantics_suite();
+
 } // namespace setun
 
 // Tersun 1.0.2 QVM Verification Suite
@@ -143,6 +146,9 @@ int run_all_tests() {
 
         std::cout << "\n[Tersun 1.0.2 Quantum Evolution] Testing QVM & 2-Bit Qubit Mapping...\n";
         run_qvm_tests();
+
+        std::cout << "\n[Tersun 1.0.3 Core Semantics] Testing .stn Scripts (ctor, strings, logic, modules, fs)...\n";
+        setun::test_stn_semantics_suite();
 
         std::cout << "\n==========================================================\n";
         std::cout << "  ALL TESTS PASSED SUCCESSFULLY! (100% Verification)      \n";

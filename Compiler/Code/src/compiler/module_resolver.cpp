@@ -155,7 +155,7 @@ bool ModuleResolver::resolve_program(Program& program, const std::string& curren
             // Tokenize & Parse (surface errors with the module file context)
             Program imported_prog;
             try {
-                Lexer lexer(source);
+                Lexer lexer(source, resolved_file);
                 auto tokens = lexer.tokenize();
                 Parser parser(tokens, arena_);
                 imported_prog = parser.parse_program();

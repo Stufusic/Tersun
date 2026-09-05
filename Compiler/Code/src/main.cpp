@@ -96,7 +96,7 @@ int cmd_run(const std::string& path) {
             // Text source (.taf / .setun)
             std::string source = read_file(path);
             ArenaAllocator arena;
-            Lexer lexer(source);
+            Lexer lexer(source, path);
             auto tokens = lexer.tokenize();
 
             Parser parser(tokens, arena);
@@ -139,7 +139,7 @@ int cmd_compile(const std::string& source_path, const std::string& out_path) {
     try {
         std::string source = read_file(source_path);
         ArenaAllocator arena;
-        Lexer lexer(source);
+        Lexer lexer(source, source_path);
         auto tokens = lexer.tokenize();
 
         Parser parser(tokens, arena);
@@ -184,7 +184,7 @@ int cmd_emit_c(const std::string& source_path) {
     try {
         std::string source = read_file(source_path);
         ArenaAllocator arena;
-        Lexer lexer(source);
+        Lexer lexer(source, source_path);
         auto tokens = lexer.tokenize();
 
         Parser parser(tokens, arena);
@@ -211,7 +211,7 @@ int cmd_emit_llvm(const std::string& source_path, const std::string& out_path = 
     try {
         std::string source = read_file(source_path);
         ArenaAllocator arena;
-        Lexer lexer(source);
+        Lexer lexer(source, source_path);
         auto tokens = lexer.tokenize();
 
         Parser parser(tokens, arena);
@@ -262,7 +262,7 @@ int cmd_compile_llvm(const std::string& source_path, const std::string& out_path
     try {
         std::string source = read_file(source_path);
         ArenaAllocator arena;
-        Lexer lexer(source);
+        Lexer lexer(source, source_path);
         auto tokens = lexer.tokenize();
 
         Parser parser(tokens, arena);
@@ -304,7 +304,7 @@ int cmd_compile_native(const std::string& source_path, const std::string& out_pa
     try {
         std::string source = read_file(source_path);
         ArenaAllocator arena;
-        Lexer lexer(source);
+        Lexer lexer(source, source_path);
         auto tokens = lexer.tokenize();
 
         Parser parser(tokens, arena);
@@ -363,7 +363,7 @@ int cmd_disasm(const std::string& path) {
         } else {
             std::string source = read_file(path);
             ArenaAllocator arena;
-            Lexer lexer(source);
+            Lexer lexer(source, path);
             auto tokens = lexer.tokenize();
 
             Parser parser(tokens, arena);
@@ -651,7 +651,7 @@ int main(int argc, char* argv[]) {
             try {
                 std::string source = read_file(source_file);
                 ArenaAllocator arena;
-                Lexer lexer(source);
+                Lexer lexer(source, source_file);
                 auto tokens = lexer.tokenize();
                 Parser parser(tokens, arena);
                 Program program = parser.parse_program();
@@ -730,7 +730,7 @@ int main(int argc, char* argv[]) {
         try {
             std::string source = read_file(source_file);
             ArenaAllocator arena;
-            Lexer lexer(source);
+            Lexer lexer(source, source_file);
             auto tokens = lexer.tokenize();
             Parser parser(tokens, arena);
             Program program = parser.parse_program();
@@ -792,7 +792,7 @@ int main(int argc, char* argv[]) {
         if (is_jit_ram && !target_file.empty()) {
             std::string source = read_file(target_file);
             ArenaAllocator arena;
-            Lexer lexer(source);
+            Lexer lexer(source, target_file);
             auto tokens = lexer.tokenize();
             Parser parser(tokens, arena);
             Program program = parser.parse_program();

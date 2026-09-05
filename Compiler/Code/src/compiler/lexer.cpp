@@ -141,8 +141,8 @@ static const std::unordered_map<std::string_view, TokenType> KEYWORDS = {
     {"not", TokenType::KW_NOT}
 };
 
-Lexer::Lexer(std::string_view source)
-    : source_(source), start_(0), current_(0), line_(1), column_(1) {
+Lexer::Lexer(std::string_view source, std::string file)
+    : source_(source), file_(std::move(file)), start_(0), current_(0), line_(1), column_(1) {
     if (source_.size() >= 3 &&
         static_cast<unsigned char>(source_[0]) == 0xEF &&
         static_cast<unsigned char>(source_[1]) == 0xBB &&
@@ -230,6 +230,12 @@ std::vector<Token> Lexer::tokenize() {
         tokens.push_back(tok);
         if (tok.type == TokenType::END_OF_FILE) {
             break;
+        }
+    }
+    // Stamp the source file onto every location so diagnostics can name it.
+    if (!file_.empty()) {
+        for (auto& tok : tokens) {
+            tok.location.file = file_;
         }
     }
     return tokens;

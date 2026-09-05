@@ -106,6 +106,8 @@ enum class TokenType {
 struct SourceLocation {
     size_t line{1};
     size_t column{1};
+    // Source file the location refers to; empty for inline/test sources.
+    std::string file;
 };
 
 struct Token {

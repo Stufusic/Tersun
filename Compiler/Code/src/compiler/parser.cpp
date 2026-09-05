@@ -3,6 +3,14 @@
 
 namespace setun {
 
+// "file:line:col" when the source file is known, "Line line:col" otherwise.
+static std::string format_loc(const SourceLocation& loc) {
+    if (!loc.file.empty()) {
+        return loc.file + ":" + std::to_string(loc.line) + ":" + std::to_string(loc.column);
+    }
+    return "Line " + std::to_string(loc.line) + ":" + std::to_string(loc.column);
+}
+
 Parser::Parser(const std::vector<Token>& tokens, ArenaAllocator& arena)
     : tokens_(tokens), arena_(arena), current_(0) {}
 
@@ -47,7 +55,7 @@ Token Parser::consume(TokenType type, const std::string& error_message) {
         return tok;
     }
     std::ostringstream oss;
-    oss << "[Parser Error] Line " << peek().location.line << ":" << peek().location.column
+    oss << "[Parser Error] " << format_loc(peek().location)
         << " - " << error_message << " (Got '" << peek().lexeme << "' [" << token_type_name(peek().type) << "])";
     throw CompilerException(oss.str());
 }
@@ -887,7 +895,7 @@ Expr* Parser::parse_prefix() {
 
         default: {
             std::ostringstream oss;
-            oss << "[Parser Error] Line " << loc.line << ":" << loc.column
+            oss << "[Parser Error] " << format_loc(loc)
                 << " - Unexpected token in prefix position: '" << tok.lexeme << "' [" << token_type_name(tok.type) << "]";
             throw CompilerException(oss.str());
         }

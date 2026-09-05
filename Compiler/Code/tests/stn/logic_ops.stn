@@ -1,0 +1,31 @@
+// Logical operators && / || (Kleene min/max lowering) and classic min/max.
+class Flags {
+    pub ok: bool;
+}
+
+fn main() {
+    let a = true;
+    let b = false;
+    assert_eq(a && b, false);
+    assert_eq(a || b, true);
+    assert_eq(a && true, true);
+    assert_eq(b || false, false);
+    // Precedence: && binds tighter than ||
+    assert_eq(true || false && false, true);
+
+    // Result stays bool when both operands are bool
+    let f = Flags();
+    f.ok = a && (1 == 1);
+    assert_eq(f.ok, true);
+
+    // Ternary Kleene min/max on -1/0/1 ints is unchanged
+    let t = 0 - 1;
+    assert_eq(t min 0, 0 - 1);
+    assert_eq(1 max 0, 1);
+    assert_eq((0 - 5) max 3, 3);
+
+    let n = 5;
+    if (n > 3 && n < 10) {
+        println("LOGIC_OK");
+    }
+}

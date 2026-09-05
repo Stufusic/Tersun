@@ -8,6 +8,14 @@
 
 namespace setun {
 
+// "file:line:col" when the source file is known, "line:col" otherwise.
+static std::string loc_str(const SourceLocation& loc) {
+    if (!loc.file.empty()) {
+        return loc.file + ":" + std::to_string(loc.line) + ":" + std::to_string(loc.column);
+    }
+    return std::to_string(loc.line) + ":" + std::to_string(loc.column);
+}
+
 std::string_view opcode_name(OpCode op) {
     switch (op) {
         case OpCode::OP_NOP: return "OP_NOP";
@@ -425,10 +433,13 @@ Chunk BytecodeEmitter::compile(const Program& program) {
     chunk_.write_opcode(OpCode::OP_HALT, program.statements.empty() ? 1 : program.statements.back()->loc.line);
 
     // Patch all unresolved function calls
-    for (const auto& [patch_offset, fn_name] : unresolved_calls_) {
+    for (const auto& uc : unresolved_calls_) {
+        const size_t patch_offset = std::get<0>(uc);
+        const std::string& fn_name = std::get<1>(uc);
+        const SourceLocation& loc = std::get<2>(uc);
         auto it = functions_.find(fn_name);
         if (it == functions_.end()) {
-            throw CompilerException("Undefined function '" + fn_name + "' called.");
+            throw CompilerException("[Emitter Error] " + loc_str(loc) + " - Undefined function '" + fn_name + "' called.");
         }
         uint16_t fn_entry = it->second;
         chunk_.code[patch_offset] = static_cast<uint8_t>(fn_entry & 0xFF);
@@ -504,7 +515,7 @@ void BytecodeEmitter::emit_var_decl(const VarDeclStmt& stmt) {
     uint16_t slot = is_global ? next_global_slot_++ : next_local_slot_++;
 
     if (!symbol_table_.define(stmt.name, stmt.type, is_global, slot)) {
-        throw CompilerException("Variable '" + stmt.name + "' already defined in this scope.");
+        throw CompilerException("[Emitter Error] " + loc_str(stmt.loc) + " - Variable '" + stmt.name + "' already defined in this scope.");
     }
 
     if (stmt.init) {
@@ -526,7 +537,7 @@ void BytecodeEmitter::emit_var_decl(const VarDeclStmt& stmt) {
 void BytecodeEmitter::emit_assign(const AssignStmt& stmt) {
     auto opt_sym = symbol_table_.resolve(stmt.name);
     if (!opt_sym.has_value()) {
-        throw CompilerException("Undefined variable '" + stmt.name + "'.");
+        throw CompilerException("[Emitter Error] " + loc_str(stmt.loc) + " - Undefined variable '" + stmt.name + "'.");
     }
     emit_expr(stmt.value);
 
@@ -713,7 +724,7 @@ void BytecodeEmitter::emit_bool_lit(const BoolLiteralExpr& expr) {
 void BytecodeEmitter::emit_identifier(const IdentifierExpr& expr) {
     auto opt_sym = symbol_table_.resolve(expr.name);
     if (!opt_sym.has_value()) {
-        throw CompilerException("Undefined variable '" + expr.name + "'.");
+        throw CompilerException("[Emitter Error] " + loc_str(expr.loc) + " - Undefined variable '" + expr.name + "'.");
     }
     Symbol sym = opt_sym.value();
     if (sym.is_global) {
@@ -884,13 +895,13 @@ void BytecodeEmitter::emit_call(const CallExpr& expr) {
         }
 
         if (init_arity < 0) {
-            throw CompilerException("Class '" + expr.callee + "' has no init() method; construct it with '" + expr.callee + "()' and set its fields afterwards.");
+            throw CompilerException("[Emitter Error] " + loc_str(expr.loc) + " - Class '" + expr.callee + "' has no init() method; construct it with '" + expr.callee + "()' and set its fields afterwards.");
         }
         if (init_arity == 0) {
-            throw CompilerException("init() of class '" + expr.callee + "' takes no arguments; construct with '" + expr.callee + "()' then call init().");
+            throw CompilerException("[Emitter Error] " + loc_str(expr.loc) + " - init() of class '" + expr.callee + "' takes no arguments; construct with '" + expr.callee + "()' then call init().");
         }
         if (static_cast<int>(expr.args.size()) != init_arity) {
-            throw CompilerException("Constructor of class '" + expr.callee + "' (init) expects " + std::to_string(init_arity)
+            throw CompilerException("[Emitter Error] " + loc_str(expr.loc) + " - Constructor of class '" + expr.callee + "' (init) expects " + std::to_string(init_arity)
                                     + " argument(s), but received " + std::to_string(expr.args.size()) + ".");
         }
 
@@ -1058,7 +1069,7 @@ void BytecodeEmitter::emit_call(const CallExpr& expr) {
         chunk_.code[patch_offset] = static_cast<uint8_t>(fn_entry & 0xFF);
         chunk_.code[patch_offset + 1] = static_cast<uint8_t>((fn_entry >> 8) & 0xFF);
     } else {
-        unresolved_calls_.push_back({patch_offset, expr.callee});
+        unresolved_calls_.push_back({patch_offset, expr.callee, expr.loc});
     }
 }
 

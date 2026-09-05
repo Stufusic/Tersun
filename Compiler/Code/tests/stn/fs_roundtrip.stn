@@ -1,0 +1,26 @@
+// Native file I/O roundtrip through the HostFs class.
+// Writes tersun_test_fs.tmp into the current working directory (overwrites).
+import "fs.stn";
+
+fn main() {
+    let h = HostFs();
+    let path = "tersun_test_fs.tmp";
+    let body = "hello world"; // 11 bytes
+
+    assert_eq(h.fs_write(path, body), 1);
+    assert_eq(h.fs_err(), "");
+    assert_eq(h.fs_exists(path), 1);
+    assert_eq(h.fs_size(path), 11);
+
+    let content = h.fs_read(path);
+    assert_eq(content, body);
+
+    assert_eq(h.fs_append(path, "!"), 1);
+    assert_eq(h.fs_size(path), 12);
+
+    // Missing file: empty content plus a descriptive fs_err
+    assert_eq(h.fs_read("tersun_no_such_file.tmp"), "");
+    let err = h.fs_err();
+    assert_eq(err == "", false);
+    println("FS_OK");
+}

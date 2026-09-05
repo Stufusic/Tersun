@@ -1,0 +1,17 @@
+// Helper module for modules_ok.stn. It deliberately defines its own main()
+// to lock in the behavior that an imported module's main is namespaced to
+// <module>_main and never runs in the importing program.
+fn helper_double(v: int) -> int {
+    return v * 2;
+}
+
+class HelperBox {
+    pub label: string;
+    def init(self, l: string) {
+        self.label = l;
+    }
+}
+
+fn main() {
+    println("HELPER_MAIN_SHOULD_NOT_RUN");
+}

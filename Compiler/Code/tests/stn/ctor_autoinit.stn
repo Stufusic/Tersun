@@ -1,0 +1,64 @@
+// Core semantics: constructor auto-init, legacy manual init, anti-hijack.
+// Every check uses assert_eq; a failure raises VMException and fails the suite.
+class Point {
+    pub x: int;
+    pub y: int;
+    def init(self, px: int, py: int) {
+        self.x = px;
+        self.y = py;
+    }
+    def sum(self) -> int {
+        return self.x + self.y;
+    }
+}
+
+class Box {
+    pub tag: string;
+    def init(self, t: string) {
+        self.tag = t;
+    }
+}
+
+class Legacy {
+    pub v: int;
+    def init(self) {
+        self.v = 7;
+    }
+}
+
+// User methods share names with native host APIs; they must NEVER be
+// hijacked by the VM's host dispatch (regression guard for the P0 fix).
+class MyChr {
+    pub marker: int;
+    def init(self) {
+        self.marker = 1;
+    }
+    def chr(self, c: int) -> string {
+        return "USER";
+    }
+    def fs_read(self, path: string) -> string {
+        return "MINE";
+    }
+}
+
+fn main() {
+    let p = Point(3, 4);
+    assert_eq(p.x, 3);
+    assert_eq(p.y, 4);
+    assert_eq(p.sum(), 7);
+
+    let b = Box();
+    b.init("hello");
+    assert_eq(b.tag, "hello");
+
+    let l = Legacy();
+    l.init();
+    assert_eq(l.v, 7);
+
+    let m = MyChr();
+    m.init();
+    assert_eq(m.chr(65), "USER");
+    assert_eq(m.fs_read("nothing"), "MINE");
+    assert_eq(m.marker, 1);
+    println("CTOR_OK");
+}
