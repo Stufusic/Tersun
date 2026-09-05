@@ -59,7 +59,11 @@ fn main() -> int {
     println(phase_code);
 
     // 2. Struct aggregation and verification
-    let mut packet: QuantumPacket = QuantumPacket(101, u1 * u2, 1, true);
+    let mut packet: QuantumPacket = QuantumPacket();
+    packet.id = 101;
+    packet.phase = u1 * u2;
+    packet.qubit_tag = 1;
+    packet.verified = true;
 
     // 3. Iterative quantum-like checksum computation (10 steps)
     let checksum: int = compute_quantum_checksum(packet.qubit_tag, 10);

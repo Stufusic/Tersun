@@ -52,6 +52,8 @@ public:
     Stmt* parse_if_stmt();
     Stmt* parse_branch3_stmt(); // Setun-70 3-way branching
     Stmt* parse_while_stmt();
+    Stmt* parse_for_stmt();     // C-style + for-in hybrid
+    Stmt* parse_break_continue(bool is_break);
     Stmt* parse_return_stmt();
     Stmt* parse_block_stmt();
     Stmt* parse_expr_stmt();

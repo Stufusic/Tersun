@@ -310,6 +310,54 @@ void LLVMEmitter::transpile_stmt(Stmt* stmt, std::ostringstream& oss, int indent
         else if constexpr (std::is_same_v<T, EnumDeclStmt>) {
             oss << pad << "// Enum " << s.name << "\n";
         }
+        else if constexpr (std::is_same_v<T, ForStmt>) {
+            if (s.is_for_in) {
+                const CallExpr* range_call = nullptr;
+                if (s.iterable && std::holds_alternative<CallExpr>(s.iterable->data)) {
+                    auto& ce = std::get<CallExpr>(s.iterable->data);
+                    if (ce.callee == "range") range_call = &ce;
+                }
+                if (!range_call) {
+                    throw CompilerException("[emit-c] for-in currently supports only range(...) iterables.");
+                }
+                oss << pad << "{\n";
+                std::string inner = pad + "    ";
+                oss << inner << "int64_t __i = ";
+                if (range_call->args.size() >= 2) transpile_expr(range_call->args[0], oss); else oss << "0";
+                oss << ";\n";
+                oss << inner << "int64_t __stop = ";
+                if (range_call->args.size() == 1) transpile_expr(range_call->args[0], oss);
+                else if (range_call->args.size() >= 2) transpile_expr(range_call->args[1], oss);
+                oss << ";\n";
+                oss << inner << "int64_t __step = ";
+                if (range_call->args.size() >= 3) transpile_expr(range_call->args[2], oss); else oss << "1";
+                oss << ";\n";
+                oss << inner << "while ((__step > 0 && __i < __stop) || (__step < 0 && __i > __stop)) {\n";
+                oss << inner << "    int64_t " << s.loop_var << " = __i;\n";
+                if (s.body) transpile_stmt(s.body, oss, indent + 2);
+                oss << inner << "    __i += __step;\n";
+                oss << inner << "}\n";
+                oss << pad << "}\n";
+            } else {
+                // C-style: init; while (cond) { body; update; }
+                if (s.init) transpile_stmt(s.init, oss, indent);
+                oss << pad << "while (";
+                if (s.cond) {
+                    transpile_expr(s.cond, oss);
+                } else {
+                    oss << "1";
+                }
+                oss << ") {\n";
+                if (s.body) transpile_stmt(s.body, oss, indent + 1);
+                if (s.update) transpile_stmt(s.update, oss, indent + 1);
+                oss << pad << "}\n";
+            }
+        }
+        else if constexpr (std::is_same_v<T, BreakContinueStmt>) {
+            oss << pad << (s.is_break ? "break" : "continue") << ";";
+            if (!s.is_break) oss << " // NOTE: lands on the condition, not the update clause";
+            oss << "\n";
+        }
         else if constexpr (std::is_same_v<T, ImportStmt>) {
             oss << pad << "// Import " << s.module_path << "\n";
         }
@@ -458,7 +506,18 @@ void LLVMEmitter::transpile_expr(Expr* expr, std::ostringstream& oss) {
             }
         }
         else if constexpr (std::is_same_v<T, FStringExpr>) {
-            oss << "TafpuNum_C(0, 0, 0) /* " << e.format_string << " */";
+            throw CompilerException("[emit-c] f-strings are not supported by the C transpiler yet.");
+        }
+        else if constexpr (std::is_same_v<T, AmbiguousTripleExpr>) {
+            // Checker-less fallback: legacy TAFPU interpretation.
+            oss << "TafpuNum_C(";
+            transpile_expr(e.elements[0], oss); oss << ".a, ";
+            transpile_expr(e.elements[1], oss); oss << ".a, ";
+            if (e.elements.size() == 3) {
+                transpile_expr(e.elements[2], oss); oss << ".a)";
+            } else {
+                oss << "0)";
+            }
         }
         else if constexpr (std::is_same_v<T, ComptimeExpr>) {
             transpile_expr(e.expr, oss);
@@ -871,6 +930,18 @@ void LLVMEmitter::emit_llvm_global_decls(std::ostringstream& oss) {
 LLVMValue LLVMEmitter::emit_typed_expr(Expr* expr, std::ostringstream& oss) {
     if (!expr) return { "@TAFPU_ZERO", "%struct.TafpuNum*", true };
 
+    // Checker-less fallback: bare numeric triples keep the legacy TAFPU meaning.
+    if (std::holds_alternative<AmbiguousTripleExpr>(expr->data)) {
+        auto& tr = std::get<AmbiguousTripleExpr>(expr->data);
+        Expr* a = tr.elements.size() > 0 ? tr.elements[0] : nullptr;
+        Expr* b = tr.elements.size() > 1 ? tr.elements[1] : nullptr;
+        Expr* s = tr.elements.size() > 2 ? tr.elements[2] : nullptr;
+        Expr s_default{IntLiteralExpr{0, expr->loc}, expr->loc};
+        if (!s) s = &s_default;
+        Expr fallback{TafpuConstructExpr{a, b, s, expr->loc}, expr->loc};
+        return emit_typed_expr(&fallback, oss);
+    }
+
     LLVMValue result;
 
     std::visit([&](const auto& e) {
@@ -1268,8 +1339,14 @@ LLVMValue LLVMEmitter::emit_typed_expr(Expr* expr, std::ostringstream& oss) {
         else if constexpr (std::is_same_v<T, ComptimeExpr>) {
             result = emit_typed_expr(e.expr, oss);
         }
+        else if constexpr (std::is_same_v<T, FStringExpr>) {
+            throw CompilerException("[LLVM AOT] f-strings are not supported on the native target yet.");
+        }
+        else if constexpr (std::is_same_v<T, MethodCallExpr>) {
+            throw CompilerException("[LLVM AOT] method calls are not supported on the native target yet.");
+        }
         else {
-            result = { "0", "i64", false };
+            throw CompilerException("[LLVM AOT] unsupported expression kind on the native target.");
         }
     }, expr->data);
 
@@ -1500,10 +1577,65 @@ void LLVMEmitter::emit_llvm_stmt(Stmt* stmt, std::ostringstream& oss) {
             oss << "    br i1 " << bool_cond << ", label %" << body_lbl << ", label %" << exit_lbl << "\n";
 
             oss << body_lbl << ":\n";
+            ir_loops_.push_back({s.label, cond_lbl, exit_lbl});
             if (s.body) emit_llvm_stmt(s.body, oss);
+            ir_loops_.pop_back();
             oss << "    br label %" << cond_lbl << "\n";
 
             oss << exit_lbl << ":\n";
+        }
+        else if constexpr (std::is_same_v<T, ForStmt>) {
+            std::string init_lbl = next_label("for_init");
+            std::string cond_lbl = next_label("for_cond");
+            std::string body_lbl = next_label("for_body");
+            std::string update_lbl = next_label("for_update");
+            std::string exit_lbl = next_label("for_exit");
+
+            oss << "    br label %" << init_lbl << "\n";
+            oss << init_lbl << ":\n";
+            if (s.init) emit_llvm_stmt(s.init, oss);
+
+            oss << "    br label %" << cond_lbl << "\n";
+            oss << cond_lbl << ":\n";
+            std::string bool_cond = "1";
+            if (s.cond) {
+                LLVMValue cond = emit_typed_expr(s.cond, oss);
+                bool_cond = cond.val;
+                if (cond.type != "i1") {
+                    std::string t = next_temp();
+                    oss << "    " << t << " = icmp ne " << cond.type << " " << cond.val << ", 0\n";
+                    bool_cond = t;
+                }
+            }
+            oss << "    br i1 " << bool_cond << ", label %" << body_lbl << ", label %" << exit_lbl << "\n";
+
+            oss << body_lbl << ":\n";
+            ir_loops_.push_back({s.label, update_lbl, exit_lbl});
+            if (s.body) emit_llvm_stmt(s.body, oss);
+            ir_loops_.pop_back();
+
+            oss << "    br label %" << update_lbl << "\n";
+            oss << update_lbl << ":\n";
+            if (s.update) emit_llvm_stmt(s.update, oss);
+            oss << "    br label %" << cond_lbl << "\n";
+
+            oss << exit_lbl << ":\n";
+        }
+        else if constexpr (std::is_same_v<T, BreakContinueStmt>) {
+            const IrLoop* target = nullptr;
+            if (!s.label.empty()) {
+                for (auto it = ir_loops_.rbegin(); it != ir_loops_.rend(); ++it) {
+                    if (it->label == s.label) { target = &*it; break; }
+                }
+                if (!target) {
+                    throw CompilerException("[LLVM AOT] no loop labeled '" + s.label + "'.");
+                }
+            } else if (!ir_loops_.empty()) {
+                target = &ir_loops_.back();
+            } else {
+                throw CompilerException("[LLVM AOT] 'break'/'continue' outside of a loop.");
+            }
+            oss << "    br label %" << (s.is_break ? target->break_label : target->continue_label) << "\n";
         }
         else if constexpr (std::is_same_v<T, Branch3Stmt>) {
             LLVMValue cond = emit_typed_expr(s.condition, oss);

@@ -79,9 +79,18 @@ enum class TokenType {
     PIPE,             // | (Closure parameter / Bitwise OR)
     AMP_AMP,          // && (Logical AND)
     PIPE_PIPE,        // || (Logical OR)
+    PLUS_EQUAL,       // +=
+    MINUS_EQUAL,      // -=
+    STAR_EQUAL,       // *=
+    SLASH_EQUAL,      // /=
     KW_MIN,           // min / Kleene AND
     KW_MAX,           // max / Kleene OR
     KW_NOT,           // not
+    KW_FOR,           // for
+    KW_IN,            // in (for-each)
+    KW_BREAK,         // break
+    KW_CONTINUE,      // continue
+    KW_ELIF,          // elif (else-if sugar)
 
     // Delimiters & Navigation
     LPAREN,           // (

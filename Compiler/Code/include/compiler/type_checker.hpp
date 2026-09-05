@@ -60,6 +60,7 @@ private:
     void check_if(IfStmt& stmt);
     void check_branch3(Branch3Stmt& stmt);
     void check_while(WhileStmt& stmt);
+    void check_for(ForStmt& stmt);
     void check_return(ReturnStmt& stmt);
     void check_fn_decl(FnDeclStmt& stmt);
     void check_struct_decl(StructDeclStmt& stmt);
@@ -78,6 +79,16 @@ private:
     TypePtr check_array_lit(ArrayLiteralExpr& expr);
 
     void check_match_exhaustiveness(const MatchStmt& stmt, TypePtr cond_type);
+
+    // Ambiguous [a, b, c] triple resolution (type-directed disambiguation).
+    // Runs at the top of check_stmt for every statement so scopes/signatures
+    // are progressively available; mutates triple nodes in place into
+    // TafpuConstructExpr (TAFPU context) or ArrayLiteralExpr (array context).
+    void resolve_triples_stmt(Stmt* stmt);
+    void resolve_triples_expr(Expr* expr, bool expect_taf3);
+    bool is_tafpuish(Expr* expr);
+    bool member_is_taf3(Expr* object_expr, const std::string& member);
+    static void rewrite_triple(Expr* expr, bool as_tafpu);
 
     std::vector<TypeError> errors_;
     std::vector<std::unordered_map<std::string, ScopedSymbol>> scopes_;

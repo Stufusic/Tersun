@@ -1,0 +1,68 @@
+// Probe 14: taf3 syntax — arrays vs TAFPU by type context
+class Vec {
+    pub pos: taf3;
+    pub vel: taf3;
+}
+
+fn scale(v: taf3, k: int) -> taf3 {
+    return [v.a * k, v.b * k, v.s * k];
+}
+
+fn main() {
+    // Plain 3-element array (the old trap is gone)
+    let arr = [10, 20, 30];
+    assert_eq(arr.len(), 3);
+    assert_eq(arr[1], 20);
+    arr[2] = 99;
+    assert_eq(arr[2], 99);
+
+    // Explicit taf3[...] literal
+    let y = taf3[14, 25, 0];
+    assert_eq(y.a, 14);
+    assert_eq(y.b, 25);
+    assert_eq(y.s, 0);
+
+    // Explicit taf3(...) constructor, 2-arg implies s = 0
+    let z = taf3(7, 0 - 3);
+    assert_eq(z.a, 7);
+    assert_eq(z.s, 0);
+
+    // Typed shim: let x: taf3 = [...] stays TAFPU
+    let x: taf3 = [14, 25, 0];
+    assert_eq(x.a, 14);
+
+    // Assign into taf3-typed var from a triple
+    x = [1, 2, 3];
+    assert_eq(x.a + x.b + x.s, 6);
+
+    // Member assign into taf3 fields resolves to TAFPU
+    let v = Vec();
+    v.pos = [1, 0, 0];
+    v.vel = [0, 1, 0];
+    assert_eq(v.pos.a, 1);
+    assert_eq(v.vel.b, 1);
+
+    // TAFPU arithmetic: anchor side is taf3
+    let w = v.pos + [2, 0, 0];
+    assert_eq(w.a, 3);
+
+    // Both-triple arithmetic keeps legacy TAFPU meaning
+    let q = [1, 0, 0] + [0, 1, 0];
+    println(q.a);
+    println(q.b);
+
+    // Function parameter typed taf3 resolves triple arguments
+    let s = scale(taf3[2, 3, 1], 3);
+    assert_eq(s.a, 6);
+    assert_eq(s.b, 9);
+    assert_eq(s.s, 3);
+
+    // for-in over taf3 yields a, b, s
+    let acc = 0;
+    for comp in x {
+        acc += comp;
+    }
+    assert_eq(acc, 6);
+
+    println("TAF3_OK");
+}

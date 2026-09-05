@@ -172,6 +172,7 @@ DataType Parser::parse_type() {
         if (tname == "taf3" || tname == "TAF3") { advance(); return DataType::TAF3; }
         if (tname == "tvec3" || tname == "Tvec3") { advance(); return DataType::TVEC3; }
         if (tname == "array" || tname == "Array") {
+            advance(); // consume 'array'
             if (match(TokenType::LESS)) {
                 parse_type();
                 consume(TokenType::GREATER, "Expected '>' after Array element type.");
@@ -209,6 +210,20 @@ Stmt* Parser::parse_var_decl(bool is_const) {
     Expr* init = nullptr;
     if (match(TokenType::EQUAL)) {
         init = parse_expression();
+        // Typed shim: `let x: taf3 = [a, b, s]` keeps the legacy TAFPU meaning
+        // even though bare triples now default to arrays.
+        if (type == DataType::TAF3 && init
+            && std::holds_alternative<AmbiguousTripleExpr>(init->data)) {
+            auto& triple = std::get<AmbiguousTripleExpr>(init->data);
+            if (triple.elements.size() == 3) {
+                init = arena_.make<Expr>(TafpuConstructExpr{
+                    triple.elements[0], triple.elements[1], triple.elements[2], init->loc}, init->loc);
+            } else if (triple.elements.size() == 2) {
+                Expr* s = arena_.make<Expr>(IntLiteralExpr{0, init->loc}, init->loc);
+                init = arena_.make<Expr>(TafpuConstructExpr{
+                    triple.elements[0], triple.elements[1], s, init->loc}, init->loc);
+            }
+        }
     }
     consume(TokenType::SEMICOLON, "Expected ';' after variable declaration.");
 
@@ -589,10 +604,31 @@ Stmt* Parser::parse_extern_decl() {
 }
 
 Stmt* Parser::parse_statement() {
+    // Java-style loop label: `name: for ...` / `name: while ...`
+    if (check(TokenType::IDENTIFIER) && current_ + 2 < tokens_.size()
+        && tokens_[current_ + 1].type == TokenType::COLON
+        && (tokens_[current_ + 2].type == TokenType::KW_FOR
+            || tokens_[current_ + 2].type == TokenType::KW_WHILE)) {
+        std::string label = advance().lexeme;
+        advance(); // consume ':'
+        if (match(TokenType::KW_FOR)) {
+            Stmt* f = parse_for_stmt();
+            if (f) std::get<ForStmt>(f->data).label = label;
+            return f;
+        }
+        match(TokenType::KW_WHILE);
+        Stmt* w = parse_while_stmt();
+        if (w) std::get<WhileStmt>(w->data).label = label;
+        return w;
+    }
+
     if (match(TokenType::KW_IF)) return parse_if_stmt();
     if (match(TokenType::KW_BRANCH)) return parse_branch3_stmt();
     if (match(TokenType::KW_MATCH)) return parse_match_stmt();
     if (match(TokenType::KW_WHILE)) return parse_while_stmt();
+    if (match(TokenType::KW_FOR)) return parse_for_stmt();
+    if (match(TokenType::KW_BREAK)) return parse_break_continue(true);
+    if (match(TokenType::KW_CONTINUE)) return parse_break_continue(false);
     if (match(TokenType::KW_RETURN)) return parse_return_stmt();
     if (match(TokenType::LBRACE)) {
         current_--;
@@ -609,8 +645,22 @@ Stmt* Parser::parse_if_stmt() {
 
     Stmt* then_branch = parse_statement();
     Stmt* else_branch = nullptr;
-    if (match(TokenType::KW_ELSE)) {
-        else_branch = parse_statement();
+    bool elif_sugar = false;
+    bool has_else = match(TokenType::KW_ELSE);
+    if (!has_else && check(TokenType::KW_ELIF)) {
+        advance(); // standalone elif
+        has_else = true;
+        elif_sugar = true;
+    }
+    if (has_else) {
+        if (check(TokenType::KW_ELIF)) {
+            advance(); // `else elif (...)` form
+            else_branch = parse_if_stmt();
+        } else if (elif_sugar) {
+            else_branch = parse_if_stmt(); // elif token already consumed
+        } else {
+            else_branch = parse_statement(); // `else ...` or `else if (...)`
+        }
     }
     return arena_.make<Stmt>(IfStmt{cond, then_branch, else_branch, loc}, loc);
 }
@@ -688,7 +738,108 @@ Stmt* Parser::parse_while_stmt() {
     Expr* cond = parse_expression();
     consume(TokenType::RPAREN, "Expected ')' after while condition.");
     Stmt* body = parse_statement();
-    return arena_.make<Stmt>(WhileStmt{cond, body, loc}, loc);
+    return arena_.make<Stmt>(WhileStmt{cond, body, loc, ""}, loc);
+}
+
+// Hybrid loop. Two forms:
+//   for (init; cond; update) body      -- C-style (parentheses required)
+//   for [ ( ] x in iterable [ ) ] body -- for-each over array/string/taf3
+Stmt* Parser::parse_for_stmt() {
+    SourceLocation loc = previous().location;
+    bool has_paren = match(TokenType::LPAREN);
+
+    // for-in detection: IDENTIFIER followed by KW_IN
+    auto looks_like_for_in = [&]() {
+        return check(TokenType::IDENTIFIER)
+            && current_ + 1 < tokens_.size()
+            && tokens_[current_ + 1].type == TokenType::KW_IN;
+    };
+
+    if (looks_like_for_in()) {
+        Token var = advance();
+        match(TokenType::KW_IN); // guaranteed by detection
+        Expr* iterable = parse_expression();
+        if (has_paren) {
+            consume(TokenType::RPAREN, "Expected ')' after for-in iterable.");
+        }
+        Stmt* body = parse_statement();
+        ForStmt f;
+        f.is_for_in = true;
+        f.loop_var = var.lexeme;
+        f.iterable = iterable;
+        f.body = body;
+        f.loc = loc;
+        return arena_.make<Stmt>(std::move(f), loc);
+    }
+
+    if (!has_paren) {
+        throw CompilerException("[Parser Error] " + format_loc(peek().location)
+                                + " - C-style 'for' requires parentheses; use 'for x in ...' for for-each loops.");
+    }
+
+    ForStmt f;
+    f.loc = loc;
+
+    // init clause: empty | let-declaration (consumes its own ';') | expression
+    if (match(TokenType::SEMICOLON)) {
+        f.init = nullptr;
+    } else if (match(TokenType::KW_LET) || match(TokenType::KW_CONST)) {
+        f.init = parse_var_decl(previous().type == TokenType::KW_CONST);
+    } else {
+        Expr* init_expr = parse_expression();
+        consume(TokenType::SEMICOLON, "Expected ';' after for-loop init clause.");
+        f.init = arena_.make<Stmt>(ExprStmt{init_expr, loc}, loc);
+    }
+
+    // cond clause
+    if (!check(TokenType::SEMICOLON)) {
+        f.cond = parse_expression();
+    }
+    consume(TokenType::SEMICOLON, "Expected ';' after for-loop condition.");
+
+    // update clause (assignment or expression, no trailing ';')
+    if (!check(TokenType::RPAREN)) {
+        if (check(TokenType::IDENTIFIER) && current_ + 1 < tokens_.size()
+            && (tokens_[current_ + 1].type == TokenType::EQUAL
+                || tokens_[current_ + 1].type == TokenType::PLUS_EQUAL
+                || tokens_[current_ + 1].type == TokenType::MINUS_EQUAL
+                || tokens_[current_ + 1].type == TokenType::STAR_EQUAL
+                || tokens_[current_ + 1].type == TokenType::SLASH_EQUAL)) {
+            Token name_tok = advance();
+            Token op_tok = advance();
+            Expr* val = parse_expression();
+            if (op_tok.type != TokenType::EQUAL) {
+                // Desugar compound update: i += 1  ->  i = (i) + 1
+                BinaryOp b_op;
+                switch (op_tok.type) {
+                    case TokenType::PLUS_EQUAL: b_op = BinaryOp::ADD; break;
+                    case TokenType::MINUS_EQUAL: b_op = BinaryOp::SUB; break;
+                    case TokenType::STAR_EQUAL: b_op = BinaryOp::MUL; break;
+                    default: b_op = BinaryOp::DIV; break;
+                }
+                Expr* lhs = arena_.make<Expr>(IdentifierExpr{name_tok.lexeme, op_tok.location}, op_tok.location);
+                val = arena_.make<Expr>(BinaryExpr{b_op, lhs, val, op_tok.location}, op_tok.location);
+            }
+            f.update = arena_.make<Stmt>(AssignStmt{name_tok.lexeme, val, loc}, loc);
+        } else {
+            Expr* upd = parse_expression();
+            f.update = arena_.make<Stmt>(ExprStmt{upd, loc}, loc);
+        }
+    }
+
+    consume(TokenType::RPAREN, "Expected ')' after for-loop clauses.");
+    f.body = parse_statement();
+    return arena_.make<Stmt>(std::move(f), loc);
+}
+
+Stmt* Parser::parse_break_continue(bool is_break) {
+    SourceLocation loc = previous().location;
+    std::string label;
+    if (check(TokenType::IDENTIFIER)) {
+        label = advance().lexeme; // Java-style: break outer;
+    }
+    consume(TokenType::SEMICOLON, std::string("Expected ';' after '") + (is_break ? "break" : "continue") + "'.");
+    return arena_.make<Stmt>(BreakContinueStmt{is_break, label, loc}, loc);
 }
 
 Stmt* Parser::parse_return_stmt() {
@@ -745,6 +896,45 @@ Stmt* Parser::parse_expr_stmt() {
         return arena_.make<Stmt>(AssignStmt{"_tmp", val, loc}, loc);
     }
 
+    // Compound assignment: x += v / a.b -= v / arr[i] *= v
+    TokenType comp_tok = peek().type;
+    if (comp_tok == TokenType::PLUS_EQUAL || comp_tok == TokenType::MINUS_EQUAL
+        || comp_tok == TokenType::STAR_EQUAL || comp_tok == TokenType::SLASH_EQUAL) {
+        advance();
+        BinaryOp b_op;
+        switch (comp_tok) {
+            case TokenType::PLUS_EQUAL: b_op = BinaryOp::ADD; break;
+            case TokenType::MINUS_EQUAL: b_op = BinaryOp::SUB; break;
+            case TokenType::STAR_EQUAL: b_op = BinaryOp::MUL; break;
+            default: b_op = BinaryOp::DIV; break;
+        }
+        Expr* val = parse_expression();
+        consume(TokenType::SEMICOLON, "Expected ';' after compound assignment.");
+
+        if (std::holds_alternative<IdentifierExpr>(expr->data)) {
+            std::string name = std::get<IdentifierExpr>(expr->data).name;
+            Expr* lhs = arena_.make<Expr>(IdentifierExpr{name, loc}, loc);
+            Expr* combined = arena_.make<Expr>(BinaryExpr{b_op, lhs, val, loc}, loc);
+            return arena_.make<Stmt>(AssignStmt{name, combined, loc}, loc);
+        }
+        if (std::holds_alternative<MemberAccessExpr>(expr->data)) {
+            auto& ma = std::get<MemberAccessExpr>(expr->data);
+            Expr* lhs = arena_.make<Expr>(MemberAccessExpr{ma.object, ma.member, ma.is_safe_nav, loc}, loc);
+            Expr* combined = arena_.make<Expr>(BinaryExpr{b_op, lhs, val, loc}, loc);
+            // Note: the object expression is evaluated twice (read + write).
+            return arena_.make<Stmt>(MemberAssignStmt{ma.object, ma.member, combined, loc}, loc);
+        }
+        if (std::holds_alternative<IndexExpr>(expr->data)) {
+            auto& ie = std::get<IndexExpr>(expr->data);
+            Expr* lhs = arena_.make<Expr>(IndexExpr{ie.object, ie.index, loc}, loc);
+            Expr* combined = arena_.make<Expr>(BinaryExpr{b_op, lhs, val, loc}, loc);
+            // Note: object and index expressions are evaluated twice.
+            return arena_.make<Stmt>(IndexAssignStmt{ie.object, ie.index, combined, loc}, loc);
+        }
+        throw CompilerException("[Parser Error] " + format_loc(loc)
+                                + " - Invalid compound assignment target.");
+    }
+
     consume(TokenType::SEMICOLON, "Expected ';' after expression statement.");
     return arena_.make<Stmt>(ExprStmt{expr, loc}, loc);
 }
@@ -797,16 +987,148 @@ Expr* Parser::parse_prefix() {
             return arena_.make<Expr>(FloatLiteralExpr{tok.float_val, loc}, loc);
         case TokenType::STRING_LITERAL:
             return arena_.make<Expr>(StringLiteralExpr{tok.string_val, loc}, loc);
-        case TokenType::FSTRING_LITERAL:
-            return arena_.make<Expr>(FStringExpr{tok.string_val, {}, loc}, loc);
+        case TokenType::FSTRING_LITERAL: {
+            // Python-style interpolation: f"text {expr:spec} more {expr2}"
+            // with {{ and }} as literal-brace escapes and MATLAB-style specs
+            // (.Nf, g, e, t = balanced-ternary digits).
+            FStringExpr fs;
+            fs.format_string = tok.string_val;
+            fs.loc = loc;
+            const std::string& raw = tok.string_val;
+
+            auto flush_literal = [&](std::string& lit) {
+                if (!lit.empty()) {
+                    FStringPart p;
+                    p.is_literal = true;
+                    p.text = lit;
+                    fs.parts.push_back(p);
+                    lit.clear();
+                }
+            };
+
+            std::string lit;
+            size_t i = 0;
+            while (i < raw.size()) {
+                char c = raw[i];
+                if (c == '{') {
+                    if (i + 1 < raw.size() && raw[i + 1] == '{') {
+                        lit += '{';
+                        i += 2;
+                        continue;
+                    }
+                    size_t j = i + 1;
+                    int depth = 1;
+                    std::string inner;
+                    size_t colon_pos = std::string::npos;
+                    while (j < raw.size() && depth > 0) {
+                        char d = raw[j];
+                        if (d == '{') {
+                            ++depth;
+                            inner += d;
+                            ++j;
+                        } else if (d == '}') {
+                            --depth;
+                            if (depth == 0) break;
+                            inner += d;
+                            ++j;
+                        } else {
+                            if (depth == 1 && d == ':' && colon_pos == std::string::npos) {
+                                colon_pos = inner.size();
+                            }
+                            inner += d;
+                            ++j;
+                        }
+                    }
+                    if (depth != 0) {
+                        throw CompilerException("[Parser Error] " + format_loc(loc)
+                                                + " - Unclosed '{' in f-string.");
+                    }
+                    flush_literal(lit);
+
+                    std::string expr_src = inner;
+                    std::string spec;
+                    if (colon_pos != std::string::npos) {
+                        expr_src = inner.substr(0, colon_pos);
+                        spec = inner.substr(colon_pos + 1);
+                    }
+                    // Trim whitespace around the expression source.
+                    const char* ws = " \t\r\n";
+                    size_t b = expr_src.find_first_not_of(ws);
+                    if (b == std::string::npos) {
+                        throw CompilerException("[Parser Error] " + format_loc(loc)
+                                                + " - Empty expression in f-string '{}'.");
+                    }
+                    size_t epos = expr_src.find_last_not_of(ws);
+                    expr_src = expr_src.substr(b, epos - b + 1);
+
+                    Lexer sub_lex(expr_src, tok.location.file);
+                    auto sub_tokens = sub_lex.tokenize();
+                    Parser sub_parser(sub_tokens, arena_);
+                    Expr* sub = sub_parser.parse_expression();
+                    if (!sub_parser.check(TokenType::END_OF_FILE)) {
+                        throw CompilerException("[Parser Error] " + format_loc(loc)
+                                                + " - Unexpected token in f-string expression: '"
+                                                + sub_parser.peek().lexeme + "'.");
+                    }
+                    fs.expressions.push_back(sub);
+                    FStringPart ep;
+                    ep.is_literal = false;
+                    ep.expr = sub;
+                    ep.text = spec;
+                    fs.parts.push_back(ep);
+                    i = j + 1;
+                } else if (c == '}') {
+                    if (i + 1 < raw.size() && raw[i + 1] == '}') {
+                        lit += '}';
+                        i += 2;
+                        continue;
+                    }
+                    throw CompilerException("[Parser Error] " + format_loc(loc)
+                                            + " - Unmatched '}' in f-string.");
+                } else {
+                    lit += c;
+                    ++i;
+                }
+            }
+            flush_literal(lit);
+            return arena_.make<Expr>(std::move(fs), loc);
+        }
         case TokenType::TERNARY_LITERAL:
             return arena_.make<Expr>(TryteLiteralExpr{tok.tryte_val, loc}, loc);
         case TokenType::KW_TRUE:
             return arena_.make<Expr>(BoolLiteralExpr{true, loc}, loc);
         case TokenType::KW_FALSE:
             return arena_.make<Expr>(BoolLiteralExpr{false, loc}, loc);
-        case TokenType::IDENTIFIER:
+        case TokenType::IDENTIFIER: {
             return arena_.make<Expr>(IdentifierExpr{tok.lexeme, loc}, loc);
+        }
+
+        case TokenType::TYPE_TAF3: {
+            // Explicit TAFPU literal syntax: taf3[a, b, s] (2 or 3 elements).
+            // The keyword form also stays usable as a constructor callee
+            // (taf3(a, b, s)) by falling through to a plain identifier.
+            if (check(TokenType::LBRACKET)) {
+                SourceLocation tloc = tok.location;
+                advance(); // consume '['
+                std::vector<Expr*> elems;
+                if (!check(TokenType::RBRACKET)) {
+                    do {
+                        elems.push_back(parse_expression());
+                    } while (match(TokenType::COMMA));
+                }
+                consume(TokenType::RBRACKET, "Expected ']' after taf3[...] elements.");
+                if (elems.empty() || elems.size() > 3) {
+                    throw CompilerException("[Parser Error] " + format_loc(tloc)
+                                            + " - taf3[...] takes 2 or 3 elements ([a, b] implies s = 0).");
+                }
+                Expr* a = elems[0];
+                Expr* b = elems[1];
+                Expr* s = (elems.size() == 3) ? elems[2]
+                                              : arena_.make<Expr>(IntLiteralExpr{0, tloc}, tloc);
+                return arena_.make<Expr>(TafpuConstructExpr{a, b, s, tloc}, tloc);
+            }
+            return arena_.make<Expr>(IdentifierExpr{tok.lexeme, loc}, loc);
+        }
 
         case TokenType::KW_COMPTIME: {
             Expr* sub = parse_expression(PREC_UNARY);
@@ -839,7 +1161,8 @@ Expr* Parser::parse_prefix() {
             return expr;
         }
 
-        // Array literal [elem1, elem2, ...] or TAFPU algebraic literal construction [A, B, S]
+        // Array literal [elem1, elem2, ...] — 2/3-element numeric triples are
+        // wrapped as AmbiguousTripleExpr and resolved by the TypeChecker.
         case TokenType::LBRACKET: {
             if (check(TokenType::RBRACKET)) {
                 advance(); // consume ']'
@@ -851,24 +1174,22 @@ Expr* Parser::parse_prefix() {
             } while (match(TokenType::COMMA));
             consume(TokenType::RBRACKET, "Expected ']' after bracket expression.");
 
-            if (elements.size() == 3) {
+            if (elements.size() == 2 || elements.size() == 3) {
                 bool has_complex = false;
                 for (Expr* el : elements) {
                     if (std::holds_alternative<StringLiteralExpr>(el->data) ||
                         std::holds_alternative<BoolLiteralExpr>(el->data) ||
-                        std::holds_alternative<ArrayLiteralExpr>(el->data)) {
+                        std::holds_alternative<ArrayLiteralExpr>(el->data) ||
+                        std::holds_alternative<AmbiguousTripleExpr>(el->data)) {
                         has_complex = true;
                         break;
                     }
                 }
                 if (!has_complex) {
-                    return arena_.make<Expr>(TafpuConstructExpr{elements[0], elements[1], elements[2], loc}, loc);
-                }
-            } else if (elements.size() == 2) {
-                if (std::holds_alternative<IntLiteralExpr>(elements[0]->data) &&
-                    std::holds_alternative<IntLiteralExpr>(elements[1]->data)) {
-                    Expr* s = arena_.make<Expr>(IntLiteralExpr{0, loc}, loc);
-                    return arena_.make<Expr>(TafpuConstructExpr{elements[0], elements[1], s, loc}, loc);
+                    AmbiguousTripleExpr triple;
+                    triple.elements = std::move(elements);
+                    triple.loc = loc;
+                    return arena_.make<Expr>(std::move(triple), loc);
                 }
             }
 

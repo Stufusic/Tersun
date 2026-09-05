@@ -4,6 +4,7 @@
 #include "qvm/qvm.hpp"
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace tersun {
 namespace compiler {
@@ -33,9 +34,27 @@ private:
     std::unordered_map<std::string, size_t> var_to_qubit_;
     size_t next_qubit_id_{0};
 
+    // Constant-trip unroll state for the Q-ISA target (circuits are acyclic,
+    // so loops can only be unrolled at compile time).
+    struct UnrollContext {
+        std::string label;
+        bool broke{false};
+        bool continued{false};
+    };
+    std::vector<UnrollContext> unroll_stack_;
+
+    static constexpr size_t kMaxQubits = 16;
+    static constexpr int kMaxUnrollTrips = 256;
+
     size_t get_or_allocate_qubit(const std::string& name);
+    size_t allocate_qubit();
     void emit_stmt(Stmt* stmt, qvm::QChunk& chunk);
+    void emit_unroll_stmt(Stmt* stmt, qvm::QChunk& chunk);
+    void emit_unroll_body(Stmt* body, qvm::QChunk& chunk);
+    void emit_for_unroll(const setun::ForStmt& stmt, qvm::QChunk& chunk);
     void emit_expr(Expr* expr, size_t dst_q, qvm::QChunk& chunk);
+
+    static bool is_const_int(Expr* expr, int64_t& out_value);
 };
 
 } // namespace compiler

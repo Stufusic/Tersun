@@ -100,6 +100,14 @@ private:
     std::unordered_map<std::string, StructMeta> struct_registry_;
     std::string current_res_ptr_{""};
     std::string current_fn_ret_type_{"void"};
+
+    // Break/continue landing labels for loops in the IR emitter
+    struct IrLoop {
+        std::string label;
+        std::string continue_label;
+        std::string break_label;
+    };
+    std::vector<IrLoop> ir_loops_;
 };
 
 } // namespace setun

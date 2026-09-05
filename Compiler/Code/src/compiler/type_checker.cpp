@@ -62,6 +62,9 @@ void TypeChecker::init_builtins() {
     // tvec3 constructor function: tvec3(x, y, z)
     functions_["tvec3"] = Type::make_function({Type::make_any(), Type::make_any(), Type::make_any()}, Type::make_tvec3());
 
+    // taf3 constructor function: taf3(a, b, s) / taf3(a, b)
+    functions_["taf3"] = Type::make_function({Type::make_any(), Type::make_any(), Type::make_any()}, Type::make_taf3());
+
     // Global scope
     scopes_.clear();
     enter_scope();
@@ -225,6 +228,10 @@ bool TypeChecker::check_program(Program& program) {
 void TypeChecker::check_stmt(Stmt* stmt) {
     if (!stmt) return;
 
+    // Resolve ambiguous [a, b, c] triples BEFORE checking, so downstream
+    // checks see a concrete TafpuConstructExpr or ArrayLiteralExpr.
+    resolve_triples_stmt(stmt);
+
     std::visit([&](auto& s) {
         using T = std::decay_t<decltype(s)>;
 
@@ -246,6 +253,10 @@ void TypeChecker::check_stmt(Stmt* stmt) {
             check_branch3(s);
         } else if constexpr (std::is_same_v<T, WhileStmt>) {
             check_while(s);
+        } else if constexpr (std::is_same_v<T, ForStmt>) {
+            check_for(s);
+        } else if constexpr (std::is_same_v<T, BreakContinueStmt>) {
+            // Pure control flow; legality (inside a loop) is enforced by the emitter.
         } else if constexpr (std::is_same_v<T, ReturnStmt>) {
             check_return(s);
         } else if constexpr (std::is_same_v<T, FnDeclStmt>) {
@@ -384,6 +395,200 @@ void TypeChecker::check_while(WhileStmt& stmt) {
         report_error("Condition in 'while' loop cannot be a string.", stmt.loc);
     }
     if (stmt.body) check_stmt(stmt.body);
+}
+
+void TypeChecker::check_for(ForStmt& stmt) {
+    enter_scope();
+    if (stmt.init) check_stmt(stmt.init);
+
+    if (stmt.is_for_in) {
+        TypePtr it = check_expr(stmt.iterable);
+        TypePtr elem = Type::make_any();
+        if (it) {
+            if (it->kind == TypeKind::ARRAY) {
+                elem = it->element_type ? it->element_type : Type::make_any();
+            } else if (it->kind == TypeKind::STRING) {
+                elem = Type::make_string();
+            }
+        }
+        define_symbol(stmt.loop_var, elem, true, false, stmt.loc);
+    } else if (stmt.cond) {
+        check_expr(stmt.cond);
+    }
+
+    if (stmt.update) check_stmt(stmt.update);
+    if (stmt.body) check_stmt(stmt.body);
+    exit_scope();
+}
+
+// ============================================================================
+// Ambiguous [a, b, c] triple resolution
+// ============================================================================
+
+void TypeChecker::rewrite_triple(Expr* expr, bool as_tafpu) {
+    auto& triple = std::get<AmbiguousTripleExpr>(expr->data);
+    if (triple.elements.size() == 3) {
+        if (as_tafpu) {
+            expr->data = TafpuConstructExpr{triple.elements[0], triple.elements[1],
+                                            triple.elements[2], expr->loc};
+        } else {
+            expr->data = ArrayLiteralExpr{{triple.elements[0], triple.elements[1],
+                                           triple.elements[2]}, expr->loc};
+        }
+    } else if (triple.elements.size() == 2) {
+        expr->data = ArrayLiteralExpr{{triple.elements[0], triple.elements[1]}, expr->loc};
+    }
+}
+
+bool TypeChecker::is_tafpuish(Expr* expr) {
+    if (!expr) return false;
+    if (std::holds_alternative<TafpuConstructExpr>(expr->data)
+        || std::holds_alternative<TafpuLiteralExpr>(expr->data)) {
+        return true;
+    }
+    if (std::holds_alternative<IdentifierExpr>(expr->data)) {
+        auto sym = resolve_symbol(std::get<IdentifierExpr>(expr->data).name);
+        return sym && sym->type && sym->type->kind == TypeKind::TAF3;
+    }
+    if (std::holds_alternative<MemberAccessExpr>(expr->data)) {
+        auto& ma = std::get<MemberAccessExpr>(expr->data);
+        return member_is_taf3(ma.object, ma.member);
+    }
+    if (std::holds_alternative<CallExpr>(expr->data)) {
+        auto& ce = std::get<CallExpr>(expr->data);
+        auto it = functions_.find(ce.callee);
+        if (it != functions_.end() && it->second && it->second->return_type) {
+            return it->second->return_type->kind == TypeKind::TAF3;
+        }
+    }
+    return false;
+}
+
+bool TypeChecker::member_is_taf3(Expr* object_expr, const std::string& member) {
+    if (!object_expr) return false;
+    if (!std::holds_alternative<IdentifierExpr>(object_expr->data)) return false;
+    auto sym = resolve_symbol(std::get<IdentifierExpr>(object_expr->data).name);
+    if (!sym || !sym->type) return false;
+    if (sym->type->kind != TypeKind::CLASS && sym->type->kind != TypeKind::STRUCT) return false;
+    auto fit = sym->type->fields.find(member);
+    if (fit == sym->type->fields.end() || !fit->second.type) return false;
+    return fit->second.type->kind == TypeKind::TAF3;
+}
+
+void TypeChecker::resolve_triples_expr(Expr* expr, bool expect_taf3) {
+    if (!expr) return;
+    std::visit([&](auto& e) {
+        using T = std::decay_t<decltype(e)>;
+        if constexpr (std::is_same_v<T, AmbiguousTripleExpr>) {
+            rewrite_triple(expr, expect_taf3);
+        } else if constexpr (std::is_same_v<T, BinaryExpr>) {
+            bool arith = (e.op == BinaryOp::ADD || e.op == BinaryOp::SUB
+                          || e.op == BinaryOp::MUL || e.op == BinaryOp::DIV
+                          || e.op == BinaryOp::MATMUL);
+            bool left_is_triple = std::holds_alternative<AmbiguousTripleExpr>(e.left->data);
+            bool right_is_triple = std::holds_alternative<AmbiguousTripleExpr>(e.right->data);
+            if (arith && (left_is_triple || right_is_triple)) {
+                // Resolve the non-triple side first so an existing TAFPU anchor
+                // is visible before deciding the triple side(s).
+                if (!left_is_triple) resolve_triples_expr(e.left, false);
+                if (!right_is_triple) resolve_triples_expr(e.right, false);
+                bool tafpu_ctx = is_tafpuish(e.left) || is_tafpuish(e.right)
+                                 // Legacy: two bare triples in arithmetic were TAFPU math.
+                                 || (left_is_triple && right_is_triple);
+                if (left_is_triple) rewrite_triple(e.left, tafpu_ctx);
+                if (right_is_triple) rewrite_triple(e.right, tafpu_ctx);
+            } else {
+                resolve_triples_expr(e.left, false);
+                resolve_triples_expr(e.right, false);
+            }
+        } else if constexpr (std::is_same_v<T, UnaryExpr>) {
+            resolve_triples_expr(e.operand, false);
+        } else if constexpr (std::is_same_v<T, CallExpr>) {
+            // assert_eq(a, b): a triple argument follows the OTHER side's type.
+            if (e.callee == "assert_eq" && e.args.size() == 2) {
+                resolve_triples_expr(e.args[0], false);
+                bool a0_tafpu = is_tafpuish(e.args[0]);
+                resolve_triples_expr(e.args[1], a0_tafpu);
+                return;
+            }
+            auto sig = functions_.find(e.callee);
+            for (size_t i = 0; i < e.args.size(); ++i) {
+                bool arg_expect = false;
+                if (sig != functions_.end() && sig->second
+                    && i < sig->second->param_types.size()
+                    && sig->second->param_types[i]
+                    && sig->second->param_types[i]->kind == TypeKind::TAF3) {
+                    arg_expect = true;
+                }
+                resolve_triples_expr(e.args[i], arg_expect);
+            }
+        } else if constexpr (std::is_same_v<T, TafpuConstructExpr>) {
+            resolve_triples_expr(e.a, false);
+            resolve_triples_expr(e.b, false);
+            resolve_triples_expr(e.s, false);
+        } else if constexpr (std::is_same_v<T, MemberAccessExpr>) {
+            resolve_triples_expr(e.object, false);
+        } else if constexpr (std::is_same_v<T, MethodCallExpr>) {
+            resolve_triples_expr(e.object, false);
+            for (Expr* arg : e.args) resolve_triples_expr(arg, false);
+        } else if constexpr (std::is_same_v<T, IndexExpr>) {
+            resolve_triples_expr(e.object, false);
+            resolve_triples_expr(e.index, false);
+        } else if constexpr (std::is_same_v<T, ArrayLiteralExpr>) {
+            for (Expr* el : e.elements) resolve_triples_expr(el, false);
+        } else if constexpr (std::is_same_v<T, FStringExpr>) {
+            for (Expr* child : e.expressions) resolve_triples_expr(child, false);
+        } else if constexpr (std::is_same_v<T, ComptimeExpr>) {
+            resolve_triples_expr(e.expr, false);
+        }
+        // Literals: nothing to descend into.
+    }, expr->data);
+}
+
+void TypeChecker::resolve_triples_stmt(Stmt* stmt) {
+    if (!stmt) return;
+    // NOTE: only the DIRECT expressions of this statement are resolved here.
+    // Nested statements are resolved lazily by their own check_stmt calls,
+    // so sibling declarations (e.g. `let x: taf3 = ...`) are already in
+    // scope when a later assignment needs their type.
+    std::visit([&](auto& s) {
+        using T = std::decay_t<decltype(s)>;
+        if constexpr (std::is_same_v<T, VarDeclStmt>) {
+            bool expect = (s.type == DataType::TAF3);
+            if (s.init) resolve_triples_expr(s.init, expect);
+        } else if constexpr (std::is_same_v<T, AssignStmt>) {
+            auto sym = resolve_symbol(s.name);
+            bool expect = sym && sym->type && sym->type->kind == TypeKind::TAF3;
+            if (s.value) resolve_triples_expr(s.value, expect);
+        } else if constexpr (std::is_same_v<T, MemberAssignStmt>) {
+            bool expect = member_is_taf3(s.object, s.member);
+            resolve_triples_expr(s.object, false);
+            if (s.value) resolve_triples_expr(s.value, expect);
+        } else if constexpr (std::is_same_v<T, IndexAssignStmt>) {
+            resolve_triples_expr(s.object, false);
+            resolve_triples_expr(s.index, false);
+            resolve_triples_expr(s.value, false);
+        } else if constexpr (std::is_same_v<T, ExprStmt>) {
+            resolve_triples_expr(s.expr, false);
+        } else if constexpr (std::is_same_v<T, IfStmt>) {
+            resolve_triples_expr(s.condition, false);
+        } else if constexpr (std::is_same_v<T, WhileStmt>) {
+            resolve_triples_expr(s.condition, false);
+        } else if constexpr (std::is_same_v<T, ForStmt>) {
+            resolve_triples_stmt(s.init);
+            resolve_triples_expr(s.cond, false);
+            resolve_triples_stmt(s.update);
+            resolve_triples_expr(s.iterable, false);
+        } else if constexpr (std::is_same_v<T, ReturnStmt>) {
+            bool expect = current_fn_return_type_
+                          && current_fn_return_type_->kind == TypeKind::TAF3;
+            if (s.value) resolve_triples_expr(s.value, expect);
+        } else if constexpr (std::is_same_v<T, Branch3Stmt>) {
+            resolve_triples_expr(s.condition, false);
+        }
+        // BlockStmt/IfStmt branches/MatchStmt arms/FnDeclStmt bodies: resolved
+        // lazily when their own check_stmt runs. Declarations/imports: nothing.
+    }, stmt->data);
 }
 
 void TypeChecker::check_return(ReturnStmt& stmt) {
@@ -525,8 +730,13 @@ void TypeChecker::check_enum_decl(EnumDeclStmt& stmt) {
 
 void TypeChecker::check_match(MatchStmt& stmt) {
     TypePtr cond_type = check_expr(stmt.condition);
+    bool cond_tafpu = is_tafpuish(stmt.condition);
 
     for (const auto& arm : stmt.arms) {
+        // Resolve triple patterns against the condition's type context first.
+        if (arm.pattern && std::holds_alternative<AmbiguousTripleExpr>(arm.pattern->data)) {
+            resolve_triples_expr(arm.pattern, cond_tafpu);
+        }
         if (arm.pattern) {
             TypePtr pat_type = check_expr(arm.pattern);
             if (cond_type && pat_type && cond_type->kind != TypeKind::ANY && pat_type->kind != TypeKind::ANY) {
@@ -724,6 +934,11 @@ TypePtr TypeChecker::check_call(CallExpr& expr) {
     auto st_it = type_defs_.find(expr.callee);
     if (st_it != type_defs_.end() && (st_it->second->kind == TypeKind::STRUCT || st_it->second->kind == TypeKind::CLASS)) {
         return st_it->second;
+    }
+
+    // taf3 constructor: 3 args (a, b, s) or 2 args (a, b; implies s = 0)
+    if (expr.callee == "taf3" && (expr.args.size() == 2 || expr.args.size() == 3)) {
+        return Type::make_taf3();
     }
 
     auto it = functions_.find(expr.callee);

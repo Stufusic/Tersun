@@ -475,6 +475,8 @@ void BytecodeEmitter::emit_stmt(Stmt* stmt) {
         else if constexpr (std::is_same_v<T, IfStmt>) emit_if(s);
         else if constexpr (std::is_same_v<T, Branch3Stmt>) emit_branch3(s);
         else if constexpr (std::is_same_v<T, WhileStmt>) emit_while(s);
+        else if constexpr (std::is_same_v<T, ForStmt>) emit_for_stmt(s);
+        else if constexpr (std::is_same_v<T, BreakContinueStmt>) emit_break_continue(s);
         else if constexpr (std::is_same_v<T, ReturnStmt>) emit_return(s);
         else if constexpr (std::is_same_v<T, FnDeclStmt>) emit_fn_decl(s);
         else if constexpr (std::is_same_v<T, MatchStmt>) emit_match(s);
@@ -502,6 +504,7 @@ void BytecodeEmitter::emit_expr(Expr* expr) {
         else if constexpr (std::is_same_v<T, BinaryExpr>) emit_binary(e);
         else if constexpr (std::is_same_v<T, CallExpr>) emit_call(e);
         else if constexpr (std::is_same_v<T, TafpuConstructExpr>) emit_tafpu_construct(e);
+        else if constexpr (std::is_same_v<T, AmbiguousTripleExpr>) emit_ambiguous_triple(e);
         else if constexpr (std::is_same_v<T, MemberAccessExpr>) emit_member_access(e);
         else if constexpr (std::is_same_v<T, MethodCallExpr>) emit_method_call(e);
         else if constexpr (std::is_same_v<T, IndexExpr>) emit_index(e);
@@ -624,11 +627,20 @@ void BytecodeEmitter::emit_branch3(const Branch3Stmt& stmt) {
 }
 
 void BytecodeEmitter::emit_while(const WhileStmt& stmt) {
+    loop_stack_.push_back(LoopContext{});
+    const size_t loop_index = loop_stack_.size() - 1;
+    loop_stack_[loop_index].label = stmt.label;
+
     size_t loop_start = chunk_.code.size();
     emit_expr(stmt.condition);
 
     size_t exit_jump = chunk_.emit_jump(OpCode::OP_JUMP_IF_FALSE, stmt.loc.line);
     emit_stmt(stmt.body);
+
+    // 'continue' re-evaluates the condition
+    for (size_t off : loop_stack_[loop_index].continue_jumps) {
+        chunk_.patch_jump(off);
+    }
 
     // Jump back to loop start
     chunk_.write_opcode(OpCode::OP_JUMP, stmt.loc.line);
@@ -636,6 +648,236 @@ void BytecodeEmitter::emit_while(const WhileStmt& stmt) {
     chunk_.write_int16(back_dist, stmt.loc.line);
 
     chunk_.patch_jump(exit_jump);
+    for (size_t off : loop_stack_[loop_index].break_jumps) {
+        chunk_.patch_jump(off);
+    }
+    loop_stack_.pop_back();
+}
+
+void BytecodeEmitter::emit_for_stmt(const ForStmt& stmt) {
+    symbol_table_.enter_scope();
+    loop_stack_.push_back(LoopContext{});
+    const size_t loop_index = loop_stack_.size() - 1;
+    loop_stack_[loop_index].label = stmt.label;
+
+    auto store_slot = [&](uint16_t slot) {
+        chunk_.write_opcode(OpCode::OP_STORE_LOCAL, stmt.loc.line);
+        chunk_.write_int16(static_cast<int16_t>(slot), stmt.loc.line);
+    };
+    auto load_slot = [&](uint16_t slot) {
+        chunk_.write_opcode(OpCode::OP_LOAD_LOCAL, stmt.loc.line);
+        chunk_.write_int16(static_cast<int16_t>(slot), stmt.loc.line);
+    };
+
+    if (stmt.is_for_in) {
+        // range(a, b, step) is desugared into a pure index loop (no allocation).
+        const CallExpr* range_call = nullptr;
+        if (stmt.iterable && std::holds_alternative<CallExpr>(stmt.iterable->data)) {
+            const auto& ce = std::get<CallExpr>(stmt.iterable->data);
+            if (ce.callee == "range") range_call = &ce;
+        }
+
+        if (range_call) {
+            if (range_call->args.empty() || range_call->args.size() > 3) {
+                throw CompilerException("[Emitter Error] " + loc_str(stmt.loc)
+                                        + " - range() takes 1 to 3 arguments (stop | start, stop | start, stop, step).");
+            }
+            const uint16_t var_slot = next_local_slot_++;
+            symbol_table_.define(stmt.loop_var, DataType::INT, false, var_slot);
+            const uint16_t stop_slot = next_local_slot_++;
+            const uint16_t step_slot = next_local_slot_++;
+
+            // NOTE: OP_STORE_LOCAL peeks (does not pop), so each value must be
+            // pushed and stored as an immediate pair — pushing all three first
+            // would leave every slot holding the top value.
+            auto push_int = [&](int64_t v) {
+                chunk_.write_opcode(OpCode::OP_PUSH_INT, stmt.loc.line);
+                chunk_.write_int64(v, stmt.loc.line);
+            };
+
+            if (range_call->args.size() == 1) {
+                push_int(1);                      // step = 1
+                store_slot(step_slot);
+                emit_expr(range_call->args[0]);   // stop
+                store_slot(stop_slot);
+                push_int(0);                      // var = 0
+                store_slot(var_slot);
+            } else if (range_call->args.size() == 2) {
+                push_int(1);                      // step = 1
+                store_slot(step_slot);
+                emit_expr(range_call->args[1]);   // stop
+                store_slot(stop_slot);
+                emit_expr(range_call->args[0]);   // var = start
+                store_slot(var_slot);
+            } else {
+                emit_expr(range_call->args[2]);   // step
+                store_slot(step_slot);
+                emit_expr(range_call->args[1]);   // stop
+                store_slot(stop_slot);
+                emit_expr(range_call->args[0]);   // var = start
+                store_slot(var_slot);
+            }
+
+            size_t loop_start = chunk_.code.size();
+            // cond = (step > 0 && var < stop) || (step < 0 && var > stop)
+            load_slot(step_slot);
+            push_int(0);
+            chunk_.write_opcode(OpCode::OP_GT, stmt.loc.line);
+            load_slot(var_slot);
+            load_slot(stop_slot);
+            chunk_.write_opcode(OpCode::OP_LT, stmt.loc.line);
+            chunk_.write_opcode(OpCode::OP_TERNARY_MIN, stmt.loc.line); // &&
+            load_slot(step_slot);
+            push_int(0);
+            chunk_.write_opcode(OpCode::OP_LT, stmt.loc.line);
+            load_slot(var_slot);
+            load_slot(stop_slot);
+            chunk_.write_opcode(OpCode::OP_GT, stmt.loc.line);
+            chunk_.write_opcode(OpCode::OP_TERNARY_MIN, stmt.loc.line); // &&
+            chunk_.write_opcode(OpCode::OP_TERNARY_MAX, stmt.loc.line); // ||
+            size_t exit_jump = chunk_.emit_jump(OpCode::OP_JUMP_IF_FALSE, stmt.loc.line);
+
+            if (stmt.body) emit_stmt(stmt.body);
+
+            for (size_t off : loop_stack_[loop_index].continue_jumps) {
+                chunk_.patch_jump(off);
+            }
+            load_slot(var_slot);
+            load_slot(step_slot);
+            chunk_.write_opcode(OpCode::OP_ADD, stmt.loc.line);
+            store_slot(var_slot);
+
+            chunk_.write_opcode(OpCode::OP_JUMP, stmt.loc.line);
+            int16_t back_dist = static_cast<int16_t>(loop_start - (chunk_.code.size() + 2));
+            chunk_.write_int16(back_dist, stmt.loc.line);
+
+            chunk_.patch_jump(exit_jump);
+            for (size_t off : loop_stack_[loop_index].break_jumps) {
+                chunk_.patch_jump(off);
+            }
+        } else {
+        // Evaluate the iterable exactly once into a hidden slot.
+        emit_expr(stmt.iterable);
+        const uint16_t coll_slot = next_local_slot_++;
+        store_slot(coll_slot);
+
+        // Hidden index, starts at 0.
+        chunk_.write_opcode(OpCode::OP_PUSH_INT, stmt.loc.line);
+        chunk_.write_int64(0, stmt.loc.line);
+        const uint16_t idx_slot = next_local_slot_++;
+        store_slot(idx_slot);
+
+        // Cached element count (collection.len()) — pushing during the loop
+        // will not extend the iteration, mirroring Python snapshot semantics.
+        load_slot(coll_slot);
+        uint16_t len_fid = chunk_.add_string("length");
+        chunk_.write_opcode(OpCode::OP_GET_FIELD, stmt.loc.line);
+        chunk_.write_int16(static_cast<int16_t>(len_fid), stmt.loc.line);
+        const uint16_t len_slot = next_local_slot_++;
+        store_slot(len_slot);
+
+        // Declared loop variable
+        const uint16_t var_slot = next_local_slot_++;
+        symbol_table_.define(stmt.loop_var, DataType::ANY, false, var_slot);
+
+        size_t loop_start = chunk_.code.size();
+
+        // Condition: idx < len
+        load_slot(idx_slot);
+        load_slot(len_slot);
+        chunk_.write_opcode(OpCode::OP_LT, stmt.loc.line);
+        size_t exit_jump = chunk_.emit_jump(OpCode::OP_JUMP_IF_FALSE, stmt.loc.line);
+
+        // Loop variable = collection[idx]
+        load_slot(coll_slot);
+        load_slot(idx_slot);
+        chunk_.write_opcode(OpCode::OP_GET_INDEX, stmt.loc.line);
+        store_slot(var_slot);
+
+        if (stmt.body) emit_stmt(stmt.body);
+
+        // 'continue' lands on the increment
+        for (size_t off : loop_stack_[loop_index].continue_jumps) {
+            chunk_.patch_jump(off);
+        }
+        load_slot(idx_slot);
+        chunk_.write_opcode(OpCode::OP_PUSH_INT, stmt.loc.line);
+        chunk_.write_int64(1, stmt.loc.line);
+        chunk_.write_opcode(OpCode::OP_ADD, stmt.loc.line);
+        store_slot(idx_slot);
+
+        chunk_.write_opcode(OpCode::OP_JUMP, stmt.loc.line);
+        int16_t back_dist = static_cast<int16_t>(loop_start - (chunk_.code.size() + 2));
+        chunk_.write_int16(back_dist, stmt.loc.line);
+
+        chunk_.patch_jump(exit_jump);
+        for (size_t off : loop_stack_[loop_index].break_jumps) {
+            chunk_.patch_jump(off);
+        }
+        }
+    } else {
+        // C-style: for (init; cond; update) body
+        if (stmt.init) emit_stmt(stmt.init);
+
+        size_t loop_start = chunk_.code.size();
+        if (stmt.cond) {
+            emit_expr(stmt.cond);
+        } else {
+            chunk_.write_opcode(OpCode::OP_PUSH_BOOL, stmt.loc.line);
+            chunk_.write_byte(1, stmt.loc.line);
+        }
+        size_t exit_jump = chunk_.emit_jump(OpCode::OP_JUMP_IF_FALSE, stmt.loc.line);
+
+        if (stmt.body) emit_stmt(stmt.body);
+
+        // 'continue' lands before the update clause
+        for (size_t off : loop_stack_[loop_index].continue_jumps) {
+            chunk_.patch_jump(off);
+        }
+        if (stmt.update) emit_stmt(stmt.update);
+
+        chunk_.write_opcode(OpCode::OP_JUMP, stmt.loc.line);
+        int16_t back_dist = static_cast<int16_t>(loop_start - (chunk_.code.size() + 2));
+        chunk_.write_int16(back_dist, stmt.loc.line);
+
+        chunk_.patch_jump(exit_jump);
+        for (size_t off : loop_stack_[loop_index].break_jumps) {
+            chunk_.patch_jump(off);
+        }
+    }
+
+    loop_stack_.pop_back();
+    symbol_table_.exit_scope();
+}
+
+void BytecodeEmitter::emit_break_continue(const BreakContinueStmt& stmt) {
+    if (loop_stack_.empty()) {
+        throw CompilerException("[Emitter Error] " + loc_str(stmt.loc) + " - '"
+                                + (stmt.is_break ? std::string("break") : std::string("continue"))
+                                + "' outside of a loop.");
+    }
+
+    auto emit_jump_to = [&](LoopContext& loop, bool is_break) {
+        if (is_break) {
+            size_t off = chunk_.emit_jump(OpCode::OP_JUMP, stmt.loc.line);
+            loop.break_jumps.push_back(off);
+        } else {
+            size_t off = chunk_.emit_jump(OpCode::OP_JUMP, stmt.loc.line);
+            loop.continue_jumps.push_back(off);
+        }
+    };
+
+    if (stmt.label.empty()) {
+        emit_jump_to(loop_stack_.back(), stmt.is_break);
+        return;
+    }
+    for (auto it = loop_stack_.rbegin(); it != loop_stack_.rend(); ++it) {
+        if (it->label == stmt.label) {
+            emit_jump_to(*it, stmt.is_break);
+            return;
+        }
+    }
+    throw CompilerException("[Emitter Error] " + loc_str(stmt.loc) + " - No loop labeled '" + stmt.label + "'.");
 }
 
 void BytecodeEmitter::emit_return(const ReturnStmt& stmt) {
@@ -1054,6 +1296,29 @@ void BytecodeEmitter::emit_call(const CallExpr& expr) {
         return;
     }
 
+    // taf3(a, b, s) / taf3(a, b) — explicit TAFPU constructor call
+    if (expr.callee == "taf3") {
+        if (expr.args.size() == 2 || expr.args.size() == 3) {
+            emit_expr(expr.args[0]);
+            emit_expr(expr.args[1]);
+            if (expr.args.size() == 3) {
+                emit_expr(expr.args[2]);
+            } else {
+                chunk_.write_opcode(OpCode::OP_PUSH_INT, expr.loc.line);
+                chunk_.write_int64(0, expr.loc.line);
+            }
+            chunk_.write_opcode(OpCode::OP_TAFPU_CONSTRUCT, expr.loc.line);
+            return;
+        }
+        throw CompilerException("[Emitter Error] " + loc_str(expr.loc)
+                                + " - taf3() takes 2 or 3 arguments (taf3(a, b, s) or taf3(a, b)).");
+    }
+
+    if (expr.callee == "range") {
+        throw CompilerException("[Emitter Error] " + loc_str(expr.loc)
+                                + " - range() is only supported as a for-in iterable: 'for i in range(...)'.");
+    }
+
     // User-defined function call
     for (Expr* arg : expr.args) {
         emit_expr(arg);
@@ -1081,11 +1346,58 @@ void BytecodeEmitter::emit_tafpu_construct(const TafpuConstructExpr& expr) {
     chunk_.write_opcode(OpCode::OP_TAFPU_CONSTRUCT, expr.loc.line);
 }
 
+// Checker-less paths (REPL, disasm, emit-qasm, emit-c) keep the legacy
+// interpretation: a bare numeric triple is a TAFPU construct.
+void BytecodeEmitter::emit_ambiguous_triple(const AmbiguousTripleExpr& expr) {
+    if (expr.elements.size() == 3) {
+        emit_expr(expr.elements[0]);
+        emit_expr(expr.elements[1]);
+        emit_expr(expr.elements[2]);
+        chunk_.write_opcode(OpCode::OP_TAFPU_CONSTRUCT, expr.loc.line);
+    } else if (expr.elements.size() == 2) {
+        emit_expr(expr.elements[0]);
+        emit_expr(expr.elements[1]);
+        chunk_.write_opcode(OpCode::OP_PUSH_INT, expr.loc.line);
+        chunk_.write_int64(0, expr.loc.line);
+        chunk_.write_opcode(OpCode::OP_TAFPU_CONSTRUCT, expr.loc.line);
+    } else {
+        for (Expr* el : expr.elements) emit_expr(el);
+        chunk_.write_opcode(OpCode::OP_NEW_ARRAY, expr.loc.line);
+        chunk_.write_int16(static_cast<int16_t>(expr.elements.size()), expr.loc.line);
+    }
+}
+
 void BytecodeEmitter::emit_fstring_lit(const FStringExpr& expr) {
-    uint16_t id = static_cast<uint16_t>(chunk_.string_table.size());
-    chunk_.string_table.push_back(expr.format_string);
-    chunk_.write_opcode(OpCode::OP_PUSH_STRING, expr.loc.line);
-    chunk_.write_int16(static_cast<int16_t>(id), expr.loc.line);
+    if (expr.parts.empty()) {
+        // No interpolation segments: legacy raw format string.
+        uint16_t id = static_cast<uint16_t>(chunk_.string_table.size());
+        chunk_.string_table.push_back(expr.format_string);
+        chunk_.write_opcode(OpCode::OP_PUSH_STRING, expr.loc.line);
+        chunk_.write_int16(static_cast<int16_t>(id), expr.loc.line);
+        return;
+    }
+
+    for (size_t i = 0; i < expr.parts.size(); ++i) {
+        const FStringPart& part = expr.parts[i];
+        if (part.is_literal) {
+            uint16_t id = chunk_.add_string(part.text);
+            chunk_.write_opcode(OpCode::OP_PUSH_STRING, expr.loc.line);
+            chunk_.write_int16(static_cast<int16_t>(id), expr.loc.line);
+        } else {
+            emit_expr(part.expr);
+            // target.fmt(spec) — the VM renders the value per MATLAB-style spec
+            uint16_t mid = chunk_.add_string("fmt");
+            uint16_t sid = chunk_.add_string(part.text);
+            chunk_.write_opcode(OpCode::OP_PUSH_STRING, expr.loc.line);
+            chunk_.write_int16(static_cast<int16_t>(sid), expr.loc.line);
+            chunk_.write_opcode(OpCode::OP_INVOKE_METHOD, expr.loc.line);
+            chunk_.write_int16(static_cast<int16_t>(mid), expr.loc.line);
+            chunk_.write_byte(1, expr.loc.line);
+        }
+        if (i > 0) {
+            chunk_.write_opcode(OpCode::OP_ADD, expr.loc.line);
+        }
+    }
 }
 
 void BytecodeEmitter::emit_member_access(const MemberAccessExpr& expr) {

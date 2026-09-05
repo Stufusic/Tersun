@@ -1,0 +1,41 @@
+class Stats {
+    pub hp: int;
+    pub vals: array;
+}
+fn main() {
+    let x = 7;
+    if (x > 100) {
+        println("big");
+    } elif (x > 5) {
+        println("medium");
+    } elif (x > 0) {
+        println("small");
+    } else {
+        println("zero");
+    }
+
+    let s = Stats();
+    s.hp = 10;
+    s.hp += 5;
+    assert_eq(s.hp, 15);
+    s.hp -= 3;
+    assert_eq(s.hp, 12);
+    s.hp *= 2;
+    assert_eq(s.hp, 24);
+
+    let arr = [1, 2, 3, 4];
+    arr[1] += 10;
+    assert_eq(arr[1], 12);
+    arr[0] *= 3;
+    assert_eq(arr[0], 3);
+
+    let n = 0;
+    n += 4;
+    n *= n;
+    assert_eq(n, 16);
+    n -= 6;
+    assert_eq(n, 10);
+    n /= 2;
+    assert_eq(n, 5);
+    println("ELIF_OK");
+}

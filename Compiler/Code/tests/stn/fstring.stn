@@ -1,0 +1,18 @@
+fn main() {
+    let x = 42;
+    let pi = 3.14159;
+    let name = "Setun";
+    let n = 0 - 5;
+
+    println(f"x = {x}");
+    println(f"pi = {pi}");
+    println(f"pi fixed = {pi:.3f}");
+    println(f"pi sci = {pi:e}");
+    println(f"ternary = {n:t}");
+    println(f"{name} says {x + 8}!");
+    println(f"literal braces {{}}");
+    assert_eq(f"{x}", "42");
+    assert_eq(f"{pi:.2f}", "3.14");
+    assert_eq(f"a{x}b", "a42b");
+    println("FSTR_OK");
+}

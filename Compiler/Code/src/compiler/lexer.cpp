@@ -122,6 +122,11 @@ static const std::unordered_map<std::string_view, TokenType> KEYWORDS = {
     {"if", TokenType::KW_IF},
     {"else", TokenType::KW_ELSE},
     {"while", TokenType::KW_WHILE},
+    {"for", TokenType::KW_FOR},
+    {"in", TokenType::KW_IN},
+    {"break", TokenType::KW_BREAK},
+    {"continue", TokenType::KW_CONTINUE},
+    {"elif", TokenType::KW_ELIF},
     {"branch", TokenType::KW_BRANCH},
     {"branch3", TokenType::KW_BRANCH},
     {"print", TokenType::KW_PRINT},
@@ -456,10 +461,22 @@ Token Lexer::next_token() {
         case ',': return Token{TokenType::COMMA, ",", loc};
         case ';': return Token{TokenType::SEMICOLON, ";", loc};
         case ':': return Token{TokenType::COLON, ":", loc};
-        case '+': return Token{TokenType::PLUS, "+", loc};
+        case '+':
+            if (match('=')) {
+                return Token{TokenType::PLUS_EQUAL, "+=", loc};
+            }
+            return Token{TokenType::PLUS, "+", loc};
         case '~': return Token{TokenType::TILDE, "~", loc};
-        case '*': return Token{TokenType::STAR, "*", loc};
-        case '/': return Token{TokenType::SLASH, "/", loc};
+        case '*':
+            if (match('=')) {
+                return Token{TokenType::STAR_EQUAL, "*=", loc};
+            }
+            return Token{TokenType::STAR, "*", loc};
+        case '/':
+            if (match('=')) {
+                return Token{TokenType::SLASH_EQUAL, "/=", loc};
+            }
+            return Token{TokenType::SLASH, "/", loc};
         case '|':
             if (match('|')) {
                 return Token{TokenType::PIPE_PIPE, "||", loc};
@@ -486,6 +503,9 @@ Token Lexer::next_token() {
         case '-':
             if (match('>')) {
                 return Token{TokenType::ARROW, "->", loc};
+            }
+            if (match('=')) {
+                return Token{TokenType::MINUS_EQUAL, "-=", loc};
             }
             return Token{TokenType::MINUS, "-", loc};
         case '=':

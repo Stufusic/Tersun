@@ -73,6 +73,25 @@ VM run_stn_file(const std::string& name) {
     return vm;
 }
 
+// Full pipeline over inline source; used for negative compile tests.
+void run_stn_inline(const std::string& src) {
+    ArenaAllocator arena;
+    Lexer lexer(src);
+    auto tokens = lexer.tokenize();
+    Parser parser(tokens, arena);
+    Program program = parser.parse_program();
+    TypeChecker checker;
+    if (!checker.check_program(program)) {
+        throw CompilerException("inline test source failed type checking");
+    }
+    Monomorphizer mono;
+    mono.process_program(program);
+    BytecodeEmitter emitter;
+    Chunk chunk = emitter.compile(program);
+    VM vm;
+    vm.run(chunk);
+}
+
 bool typecheck_fails_with(const std::string& src, const std::string& needle) {
     ArenaAllocator arena;
     Lexer lexer(src);
@@ -160,6 +179,59 @@ void test_stn_negative_compile() {
         }
         assert(threw && "constructor arity mismatch must raise CompilerException");
     }
+
+    // 5. 'break' outside of a loop -> emitter error
+    {
+        bool threw = false;
+        try {
+            run_stn_inline("fn main() { break; }");
+        } catch (const CompilerException&) {
+            threw = true;
+        }
+        assert(threw && "'break' outside a loop must raise CompilerException");
+    }
+
+    // 6. Standalone range() call is rejected
+    {
+        bool threw = false;
+        try {
+            run_stn_inline("fn main() { let r = range(5); }");
+        } catch (const CompilerException&) {
+            threw = true;
+        }
+        assert(threw && "standalone range() must raise CompilerException");
+    }
+
+    // 7. Empty f-string interpolation is rejected
+    {
+        bool threw = false;
+        try {
+            run_stn_inline("fn main() { println(f\"a{}b\"); }");
+        } catch (const CompilerException&) {
+            threw = true;
+        }
+        assert(threw && "empty f-string expression must raise CompilerException");
+    }
+}
+
+void test_stn_loops() {
+    VM vm = run_stn_file("loops.stn");
+    assert(vm.last_output().find("LOOPS_OK") != std::string::npos);
+}
+
+void test_stn_taf3_syntax() {
+    VM vm = run_stn_file("taf3_syntax.stn");
+    assert(vm.last_output().find("TAF3_OK") != std::string::npos);
+}
+
+void test_stn_fstring() {
+    VM vm = run_stn_file("fstring.stn");
+    assert(vm.last_output().find("FSTR_OK") != std::string::npos);
+}
+
+void test_stn_compound_assign() {
+    VM vm = run_stn_file("compound_assign.stn");
+    assert(vm.last_output().find("ELIF_OK") != std::string::npos);
 }
 
 } // namespace
@@ -171,6 +243,10 @@ void test_stn_semantics_suite() {
     test_stn_modules_ok();
     test_stn_fs_roundtrip();
     test_stn_negative_compile();
+    test_stn_loops();
+    test_stn_taf3_syntax();
+    test_stn_fstring();
+    test_stn_compound_assign();
 }
 
 } // namespace setun

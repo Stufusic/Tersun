@@ -68,6 +68,8 @@ private:
     void emit_if(const IfStmt& stmt);
     void emit_branch3(const Branch3Stmt& stmt);
     void emit_while(const WhileStmt& stmt);
+    void emit_for_stmt(const ForStmt& stmt);
+    void emit_break_continue(const BreakContinueStmt& stmt);
     void emit_return(const ReturnStmt& stmt);
     void emit_fn_decl(const FnDeclStmt& stmt);
     void emit_match(const MatchStmt& stmt);
@@ -83,6 +85,7 @@ private:
     void emit_binary(const BinaryExpr& expr);
     void emit_call(const CallExpr& expr);
     void emit_tafpu_construct(const TafpuConstructExpr& expr);
+    void emit_ambiguous_triple(const AmbiguousTripleExpr& expr);
     void emit_fstring_lit(const FStringExpr& expr);
     void emit_member_access(const MemberAccessExpr& expr);
     void emit_method_call(const MethodCallExpr& expr);
@@ -107,6 +110,14 @@ private:
     std::unordered_map<std::string, std::unordered_map<std::string, uint16_t>> class_methods_;
     // init() arity per class (excluding 'self'); -1 when the class has no init.
     std::unordered_map<std::string, int> class_init_arity_;
+
+    // Break/continue landing info for the lexically enclosing loops.
+    struct LoopContext {
+        std::string label;
+        std::vector<size_t> break_jumps;     // OP_JUMP placeholders patched at loop exit
+        std::vector<size_t> continue_jumps;  // OP_JUMP placeholders patched at the increment/condition point
+    };
+    std::vector<LoopContext> loop_stack_;
 };
 
 } // namespace setun

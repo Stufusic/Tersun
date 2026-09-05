@@ -1,0 +1,101 @@
+// Probe 12: hybrid for loops, break/continue, Java labels
+fn main() {
+    // C-style
+    let sum = 0;
+    for (let i = 0; i < 5; i += 1) {
+        sum += i;
+    }
+    assert_eq(sum, 10);
+
+    // for-in over array
+    let arr = [2, 4, 6, 8];
+    let total = 0;
+    for v in arr {
+        total += v;
+    }
+    assert_eq(total, 20);
+
+    // for-in parenless vs parenthesized
+    let c2 = 0;
+    for (x in arr) {
+        c2 += 1;
+    }
+    assert_eq(c2, 4);
+
+    // range: one arg / two args / negative step
+    let r1 = 0;
+    for i in range(4) {
+        r1 += i;
+    }
+    assert_eq(r1, 6);
+
+    let r2 = 0;
+    for i in range(10, 13) {
+        r2 += i;
+    }
+    assert_eq(r2, 33);
+
+    let r3 = 0;
+    for i in range(5, 0, 0 - 1) {
+        r3 += 1;
+    }
+    assert_eq(r3, 5);
+
+    // string iteration
+    let vowels = 0;
+    for ch in "setun" {
+        if (ch == "e") { vowels += 1; }
+        if (ch == "u") { vowels += 1; }
+    }
+    assert_eq(vowels, 2);
+
+    // taf3 iteration yields a, b, s
+    let tsum = 0;
+    let t: taf3 = [14, 25, 0];
+    for comp in t {
+        tsum += comp;
+    }
+    assert_eq(tsum, 39);
+
+    // break / continue
+    let found = 0 - 1;
+    for i in range(100) {
+        if (i == 7) {
+            found = i;
+            break;
+        }
+    }
+    assert_eq(found, 7);
+
+    let odds = 0;
+    for i in range(10) {
+        // no '%' operator yet: odd test via integer division
+        if ((i / 2) * 2 != i) { continue; }
+        odds += 1;
+    }
+    assert_eq(odds, 5);
+
+    // labeled break (Java style)
+    let hit = 0;
+    outer: for a in range(5) {
+        for b in range(5) {
+            if (a * b == 12) {
+                hit = a * 10 + b;
+                break outer;
+            }
+        }
+    }
+    assert_eq(hit, 34);
+
+    // continue in while
+    let w = 0;
+    let n = 0;
+    while (n < 6) {
+        n += 1;
+        if (n == 3) { continue; }
+        w += n;
+    }
+    assert_eq(w, 18);
+
+    println("LOOPS_OK");
+}

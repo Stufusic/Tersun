@@ -111,6 +111,15 @@ struct BinaryExpr {
     SourceLocation loc;
 };
 
+// A bracketed numeric triple [a, b, c] (or pair [a, b]). The TypeChecker
+// resolves it to either TafpuConstructExpr (TAFPU context) or
+// ArrayLiteralExpr (plain array) from the surrounding type context;
+// checker-less paths default to the legacy TAFPU interpretation.
+struct AmbiguousTripleExpr {
+    std::vector<Expr*> elements; // 2 or 3 numeric expressions
+    SourceLocation loc;
+};
+
 struct CallExpr {
     std::string callee;
     std::vector<Expr*> args;
@@ -124,9 +133,18 @@ struct TafpuConstructExpr {
     SourceLocation loc;
 };
 
+// One segment of an f-string: either literal text or an interpolated
+// expression with an optional format spec (".3f", "g", "e", "t", ...).
+struct FStringPart {
+    bool is_literal{false};
+    std::string text;    // literal text, or the format spec for expressions
+    Expr* expr{nullptr}; // set for expression parts
+};
+
 struct FStringExpr {
     std::string format_string;
-    std::vector<Expr*> expressions;
+    std::vector<Expr*> expressions; // interpolated expressions, in order
+    std::vector<FStringPart> parts; // full segment list (literals + expressions)
     SourceLocation loc;
 };
 
@@ -179,7 +197,8 @@ using ExprData = std::variant<
     MethodCallExpr,
     IndexExpr,
     ComptimeExpr,
-    ArrayLiteralExpr
+    ArrayLiteralExpr,
+    AmbiguousTripleExpr
 >;
 
 struct Expr {
@@ -254,6 +273,28 @@ struct Branch3Stmt {
 struct WhileStmt {
     Expr* condition{nullptr};
     Stmt* body{nullptr};
+    SourceLocation loc;
+    std::string label;  // optional Java-style loop label for break/continue
+};
+
+// Hybrid loop: C-style three-clause `for (init; cond; update)` or
+// Python/Java-style for-each `for x in <iterable>` (arrays, strings, taf3
+// components). `range(a, b, step)` iterables are desugared at emit time.
+struct ForStmt {
+    Stmt* init{nullptr};     // C-style only: VarDeclStmt / ExprStmt / null
+    Expr* cond{nullptr};     // C-style only: null means true
+    Stmt* update{nullptr};   // C-style only: ExprStmt / null
+    bool is_for_in{false};
+    std::string loop_var;    // for-in only
+    Expr* iterable{nullptr}; // for-in only (CallExpr "range" handled specially)
+    Stmt* body{nullptr};
+    SourceLocation loc;
+    std::string label;       // optional Java-style loop label
+};
+
+struct BreakContinueStmt {
+    bool is_break{true};
+    std::string label;       // empty = innermost loop
     SourceLocation loc;
 };
 
@@ -369,7 +410,9 @@ using StmtData = std::variant<
     InterfaceDeclStmt,
     EnumDeclStmt,
     MatchStmt,
-    ImportStmt
+    ImportStmt,
+    ForStmt,
+    BreakContinueStmt
 >;
 
 struct Stmt {

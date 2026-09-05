@@ -84,6 +84,35 @@ void Monomorphizer::process_program(Program& program) {
                 // Rewrite call to point to specialized instance
                 call.callee = spec_name;
             }
+        } else if (std::holds_alternative<MethodCallExpr>(expr->data)) {
+            auto& mc = std::get<MethodCallExpr>(expr->data);
+            self(self, mc.object);
+            for (Expr* a : mc.args) self(self, a);
+        } else if (std::holds_alternative<BinaryExpr>(expr->data)) {
+            auto& be = std::get<BinaryExpr>(expr->data);
+            self(self, be.left);
+            self(self, be.right);
+        } else if (std::holds_alternative<UnaryExpr>(expr->data)) {
+            self(self, std::get<UnaryExpr>(expr->data).operand);
+        } else if (std::holds_alternative<MemberAccessExpr>(expr->data)) {
+            self(self, std::get<MemberAccessExpr>(expr->data).object);
+        } else if (std::holds_alternative<IndexExpr>(expr->data)) {
+            auto& ie = std::get<IndexExpr>(expr->data);
+            self(self, ie.object);
+            self(self, ie.index);
+        } else if (std::holds_alternative<ArrayLiteralExpr>(expr->data)) {
+            for (Expr* el : std::get<ArrayLiteralExpr>(expr->data).elements) self(self, el);
+        } else if (std::holds_alternative<AmbiguousTripleExpr>(expr->data)) {
+            for (Expr* el : std::get<AmbiguousTripleExpr>(expr->data).elements) self(self, el);
+        } else if (std::holds_alternative<TafpuConstructExpr>(expr->data)) {
+            auto& tc = std::get<TafpuConstructExpr>(expr->data);
+            self(self, tc.a);
+            self(self, tc.b);
+            self(self, tc.s);
+        } else if (std::holds_alternative<FStringExpr>(expr->data)) {
+            for (Expr* child : std::get<FStringExpr>(expr->data).expressions) self(self, child);
+        } else if (std::holds_alternative<ComptimeExpr>(expr->data)) {
+            self(self, std::get<ComptimeExpr>(expr->data).expr);
         }
     };
 
@@ -107,6 +136,38 @@ void Monomorphizer::process_program(Program& program) {
             auto& ws = std::get<WhileStmt>(stmt->data);
             visit_expr(visit_expr, ws.condition);
             self(self, ws.body);
+        } else if (std::holds_alternative<ForStmt>(stmt->data)) {
+            auto& fs = std::get<ForStmt>(stmt->data);
+            if (fs.init) self(self, fs.init);
+            visit_expr(visit_expr, fs.cond);
+            if (fs.update) self(self, fs.update);
+            visit_expr(visit_expr, fs.iterable);
+            self(self, fs.body);
+        } else if (std::holds_alternative<MatchStmt>(stmt->data)) {
+            auto& ms = std::get<MatchStmt>(stmt->data);
+            visit_expr(visit_expr, ms.condition);
+            for (auto& arm : ms.arms) {
+                visit_expr(visit_expr, arm.pattern);
+                if (arm.guard) visit_expr(visit_expr, arm.guard);
+                self(self, arm.body);
+            }
+        } else if (std::holds_alternative<Branch3Stmt>(stmt->data)) {
+            auto& bs = std::get<Branch3Stmt>(stmt->data);
+            visit_expr(visit_expr, bs.condition);
+            self(self, bs.neg_branch);
+            self(self, bs.zero_branch);
+            self(self, bs.pos_branch);
+        } else if (std::holds_alternative<MemberAssignStmt>(stmt->data)) {
+            auto& ma = std::get<MemberAssignStmt>(stmt->data);
+            visit_expr(visit_expr, ma.object);
+            visit_expr(visit_expr, ma.value);
+        } else if (std::holds_alternative<IndexAssignStmt>(stmt->data)) {
+            auto& ia = std::get<IndexAssignStmt>(stmt->data);
+            visit_expr(visit_expr, ia.object);
+            visit_expr(visit_expr, ia.index);
+            visit_expr(visit_expr, ia.value);
+        } else if (std::holds_alternative<ReturnStmt>(stmt->data)) {
+            visit_expr(visit_expr, std::get<ReturnStmt>(stmt->data).value);
         } else if (std::holds_alternative<FnDeclStmt>(stmt->data)) {
             auto& fn = std::get<FnDeclStmt>(stmt->data);
             if (fn.generic_params.empty()) {

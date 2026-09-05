@@ -17,6 +17,46 @@ namespace setun {
 // (queried from scripts via host.fs_err(); empty string means success).
 static std::string g_last_fs_error;
 
+// MATLAB short-g style float rendering: up to 5 significant digits,
+// trailing zeros stripped by defaultfloat formatting.
+static std::string fmt_short_g(double d) {
+    std::ostringstream oss;
+    if (d == 0.0) return "0";
+    oss << std::setprecision(5) << d;
+    return oss.str();
+}
+
+// Render a value per an f-string format spec:
+//   ""   -> short-g for floats, default to_string otherwise
+//   "g"  -> MATLAB short-g
+//   ".Nf"-> fixed-point with N decimals
+//   "e"  -> scientific notation
+//   "t"  -> balanced-ternary digits (ints/trytes)
+//   "d"/"s" -> default to_string
+static std::string format_vm_value(const VMValue& v, const std::string& spec) {
+    if (spec.empty() || spec == "g") {
+        if (v.is_float()) return fmt_short_g(v.as_float());
+        return v.to_string();
+    }
+    if (spec.size() >= 3 && spec[0] == '.' && spec.back() == 'f') {
+        int prec = std::atoi(spec.substr(1, spec.size() - 2).c_str());
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(prec) << v.as_float();
+        return oss.str();
+    }
+    if (spec == "e") {
+        std::ostringstream oss;
+        oss << std::scientific << v.as_float();
+        return oss.str();
+    }
+    if (spec == "t") {
+        if (v.is_int()) return to_ternary_string(v.as_int());
+        if (v.is_tryte()) return to_ternary_string(static_cast<int64_t>(v.as_tryte()));
+        return v.to_string();
+    }
+    return v.to_string();
+}
+
 VM::VM() {
     locals_.resize(256);
     globals_.resize(256);
@@ -798,6 +838,10 @@ void VM::handle_get_field(const Chunk& chunk) {
         }
     } else if (obj.is_tafpu()) {
         TafpuNum num = obj.as_tafpu();
+        if (field == "len" || field == "length") {
+            stack_.push(VMValue(static_cast<int64_t>(3)));
+            return;
+        }
         if (field == "a" || field == "x") stack_.push(VMValue(num.a));
         else if (field == "b" || field == "y") stack_.push(VMValue(num.b));
         else if (field == "s" || field == "z") stack_.push(VMValue(static_cast<int64_t>(num.s)));
@@ -922,6 +966,15 @@ void VM::handle_invoke_method(const Chunk& chunk) {
         args[i] = stack_.pop();
     }
     VMValue target = stack_.pop();
+
+    // Primitive rendering for f-string interpolation: value.fmt(spec).
+    // Objects are excluded so user methods named fmt/to_string are never
+    // shadowed by this built-in.
+    if (!target.is_object() && (method_name == "fmt" || method_name == "to_string")) {
+        std::string spec = (!args.empty()) ? args[0].to_string() : "";
+        stack_.push(VMValue(format_vm_value(target, spec)));
+        return;
+    }
 
     // Array built-in methods
     if (target.is_array()) {

@@ -10,9 +10,15 @@ namespace setun {
 
 void test_type_inference_primitives() {
     std::cout << "  [Test 1/10] Local Type Inference for Primitives & TAFPU...\n";
+    // Since 1.0.3 a bare [a, b, c] triple infers as Array<int>; TAFPU comes
+    // from taf3[...] literals, the taf3(...) constructor, or a taf3-typed
+    // declaration context.
     std::string src = R"(
         let a = 42;
         let b = [14, 25, 0];
+        let b2 = taf3[14, 25, 0];
+        let b3: taf3 = [14, 25, 0];
+        let b4 = taf3(14, 25, 0);
         let c = "Setun 2.0";
         let d = true;
         let v = tvec3(10, 20, 30);
@@ -33,12 +39,21 @@ void test_type_inference_primitives() {
     assert(var_a && var_a->resolved_type && var_a->resolved_type->kind == TypeKind::INT);
 
     auto* var_b = std::get_if<VarDeclStmt>(&prog.statements[1]->data);
-    assert(var_b && var_b->resolved_type && var_b->resolved_type->kind == TypeKind::TAF3);
+    assert(var_b && var_b->resolved_type && var_b->resolved_type->kind == TypeKind::ARRAY);
 
-    auto* var_c = std::get_if<VarDeclStmt>(&prog.statements[2]->data);
+    auto* var_b2 = std::get_if<VarDeclStmt>(&prog.statements[2]->data);
+    assert(var_b2 && var_b2->resolved_type && var_b2->resolved_type->kind == TypeKind::TAF3);
+
+    auto* var_b3 = std::get_if<VarDeclStmt>(&prog.statements[3]->data);
+    assert(var_b3 && var_b3->resolved_type && var_b3->resolved_type->kind == TypeKind::TAF3);
+
+    auto* var_b4 = std::get_if<VarDeclStmt>(&prog.statements[4]->data);
+    assert(var_b4 && var_b4->resolved_type && var_b4->resolved_type->kind == TypeKind::TAF3);
+
+    auto* var_c = std::get_if<VarDeclStmt>(&prog.statements[5]->data);
     assert(var_c && var_c->resolved_type && var_c->resolved_type->kind == TypeKind::STRING);
 
-    auto* var_d = std::get_if<VarDeclStmt>(&prog.statements[3]->data);
+    auto* var_d = std::get_if<VarDeclStmt>(&prog.statements[6]->data);
     assert(var_d && var_d->resolved_type && var_d->resolved_type->kind == TypeKind::BOOL);
 
     std::cout << "    -> PASSED: Inferred int, taf3, string, bool, and tvec3 automatically.\n";
