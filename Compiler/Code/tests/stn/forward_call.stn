@@ -1,0 +1,11 @@
+// Forward function reference: main is declared before its callee, so the
+// call resolves through unresolved_calls + the function table (format v2).
+fn main() {
+    assert_eq(later(7), 21);
+    assert_eq(later(0), 0);
+    println("FWD_OK");
+}
+
+fn later(x: int) -> int {
+    return x * 3;
+}

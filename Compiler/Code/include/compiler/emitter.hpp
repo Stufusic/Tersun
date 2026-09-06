@@ -18,6 +18,11 @@ struct Chunk {
     std::vector<size_t> lines;
     std::vector<std::string> string_table;
     std::unordered_map<std::string, std::unordered_map<std::string, uint16_t>> vtables;
+    // Function table (format v2): OP_CALL carries a 16-bit index; the real
+    // 32-bit entry offsets live here, lifting the 64KB code ceiling.
+    // Empty table (format v1) means legacy chunks where the operand is the
+    // entry offset directly.
+    std::vector<uint32_t> function_table;
 
     void write_byte(uint8_t byte, size_t line);
     void write_opcode(OpCode op, size_t line);
@@ -118,6 +123,11 @@ private:
 
     // Aliased imports: gui.fn(...) lowers to an OP_CALL of "gui.fn".
     std::unordered_set<std::string> import_aliases_;
+
+    // Function table registration (format v2): functions_/class_methods_
+    // store table indices; real entry offsets accumulate in the table.
+    uint16_t next_fn_index_{0};
+    uint16_t register_function(const std::string& name);
 
     // Break/continue landing info for the lexically enclosing loops.
     struct LoopContext {

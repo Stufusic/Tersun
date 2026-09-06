@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iomanip>
 #include <cstring>
+#include <cstdio>
 #include <map>
 
 namespace setun {
@@ -138,13 +139,23 @@ size_t Chunk::emit_jump(OpCode jump_op, size_t line) {
 
 void Chunk::patch_jump(size_t offset) {
     // Jump target is the current end of code
-    int16_t jump_dist = static_cast<int16_t>(code.size() - (offset + 2));
+    int64_t raw_dist = static_cast<int64_t>(code.size()) - static_cast<int64_t>(offset + 2);
+    if (raw_dist > 32000 || raw_dist < -32000) {
+        throw CompilerException("Jump distance " + std::to_string(raw_dist)
+                                + " exceeds the 16-bit limit; split the function into smaller ones.");
+    }
+    int16_t jump_dist = static_cast<int16_t>(raw_dist);
     code[offset] = static_cast<uint8_t>(jump_dist & 0xFF);
     code[offset + 1] = static_cast<uint8_t>((jump_dist >> 8) & 0xFF);
 }
 
 void Chunk::patch_jump_to(size_t patch_location, size_t target_location) {
-    int16_t jump_dist = static_cast<int16_t>(target_location - (patch_location + 2));
+    int64_t raw = static_cast<int64_t>(target_location) - static_cast<int64_t>(patch_location + 2);
+    if (raw > 32000 || raw < -32000) {
+        throw CompilerException("Jump distance " + std::to_string(raw)
+                                + " exceeds the 16-bit limit; split the function into smaller ones.");
+    }
+    int16_t jump_dist = static_cast<int16_t>(raw);
     code[patch_location] = static_cast<uint8_t>(jump_dist & 0xFF);
     code[patch_location + 1] = static_cast<uint8_t>((jump_dist >> 8) & 0xFF);
 }
@@ -236,7 +247,13 @@ std::string Chunk::disassemble(const std::string& name) const {
                 uint16_t fn_id = static_cast<uint16_t>(code[offset] | (code[offset + 1] << 8));
                 offset += 2;
                 uint8_t argc = code[offset++];
-                oss << " fn_id " << fn_id << " (argc " << static_cast<int>(argc) << ")";
+                oss << " fn#" << fn_id;
+                if (fn_id < function_table.size()) {
+                    char entry_buf[16];
+                    std::snprintf(entry_buf, sizeof(entry_buf), "0x%04X", function_table[fn_id]);
+                    oss << " -> " << entry_buf;
+                }
+                oss << " (argc " << static_cast<int>(argc) << ")";
                 break;
             }
             case OpCode::OP_GET_FIELD:
@@ -290,9 +307,9 @@ bool Chunk::save_to_file(const std::string& filename) const {
     std::ofstream file(filename, std::ios::binary);
     if (!file.is_open()) return false;
 
-    // Header: Magic "SETU" (0x55544553) + Version (1)
+    // Header: Magic "SETU" (0x55544553) + Version (2 = function table present)
     const uint32_t magic = 0x55544553;
-    const uint32_t version = 1;
+    const uint32_t version = 2;
     file.write(reinterpret_cast<const char*>(&magic), sizeof(magic));
     file.write(reinterpret_cast<const char*>(&version), sizeof(version));
 
@@ -337,6 +354,13 @@ bool Chunk::save_to_file(const std::string& filename) const {
         }
     }
 
+    // Function table (v2): real 32-bit entries for OP_CALL indices.
+    uint32_t ft_count = static_cast<uint32_t>(function_table.size());
+    file.write(reinterpret_cast<const char*>(&ft_count), sizeof(ft_count));
+    for (uint32_t entry : function_table) {
+        file.write(reinterpret_cast<const char*>(&entry), sizeof(entry));
+    }
+
     return file.good();
 }
 
@@ -349,7 +373,8 @@ bool Chunk::load_from_file(const std::string& filename, Chunk& out_chunk) {
     file.read(reinterpret_cast<char*>(&magic), sizeof(magic));
     file.read(reinterpret_cast<char*>(&version), sizeof(version));
 
-    if (magic != 0x55544553 || version != 1) {
+    // v1 = legacy (no function table), v2 = table-backed OP_CALL indices.
+    if (magic != 0x55544553 || (version != 1 && version != 2)) {
         return false; // Invalid binary magic or incompatible version
     }
 
@@ -414,10 +439,39 @@ bool Chunk::load_from_file(const std::string& filename, Chunk& out_chunk) {
         }
     }
 
+    // Function table (v2 only); v1 chunks keep direct-offset semantics.
+    if (version >= 2 && file.peek() != EOF) {
+        uint32_t ft_count = 0;
+        if (file.read(reinterpret_cast<char*>(&ft_count), sizeof(ft_count))) {
+            if (ft_count > 65536u) return false;
+            out_chunk.function_table.reserve(ft_count);
+            for (uint32_t k = 0; k < ft_count; ++k) {
+                uint32_t entry = 0;
+                if (!file.read(reinterpret_cast<char*>(&entry), sizeof(entry))) return false;
+                out_chunk.function_table.push_back(entry);
+            }
+        }
+    }
+
     return file.good();
 }
 
 BytecodeEmitter::BytecodeEmitter() = default;
+
+// Register a function body: the operand inside OP_CALL becomes the returned
+// table index, while the real 32-bit entry offset lives in the table. Index 0
+// is reserved as "no function" so a zeroed operand never resolves to a body.
+uint16_t BytecodeEmitter::register_function(const std::string& name) {
+    uint32_t entry = static_cast<uint32_t>(chunk_.code.size());
+    if (chunk_.function_table.empty()) {
+        chunk_.function_table.push_back(0);
+        next_fn_index_ = 1;
+    }
+    uint16_t idx = next_fn_index_++;
+    chunk_.function_table.push_back(entry);
+    (void)name;
+    return idx;
+}
 
 Chunk BytecodeEmitter::compile(const Program& program) {
     chunk_ = Chunk{};
@@ -427,6 +481,8 @@ Chunk BytecodeEmitter::compile(const Program& program) {
     functions_.clear();
     unresolved_calls_.clear();
     import_aliases_.clear();
+    chunk_.function_table.clear();
+    next_fn_index_ = 0;
     class_fields_.clear();
     class_methods_.clear();
     class_init_arity_.clear();
@@ -985,7 +1041,7 @@ void BytecodeEmitter::emit_return(const ReturnStmt& stmt) {
 void BytecodeEmitter::emit_fn_decl(const FnDeclStmt& stmt) {
     if (!stmt.body) {
         // Extern function declaration: register entry as a stub returning 0
-        functions_[stmt.name] = static_cast<uint16_t>(chunk_.code.size());
+        functions_[stmt.name] = register_function(stmt.name);
         chunk_.write_opcode(OpCode::OP_PUSH_INT, stmt.loc.line);
         chunk_.write_int64(0, stmt.loc.line);
         chunk_.write_opcode(OpCode::OP_RET, stmt.loc.line);
@@ -995,7 +1051,7 @@ void BytecodeEmitter::emit_fn_decl(const FnDeclStmt& stmt) {
     // Jump over function body in top-level execution
     size_t jump_over = chunk_.emit_jump(OpCode::OP_JUMP, stmt.loc.line);
     
-    uint16_t func_entry = static_cast<uint16_t>(chunk_.code.size());
+    uint16_t func_entry = register_function(stmt.name);
     functions_[stmt.name] = func_entry;
 
     // Enter local scope for function parameters and body
@@ -1596,8 +1652,7 @@ void BytecodeEmitter::emit_struct_decl(const StructDeclStmt& stmt) {
         if (!m.body) continue;
         std::string mangled_name = stmt.name + "_" + m.name;
         size_t jump_over = chunk_.emit_jump(OpCode::OP_JUMP, stmt.loc.line);
-        uint16_t fn_entry = static_cast<uint16_t>(chunk_.code.size());
-        functions_[mangled_name] = fn_entry;
+        uint16_t fn_entry = register_function(mangled_name);
         class_methods_[stmt.name][m.name] = fn_entry;
 
         symbol_table_.enter_scope();
@@ -1633,8 +1688,7 @@ void BytecodeEmitter::emit_class_decl(const ClassDeclStmt& stmt) {
         if (!m.body) continue;
         std::string mangled_name = stmt.name + "_" + m.name;
         size_t jump_over = chunk_.emit_jump(OpCode::OP_JUMP, stmt.loc.line);
-        uint16_t fn_entry = static_cast<uint16_t>(chunk_.code.size());
-        functions_[mangled_name] = fn_entry;
+        uint16_t fn_entry = register_function(mangled_name);
         class_methods_[stmt.name][m.name] = fn_entry;
 
         symbol_table_.enter_scope();

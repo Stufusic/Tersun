@@ -544,7 +544,17 @@ void VM::handle_branch_3(const Chunk& chunk) {
 }
 
 void VM::handle_call(const Chunk& chunk) {
-    uint16_t fn_entry = static_cast<uint16_t>(read_int16(chunk));
+    // Operand is a function-table index (v2) or a direct entry (legacy v1).
+    uint16_t fn_idx = static_cast<uint16_t>(read_int16(chunk));
+    uint32_t fn_entry = 0;
+    if (chunk.function_table.empty()) {
+        fn_entry = fn_idx;
+    } else {
+        if (fn_idx >= chunk.function_table.size()) {
+            throw VMException("Invalid function index " + std::to_string(fn_idx) + " in OP_CALL.");
+        }
+        fn_entry = chunk.function_table[fn_idx];
+    }
     uint8_t argc = read_byte(chunk);
 
     size_t new_local_base = locals_.size();
@@ -1428,7 +1438,17 @@ void VM::handle_invoke_method(const Chunk& chunk) {
             if (obj->vtable) {
                 auto it = obj->vtable->methods.find(method_name);
                 if (it != obj->vtable->methods.end()) {
-                    uint16_t fn_entry = it->second;
+                    // Method entries are function-table indices (v2) or direct
+                    // offsets (legacy v1 chunks with an empty table).
+                    uint32_t fn_entry = 0;
+                    if (chunk.function_table.empty()) {
+                        fn_entry = it->second;
+                    } else {
+                        if (it->second >= chunk.function_table.size()) {
+                            throw VMException("Invalid method index for '" + method_name + "'.");
+                        }
+                        fn_entry = chunk.function_table[it->second];
+                    }
                     size_t new_local_base = locals_.size();
                     locals_.resize(new_local_base + argc + 1 + 32);
                     locals_[new_local_base] = target; // slot 0 is 'self'
