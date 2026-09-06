@@ -1,5 +1,6 @@
 #include "compiler/monomorphizer.hpp"
 #include <sstream>
+#include <unordered_set>
 
 namespace setun {
 
@@ -12,6 +13,49 @@ std::string Monomorphizer::specialize_name(const std::string& base_name, const s
         oss << "__" << (arg ? arg->to_string() : "any");
     }
     return oss.str();
+}
+
+// Map a concrete type-name string (from turbofish or inference) to its DataType.
+static DataType concrete_data_type(const std::string& name) {
+    if (name == "int") return DataType::INT;
+    if (name == "string") return DataType::STRING;
+    if (name == "float") return DataType::FLOAT;
+    if (name == "bool") return DataType::BOOL;
+    if (name == "taf3") return DataType::TAF3;
+    if (name == "tryte" || name == "trit") return DataType::TRYTE;
+    return DataType::OBJECT; // user-defined: kept via custom_type_name
+}
+
+static bool is_primitive_name(const std::string& name) {
+    return name == "int" || name == "string" || name == "float" || name == "bool"
+        || name == "taf3" || name == "tryte" || name == "trit";
+}
+
+// Substitute generic parameter names (per tmap) in the type annotations of a
+// cloned declaration body: let x: T, field types were handled by the caller.
+static void substitute_annotations(Stmt* stmt,
+                                   const std::unordered_map<std::string, std::string>& tmap) {
+    if (!stmt) return;
+    std::visit([&](auto& s) {
+        using T = std::decay_t<decltype(s)>;
+        if constexpr (std::is_same_v<T, VarDeclStmt>) {
+            if (tmap.count(s.custom_type_name)) {
+                s.custom_type_name = tmap.at(s.custom_type_name);
+                s.type = concrete_data_type(s.custom_type_name);
+            }
+        } else if constexpr (std::is_same_v<T, BlockStmt>) {
+            for (Stmt* c : s.statements) substitute_annotations(c, tmap);
+        } else if constexpr (std::is_same_v<T, IfStmt>) {
+            substitute_annotations(s.then_branch, tmap);
+            substitute_annotations(s.else_branch, tmap);
+        } else if constexpr (std::is_same_v<T, WhileStmt>) {
+            substitute_annotations(s.body, tmap);
+        } else if constexpr (std::is_same_v<T, ForStmt>) {
+            substitute_annotations(s.body, tmap);
+        } else if constexpr (std::is_same_v<T, ReturnStmt>) {
+            // nothing
+        }
+    }, stmt->data);
 }
 
 void Monomorphizer::process_program(Program& program) {
@@ -46,44 +90,84 @@ void Monomorphizer::process_program(Program& program) {
         if (!expr) return;
         if (std::holds_alternative<CallExpr>(expr->data)) {
             auto& call = std::get<CallExpr>(expr->data);
+
+            // --- Generic struct instantiation: Pair(1, "a") ---
+            auto sit = generic_structs_.find(call.callee);
+            if (sit != generic_structs_.end()) {
+                StructDeclStmt* tmpl = sit->second;
+                std::unordered_set<std::string> gpset(tmpl->generic_params.begin(), tmpl->generic_params.end());
+                std::unordered_map<std::string, std::string> tmap;
+                for (size_t i = 0; i < tmpl->fields.size() && i < call.args.size(); ++i) {
+                    const auto& ftype = tmpl->fields[i].custom_type_name;
+                    if (!gpset.count(ftype)) continue;
+                    if (call.args[i] && call.args[i]->inferred_type)
+                        tmap[ftype] = call.args[i]->inferred_type->to_string();
+                }
+                if (tmap.size() == gpset.size()) {
+                    std::string spec_name = call.callee;
+                    for (const auto& gp : tmpl->generic_params) spec_name += "__" + tmap[gp];
+                    if (!specialized_functions_[spec_name]) {
+                        specialized_functions_[spec_name] = true;
+                        auto* spec = new Stmt(*tmpl, tmpl->loc);
+                        auto& st = std::get<StructDeclStmt>(spec->data);
+                        st.name = spec_name;
+                        st.generic_params.clear();
+                        for (auto& f : st.fields) {
+                            if (tmap.count(f.custom_type_name)) {
+                                f.custom_type_name = tmap.at(f.custom_type_name);
+                                f.type = concrete_data_type(f.custom_type_name);
+                            }
+                        }
+                        for (auto& m : st.methods) substitute_annotations(m.body, tmap);
+                        new_specializations.push_back(spec);
+                    }
+                    call.callee = spec_name;
+                }
+            } else {
+            // --- Generic function specialization ---
             auto it = generic_functions_.find(call.callee);
             if (it != generic_functions_.end()) {
                 FnDeclStmt* template_fn = it->second;
-                std::vector<TypePtr> inferred_args;
-                for (Expr* arg : call.args) {
-                    if (arg && arg->inferred_type) {
-                        inferred_args.push_back(arg->inferred_type);
-                    } else {
-                        inferred_args.push_back(Type::make_int());
-                    }
+                std::unordered_set<std::string> gpset(template_fn->generic_params.begin(), template_fn->generic_params.end());
+                std::unordered_map<std::string, std::string> tmap;
+                bool ok = true;
+                if (!call.type_args.empty()) {
+                    if (call.type_args.size() != template_fn->generic_params.size()) ok = false;
+                    else for (size_t i = 0; i < call.type_args.size(); ++i)
+                        tmap[template_fn->generic_params[i]] = call.type_args[i];
                 }
-
-                std::string spec_name = specialize_name(call.callee, inferred_args);
-                if (!specialized_functions_[spec_name]) {
-                    specialized_functions_[spec_name] = true;
-
-                    // Clone template function and specialize
-                    auto* spec_fn = new Stmt(*template_fn, template_fn->loc);
-                    auto& fn_data = std::get<FnDeclStmt>(spec_fn->data);
-                    fn_data.name = spec_name;
-                    fn_data.generic_params.clear(); // Concrete specialized function
-
-                    // Substitute parameters
-                    for (size_t i = 0; i < fn_data.params.size() && i < inferred_args.size(); ++i) {
-                        fn_data.params[i].type = inferred_args[i]->to_data_type();
-                        fn_data.params[i].resolved_type = inferred_args[i];
-                    }
-                    if (!inferred_args.empty()) {
-                        fn_data.return_type = inferred_args[0]->to_data_type();
-                        fn_data.resolved_ret_type = inferred_args[0];
-                    }
-
-                    new_specializations.push_back(spec_fn);
+                for (size_t i = 0; i < template_fn->params.size() && i < call.args.size(); ++i) {
+                    const auto& pname = template_fn->params[i].custom_type_name;
+                    if (!gpset.count(pname)) continue;
+                    if (call.args[i] && call.args[i]->inferred_type)
+                        tmap[pname] = call.args[i]->inferred_type->to_string();
                 }
-
-                // Rewrite call to point to specialized instance
-                call.callee = spec_name;
+                if (tmap.size() == gpset.size() && ok) {
+                    std::string spec_name = call.callee;
+                    for (const auto& gp : template_fn->generic_params) spec_name += "__" + tmap[gp];
+                    if (!specialized_functions_[spec_name]) {
+                        specialized_functions_[spec_name] = true;
+                        auto* spec_fn = new Stmt(*template_fn, template_fn->loc);
+                        auto& fn_data = std::get<FnDeclStmt>(spec_fn->data);
+                        fn_data.name = spec_name;
+                        fn_data.generic_params.clear();
+                        for (auto& p : fn_data.params) {
+                            if (tmap.count(p.custom_type_name)) {
+                                p.custom_type_name = tmap.at(p.custom_type_name);
+                                p.type = concrete_data_type(p.custom_type_name);
+                            }
+                            p.resolved_type = nullptr;
+                        }
+                        if (tmap.count(fn_data.return_custom_name)) {
+                            fn_data.return_type = concrete_data_type(fn_data.return_custom_name);
+                        }
+                        substitute_annotations(fn_data.body, tmap);
+                        new_specializations.push_back(spec_fn);
+                    }
+                    call.callee = spec_name;
+                }
             }
+            } // end struct-vs-fn else
         } else if (std::holds_alternative<MethodCallExpr>(expr->data)) {
             auto& mc = std::get<MethodCallExpr>(expr->data);
             self(self, mc.object);

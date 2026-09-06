@@ -122,6 +122,7 @@ struct AmbiguousTripleExpr {
 
 struct CallExpr {
     std::string callee;
+    std::vector<std::string> type_args; // explicit turbofish ::<T1, T2>
     std::vector<Expr*> args;
     SourceLocation loc;
 };
@@ -337,6 +338,7 @@ struct FnDeclStmt {
     bool is_pub{true};       // pub/priv visibility (priv = module-private)
     std::vector<Parameter> params;
     DataType return_type{DataType::VOID};
+    std::string return_custom_name; // original identifier if declared return was generic/custom
     Stmt* body{nullptr};
     bool is_async{false};
     int priority{0}; // -1: Low, 0: Normal, +1: High
@@ -346,6 +348,7 @@ struct FnDeclStmt {
 };
 
 struct FieldDecl {
+    std::string custom_type_name; // original identifier for user-defined/generic types
     std::string name;
     DataType type{DataType::ANY};
     bool is_pub{true};

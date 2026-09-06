@@ -1493,7 +1493,21 @@ void BytecodeEmitter::emit_class_ctor(const std::string& callee,
     }
 
     if (init_arity < 0) {
-        throw CompilerException("[Emitter Error] " + loc_str(loc) + " - Class '" + callee + "' has no init() method; construct it with '" + callee + "()' and set its fields afterwards.");
+        // No init(): positional field initialization from the declared fields.
+        const auto& names = class_fields_[callee];
+        size_t n = std::min(names.size(), args.size());
+        uint16_t tid = chunk_.add_string(callee);
+        chunk_.write_opcode(OpCode::OP_NEW_INSTANCE, loc.line);
+        chunk_.write_int16(static_cast<int16_t>(tid), loc.line);
+        chunk_.write_byte(0, loc.line);
+        for (size_t i = 0; i < n; ++i) {
+            chunk_.write_opcode(OpCode::OP_DUP, loc.line);
+            emit_expr(args[i]);
+            uint16_t fid = chunk_.add_string(names[i]);
+            chunk_.write_opcode(OpCode::OP_SET_FIELD, loc.line);
+            chunk_.write_int16(static_cast<int16_t>(fid), loc.line);
+        }
+        return;
     }
     if (init_arity == 0) {
         throw CompilerException("[Emitter Error] " + loc_str(loc) + " - init() of class '" + callee + "' takes no arguments; construct with '" + callee + "()' then call init().");

@@ -254,6 +254,11 @@ void test_stn_interfaces() {
     assert(vm.last_output().find("IFACE_OK") != std::string::npos);
 }
 
+void test_stn_generics() {
+    VM vm = run_stn_file("generics.stn");
+    assert(vm.last_output().find("GEN_OK") != std::string::npos);
+}
+
 } // namespace
 
 void test_stn_semantics_suite() {
@@ -271,6 +276,7 @@ void test_stn_semantics_suite() {
     test_stn_forward_call();
     test_stn_closures();
     test_stn_interfaces();
+    test_stn_generics();
 }
 
 } // namespace setun

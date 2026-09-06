@@ -263,8 +263,10 @@ Stmt* Parser::parse_fn_decl(bool is_async, int priority, bool is_pub) {
     consume(TokenType::RPAREN, "Expected ')' after parameters.");
 
     DataType return_type = DataType::VOID;
+    std::string return_custom;
     if (match(TokenType::ARROW)) {
         return_type = parse_type();
+        return_custom = last_type_name_;
     }
 
     match(TokenType::COLON); // Optional ':' after function signature (Python style)
@@ -272,7 +274,7 @@ Stmt* Parser::parse_fn_decl(bool is_async, int priority, bool is_pub) {
     current_--; // back to LBRACE so parse_block_stmt can consume it
     Stmt* body = parse_block_stmt();
 
-    return arena_.make<Stmt>(FnDeclStmt{name, is_pub, std::move(params), return_type, body, is_async, priority, loc, std::move(generic_params), nullptr}, loc);
+    return arena_.make<Stmt>(FnDeclStmt{name, is_pub, std::move(params), return_type, return_custom, body, is_async, priority, loc, std::move(generic_params), nullptr}, loc);
 }
 
 Stmt* Parser::parse_struct_decl(bool is_pub) {
@@ -324,7 +326,7 @@ Stmt* Parser::parse_struct_decl(bool is_pub) {
                 def_val = parse_expression();
             }
             consume(TokenType::SEMICOLON, "Expected ';' after struct field.");
-            fields.push_back(FieldDecl{fname.lexeme, ftype, is_pub, def_val});
+            fields.push_back(FieldDecl{last_type_name_, fname.lexeme, ftype, is_pub, def_val});
         } else if (match(TokenType::KW_FN) || match(TokenType::KW_DEF)) {
             Token mname = consume(TokenType::IDENTIFIER, "Expected method name.");
             consume(TokenType::LPAREN, "Expected '(' after method name.");
@@ -412,7 +414,7 @@ Stmt* Parser::parse_class_decl(bool is_pub) {
                 def_val = parse_expression();
             }
             consume(TokenType::SEMICOLON, "Expected ';' after class field.");
-            fields.push_back(FieldDecl{fname.lexeme, ftype, is_pub, def_val});
+            fields.push_back(FieldDecl{last_type_name_, fname.lexeme, ftype, is_pub, def_val});
         } else if (match(TokenType::KW_FN) || match(TokenType::KW_DEF)) {
             Token mname = consume(TokenType::IDENTIFIER, "Expected method name.");
             consume(TokenType::LPAREN, "Expected '(' after method name.");
@@ -607,7 +609,7 @@ Stmt* Parser::parse_extern_decl() {
     }
 
     consume(TokenType::SEMICOLON, "Expected ';' after extern function declaration.");
-    return arena_.make<Stmt>(FnDeclStmt{name, true, std::move(params), return_type, nullptr, false, 0, loc}, loc);
+    return arena_.make<Stmt>(FnDeclStmt{name, true, std::move(params), return_type, "", nullptr, false, 0, loc}, loc);
 }
 
 Stmt* Parser::parse_statement() {
@@ -1139,6 +1141,30 @@ Expr* Parser::parse_prefix() {
         case TokenType::KW_FALSE:
             return arena_.make<Expr>(BoolLiteralExpr{false, loc}, loc);
         case TokenType::IDENTIFIER: {
+            // Turbofish generic call in prefix position: pick::<int>(1, 2)
+            if (current_ + 2 < tokens_.size()
+                && tokens_[current_].type == TokenType::COLON
+                && tokens_[current_ + 1].type == TokenType::COLON
+                && tokens_[current_ + 2].type == TokenType::LESS) {
+                advance(); advance(); // ::
+                consume(TokenType::LESS, "Expected '<' in turbofish type arguments.");
+                std::vector<std::string> targs;
+                do {
+                    std::string tname = peek().lexeme;
+                    parse_type();
+                    targs.push_back(tname);
+                } while (match(TokenType::COMMA));
+                consume(TokenType::GREATER, "Expected '>' after turbofish type arguments.");
+                consume(TokenType::LPAREN, "Expected '(' after turbofish type arguments.");
+                std::vector<Expr*> args;
+                if (!check(TokenType::RPAREN)) {
+                    do {
+                        args.push_back(parse_expression());
+                    } while (match(TokenType::COMMA));
+                }
+                consume(TokenType::RPAREN, "Expected ')' after turbofish call arguments.");
+                return arena_.make<Expr>(CallExpr{tok.lexeme, std::move(targs), std::move(args), loc}, loc);
+            }
             return arena_.make<Expr>(IdentifierExpr{tok.lexeme, loc}, loc);
         }
 
@@ -1190,7 +1216,7 @@ Expr* Parser::parse_prefix() {
                 } while (match(TokenType::COMMA));
             }
             consume(TokenType::RPAREN, "Expected ')' after call arguments.");
-            return arena_.make<Expr>(CallExpr{callee_name, std::move(args), loc}, loc);
+            return arena_.make<Expr>(CallExpr{callee_name, {}, std::move(args), loc}, loc);
         }
 
         // Parentheses: ( expr )
@@ -1334,12 +1360,25 @@ Expr* Parser::parse_infix(Expr* left) {
         return arena_.make<Expr>(IndexExpr{left, index_expr, loc}, loc);
     }
 
-    // Function call: ident(arg1, arg2, ...)
+    // Function call: ident(arg1, ...) with optional turbofish ident::<T1, T2>(...)
     if (op_tok.type == TokenType::LPAREN) {
         if (!std::holds_alternative<IdentifierExpr>(left->data)) {
             throw CompilerException("Expected identifier before '(' in function call.");
         }
         std::string callee = std::get<IdentifierExpr>(left->data).name;
+        std::vector<std::string> type_args;
+        // Turbofish: callee :: < T1, T2 > ( ... ) — unambiguous vs less-than.
+        if (check(TokenType::COLON) && current_ + 1 < tokens_.size()
+            && tokens_[current_ + 1].type == TokenType::COLON) {
+            advance(); advance(); // ::
+            consume(TokenType::LESS, "Expected '<' after '::' in turbofish call.");
+            do {
+                std::string tname = peek().lexeme;
+                parse_type();
+                type_args.push_back(tname);
+            } while (match(TokenType::COMMA));
+            consume(TokenType::GREATER, "Expected '>' after turbofish type arguments.");
+        }
         std::vector<Expr*> args;
         if (!check(TokenType::RPAREN)) {
             do {
@@ -1347,7 +1386,7 @@ Expr* Parser::parse_infix(Expr* left) {
             } while (match(TokenType::COMMA));
         }
         consume(TokenType::RPAREN, "Expected ')' after call arguments.");
-        return arena_.make<Expr>(CallExpr{callee, std::move(args), loc}, loc);
+        return arena_.make<Expr>(CallExpr{callee, std::move(type_args), std::move(args), loc}, loc);
     }
 
     int prec = get_infix_precedence(op_tok.type);

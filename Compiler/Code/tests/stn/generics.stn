@@ -1,0 +1,32 @@
+// Generics: generic functions (inferred + turbofish) and generic structs
+struct Pair<A, B> {
+    pub first: A;
+    pub second: B;
+}
+
+fn pick<T>(a: T, b: T) -> T {
+    if (a <=> b) {
+        return a;
+    }
+    return b;
+}
+
+fn main() {
+    // Inferred from arguments
+    assert_eq(pick(3, 7), 3);
+    assert_eq(pick("bb", "aa"), "bb");
+
+    // Explicit turbofish
+    assert_eq(pick::<int>(9, 4), 9);
+
+    // Generic struct: type args inferred from constructor arguments
+    let p = Pair(1, "one");
+    assert_eq(p.first, 1);
+    assert_eq(p.second, "one");
+
+    let p2 = Pair("x", 99);
+    assert_eq(p2.first, "x");
+    assert_eq(p2.second, 99);
+
+    println("GEN_OK");
+}
