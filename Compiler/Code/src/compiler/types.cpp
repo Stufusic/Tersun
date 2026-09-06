@@ -1,5 +1,6 @@
 #include "compiler/types.hpp"
 #include <sstream>
+#include <iostream>
 
 namespace setun {
 
@@ -261,8 +262,12 @@ bool Type::is_assignable_from(const TypePtr& source) const {
         }
     }
 
-    // Interface implementation check
+    // Interface implementation check: a class whose (single) inheritance
+    // slot names the interface, or that lists it explicitly.
     if (kind == TypeKind::INTERFACE) {
+        if (source->kind == TypeKind::CLASS || source->kind == TypeKind::STRUCT) {
+            if (source->super_name == name) return true;
+        }
         for (const auto& iface : source->interfaces) {
             if (iface == name) return true;
         }

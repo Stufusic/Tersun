@@ -183,7 +183,11 @@ bool TypeChecker::check_program(Program& program) {
             } else {
                 declared_type_locs_[i.name] = i.loc;
             }
-            type_defs_[i.name] = Type::make_interface(i.name);
+            auto iface_type = Type::make_interface(i.name);
+            for (const auto& m : i.methods) {
+                iface_type->methods[m.name] = make_method_info(m);
+            }
+            type_defs_[i.name] = iface_type;
         } else if (std::holds_alternative<EnumDeclStmt>(stmt->data)) {
             auto& e = std::get<EnumDeclStmt>(stmt->data);
             if (declared_type_locs_.count(e.name)) {
@@ -703,6 +707,28 @@ void TypeChecker::check_class_decl(ClassDeclStmt& stmt) {
     }
     functions_[stmt.name] = Type::make_function(ctor_params, cl_type);
 
+    // Interface conformance: every method of every implemented interface
+    // must exist on the class (by name and arity).
+    std::vector<std::string> ifaces = stmt.interfaces;
+    if (!stmt.super_class.empty()) ifaces.push_back(stmt.super_class);
+    for (const auto& iname : ifaces) {
+        auto iit = type_defs_.find(iname);
+        if (iit == type_defs_.end() || !iit->second
+            || iit->second->kind != TypeKind::INTERFACE) continue;
+        for (const auto& [mname, mi] : iit->second->methods) {
+            auto cit = cl_type->methods.find(mname);
+            if (cit == cl_type->methods.end()) {
+                report_error("Class '" + stmt.name + "' does not implement interface '"
+                                 + iname + "': missing method '" + mname + "'.", stmt.loc);
+            } else if (cit->second.param_types.size() != mi.param_types.size()) {
+                report_error("Method '" + mname + "' of class '" + stmt.name
+                                 + "' does not match interface '" + iname + "': expected "
+                                 + std::to_string(mi.param_types.size()) + " argument(s), found "
+                                 + std::to_string(cit->second.param_types.size()) + ".", stmt.loc);
+            }
+        }
+    }
+
     // Check methods
     for (auto& m : stmt.methods) {
         enter_scope();
@@ -1132,6 +1158,23 @@ TypePtr TypeChecker::check_method_call(MethodCallExpr& expr) {
         }
         report_error("string has no method '" + expr.method + "'.", expr.loc);
         return Type::make_any();
+    }
+
+    if (obj_type && obj_type->kind == TypeKind::INTERFACE) {
+        // Interface-typed receiver: dispatch is dynamic at runtime; here we
+        // validate the method exists on the interface and check arity.
+        auto mit = obj_type->methods.find(expr.method);
+        if (mit == obj_type->methods.end()) {
+            report_error("Interface '" + obj_type->name + "' has no method '" + expr.method + "'.", expr.loc);
+            return Type::make_any();
+        }
+        const auto& mi = mit->second;
+        if (arg_types.size() != mi.param_types.size()) {
+            report_error("Method '" + expr.method + "' of interface '" + obj_type->name + "' expects "
+                             + std::to_string(mi.param_types.size()) + " argument(s), but received "
+                             + std::to_string(arg_types.size()) + ".", expr.loc);
+        }
+        return mi.return_type ? mi.return_type : Type::make_any();
     }
 
     if (obj_type && (obj_type->kind == TypeKind::CLASS || obj_type->kind == TypeKind::STRUCT)) {

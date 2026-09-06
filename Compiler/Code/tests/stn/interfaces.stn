@@ -1,0 +1,38 @@
+// Interface dispatch: declare, implement, call through interface-typed value
+interface Shape {
+    def area(self) -> int;
+}
+
+class Circle : Shape {
+    pub r: int;
+    def init(self, r: int) {
+        self.r = r;
+    }
+    def area(self) -> int {
+        return 3 * self.r * self.r;
+    }
+}
+
+class Square : Shape {
+    pub side: int;
+    def init(self, s: int) {
+        self.side = s;
+    }
+    def area(self) -> int {
+        return self.side * self.side;
+    }
+}
+
+fn describe(s: Shape) -> int {
+    return s.area();
+}
+
+fn main() {
+    let c = Circle(2);
+    let q = Square(3);
+    assert_eq(describe(c), 12);
+    assert_eq(describe(q), 9);
+    let total = describe(c) + describe(q);
+    assert_eq(total, 21);
+    println("IFACE_OK");
+}

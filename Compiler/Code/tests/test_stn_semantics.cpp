@@ -249,6 +249,11 @@ void test_stn_closures() {
     assert(vm.last_output().find("CLOSURES_OK") != std::string::npos);
 }
 
+void test_stn_interfaces() {
+    VM vm = run_stn_file("interfaces.stn");
+    assert(vm.last_output().find("IFACE_OK") != std::string::npos);
+}
+
 } // namespace
 
 void test_stn_semantics_suite() {
@@ -265,6 +270,7 @@ void test_stn_semantics_suite() {
     test_stn_unicode();
     test_stn_forward_call();
     test_stn_closures();
+    test_stn_interfaces();
 }
 
 } // namespace setun
