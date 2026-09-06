@@ -2,6 +2,8 @@
 
 Tài liệu này hướng dẫn chi tiết từ cú pháp cơ bản, hệ thống kiểu dữ liệu, các cấu trúc dữ liệu chuyên biệt, các thuật toán toán học/AI, đến các đoạn mã nguồn mẫu hoàn chỉnh có thể chạy trực tiếp trên máy ảo Setun-70.
 
+> **🆕 Cập nhật Tersun 1.0.3:** Ngôn ngữ now có thêm `for` (3 kiểu)/`break`/`continue`/`elif`, toán tử `&&` `||` `not`, closures + `map`/`filter`/`reduce`, generics (`::<T>`), `interface` + conformance, `try`/`catch`/`throw`, namespace (`import "x.stn" as gui;` + `pub`/`priv`), chuỗi Unicode (`ulen`/`uslice`), f-string, và trần 64KB đã dỡ. Chi tiết đầy đủ xem **GIAO_TRINH_VA_CAM_NANG_TERSUN.md — Bài 6**. Các ví dụ trong tài liệu này vẫn chạy nguyên bản 1.0.3.
+
 ---
 
 ## 1. Hệ Thống Kiểu Dữ Liệu (Data Types)
@@ -73,6 +75,8 @@ branch (status) {
 ---
 
 ### 2.4. Vòng Lặp (`while`)
+
+> **Mới 1.0.3:** ngoài `while`, ngôn ngữ có `for i in range(10)`, `for x in mang`, `for (let i = 0; i < n; i += 1)` cùng `break`/`continue` — xem Bài 6 trong giáo trình đầy đủ.
 ```text
 let count = 0;
 while (count < 5) {

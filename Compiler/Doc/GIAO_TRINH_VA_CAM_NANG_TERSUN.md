@@ -1,4 +1,4 @@
-# GIÁO TRÌNH TOÀN DIỆN & CẨM NANG LỆNH NGÔN NGỮ TERSUN 1.0.2
+# GIÁO TRÌNH TOÀN DIỆN & CẨM NANG LỆNH NGÔN NGỮ TERSUN 1.0.3
 > **Phiên bản:** Tersun 1.0.2 *(Ternary + Quantum QVM & LLVM AOT Edition)*  
 > **Tác giả:** Stufusic (stufusiclab@gmail.com)  
 > **Giấy phép:** MIT License  
@@ -245,11 +245,11 @@ const PI_TAF: taf3 = [3, 0, 0]; // Hằng số bất biến
 | :--- | :--- | :--- |
 | `int` | Số nguyên 64-bit có dấu | `let n: int = -100;` |
 | `tryte` / `trit` | Đơn vị tam phân (trit: 1 trit, tryte: 9 trits) | `let t: tryte = 1;` |
-| `taf3` | Số đại số chính xác trong $\mathbb{Q}(\sqrt{3})$ | `let v: taf3 = [1, 2, 0];` |
+| `taf3` | Số đại số chính xác trong $\mathbb{Q}(\sqrt{3})$. Từ 1.0.3: literal tường minh `taf3[a, b, s]` hoặc `taf3(a, b, s)`; gán có kiểu `let v: taf3 = [1, 2, 0];` vẫn giữ nguyên | `let v: taf3 = [1, 2, 0];` |
 | `tvec3` | Vector 3 chiều đại số | `let vec = tvec3(1, 0, -1);` |
 | `bool` | Giá trị luận lý | `let ok: bool = true;` |
-| `string` | Chuỗi ký tự UTF-8 | `let msg = "Hello Tersun";` |
-| `array` | Mảng động hỗ trợ chỉ mục âm Pythonic | `let arr = [10, 20, 30];` |
+| `string` | Chuỗi UTF-8 — `len()` đếm byte, `ulen()` đếm ký tự Unicode | `let msg = "Tiếng Việt";` |
+| `array` | Mảng động, chỉ mục âm Pythonic. **Từ 1.0.3**, `[a, b, c]` là mảng 3 phần tử (TAFPU dùng `taf3[a, b, s]`) | `let arr = [10, 20, 30];` |
 
 ---
 
@@ -276,12 +276,45 @@ fn danh_gia_trang_thai(delta: taf3) -> int {
 }
 ```
 
-Vòng lặp `while`:
+Vòng lặp `while` (kèm `break`/`continue`):
 ```stn
 let mut i: int = 0;
 while (i < 10) {
     i = i + 1;
+    if (i == 3) { continue; }
+    if (i == 8) { break; }
 }
+```
+
+**Từ 1.0.3**, thêm đầy đủ vòng lặp hiện đại và toán tử logic:
+
+```stn
+// 1. C-style (giống C++/Java)
+for (let i = 0; i < 5; i += 1) {
+    println(i);
+}
+
+// 2. Python-style với range(): range(n) | range(a, b) | range(a, b, step)
+for i in range(10, 0, -1) {   // đếm ngược, step âm
+    println(i);
+}
+
+// 3. For-each qua mảng, chuỗi, taf3 (duyệt a, b, s)
+let arr = [2, 4, 6];
+for (v in arr) { println(v); }
+for ch in "Tersun" { print(ch); }
+
+// Toán tử logic bool: && || not (Kleene min/max vẫn cho miền -1/0/+1)
+if (i > 0 && i < 10) { println("trong đoạn"); }
+if (i <= 0 || i >= 10) { println("ngoài đoạn"); }
+let khong_phai = not (i == 0);
+
+// elif + gán rút gọn += -= *= /=
+let diem = 82;
+if (diem >= 90)      { println("Xuất sắc"); }
+elif (diem >= 80)    { println("Giỏi"); }
+else                 { println("Khá"); }
+diem += 5;   // bằng diem = diem + 5
 ```
 
 ---
@@ -325,7 +358,7 @@ let b = identity("Tersun");   // Sinh hàm identity__string
 
 ---
 
-## BÀI 5: ĐIỆN TOÁN LƯỢNG TỬ TERSUN 1.0.2 & MÔ PHỎNG QVM
+## BÀI 5: ĐIỆN TOÁN LƯỢNG TỬ TERSUN 1.0.3 & MÔ PHỎNG QVM
 
 ### 5.1. Cơ Chế Gom 2-Bit Thành 1-Qubit
 Tersun 1.0.2 giải quyết bài toán cầu nối giữa kiến trúc máy tính cổ điển và máy tính lượng tử:
@@ -364,7 +397,119 @@ c = measure q;
 
 ---
 
-# PHẦN III: DỰ ÁN MẪU HOÀN CHỈNH TERSUN 1.0.2
+## BÀI 6: TÍNH NĂNG HIỆN ĐẠI 1.0.3 — CLOSURES, GENERICS, INTERFACE, EXCEPTIONS, NAMESPACE
+
+### 6.1. Hàm Bậc Nhất, Lambda & Closure
+Hàm là một giá trị: gán được vào biến, truyền vào hàm khác. Lambda `fn (x) => expr` có thể **bắt biến bên ngoài** (closure):
+
+```stn
+fn double_it(x: int) -> int {
+    return x * 2;
+}
+
+fn main() {
+    let f = double_it;                  // Hàm là giá trị
+    println(f(21));                     // 42
+
+    let scale = 100;
+    let shift = fn (x: int) -> int { return x + scale; };  // Closure bắt 'scale'
+    println(shift(5));                  // 105
+
+    // map / filter / reduce trên mảng
+    let nums = [1, 2, 3, 4];
+    let doubled = nums.map(double_it);                          // [2, 4, 6, 8]
+    let evens   = nums.filter(fn (x: int) -> bool { return x / 2 * 2 == x; });
+    let total   = nums.reduce(fn (acc: int, x: int) -> int { return acc + x; }, 0);
+}
+```
+
+### 6.2. Generics Với Turbofish
+Kiểu tổng quát cho hàm và struct; kiểu có thể suy từ tham số hoặc khai báo tường minh bằng `::< >`:
+
+```stn
+fn pick<T>(a: T, b: T) -> T {
+    if (a <=> b) { return a; }
+    return b;
+}
+
+struct Pair<A, B> {
+    pub first: A;
+    pub second: B;
+}
+
+fn main() {
+    println(pick::<int>(9, 4));     // 9 (turbofish tường minh)
+    println(pick(3, 7));            // 3 (suy từ tham số)
+
+    let p = Pair(1, "one");         // Pair__int__string được sinh tự động
+    println(p.first);               // 1  (kiểu int)
+    println(p.second);              // "one" (kiểu string)
+}
+```
+
+### 6.3. Interface & Dispatch Động
+Class implement interface phải có đủ method (kiểm tra lúc biên dịch); gọi qua biến kiểu interface dispatch động lúc chạy:
+
+```stn
+interface Shape {
+    def area(self) -> int;
+}
+
+class Circle : Shape {
+    pub r: int;
+    def init(self, r: int) { self.r = r; }
+    def area(self) -> int { return 3 * self.r * self.r; }
+}
+
+fn describe(s: Shape) -> int {
+    return s.area();
+}
+```
+
+### 6.4. Xử Lý Lỗi: try / catch / throw
+```stn
+fn main() {
+    try {
+        let h = HostFs();
+        let data = h.fs_read("input.txt");
+        if (data == "") { throw "Tệp rỗng hoặc không tồn tại"; }
+        println(data);
+    } catch (e) {          // e là chuỗi mô tả lỗi
+        println("Lỗi: " + e);
+    }
+}
+```
+
+### 6.5. Module: Namespace & Visibility
+```stn
+// mathx.stn
+priv fn helper(x: int) -> int { return x * 2; }   // priv: chỉ dùng nội bộ module
+pub fn quad(x: int) -> int { return helper(helper(x)); }
+```
+
+```stn
+// main.stn
+import "mathx.stn" as mx;       // namespace 'mx'
+fn main() {
+    println(mx.quad(5));        // 20 — helper() bị chặn lúc biên dịch
+}
+```
+
+### 6.6. Chuỗi Unicode & f-string
+```stn
+fn main() {
+    let v = "Tiếng Việt";
+    println(v.len());            // 14 (byte UTF-8)
+    println(v.ulen());           // 10 (ký tự Unicode)
+    println(v.uslice(0, 5));     // "Tiếng"
+    println(f"Sai số: {0.1 + 0.2 - 0.3:e}");   // f-string: .3f | g | e | t (trit)
+    for ch in v { print(ch); }   // duyệt theo ký tự Unicode
+}
+```
+
+---
+
+# PHẦN III: DỰ ÁN MẪU HOÀN CHỈNH TERSUN 1.0.3
 
 Tạo file `Projects/QuantumLogicDemo/main.stn` và trải nghiệm đầy đủ sức mạnh của hệ thống:
 
