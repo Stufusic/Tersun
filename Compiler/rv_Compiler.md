@@ -36,3 +36,21 @@ Tersun 1.0.3 là một toolchain ngôn ngữ tam phân cân bằng (balanced ter
 ## Bước tiếp theo (đã chốt lộ trình)
 
 `std/plot.stn` → `std/lab_math.stn` → Scientific Lab shell + demo Exact Mode (TAFPU vs float). Ngôn ngữ đóng băng trừ khi Lab đòi hỏi.
+
+---
+
+## 🔄 Cập nhật Tier 3 (2026-09-06 · HEAD `2827cc1`)
+
+Năm trong sáu milestone Tier 3 đã hoàn tất, mỗi cái một commit:
+
+| Milestone | Commit | Verify |
+|---|---|---|
+| M1 Function table (hết trần 64KB) | `a0c27c6` | Chương trình 194KB chạy đúng; .tbc v1 legacy tương thích |
+| M2 Closures + map/filter/reduce | `d1fc61a` | `CLOSURES_OK` — lambda capture, snapshot semantics |
+| M3 Interface dispatch + conformance | `8989e4c` | `IFACE_OK` — thiếu method báo lỗi đích danh |
+| M4 Generics (turbofish + monomorphizer v2 + generic struct) | `28de0da` | `GEN_OK` — inferred + `::< >` |
+| M5 Exceptions trên native (emit-c C++ 1:1) | `2827cc1` | Native exe bắt script throw |
+
+**Còn lại:** M6 QFT + Grover (thiết kế duyệt: cphase decomposition từ gate có sẵn, QFT/Grover builder, test so biên độ với DFT tham chiếu).
+
+**Kết luận cập nhật:** khoảng cách cấu trúc với một ngôn ngữ scripting phổ thông (Lua/Python mini) đã **khép lại** — closures, generics, interface, exceptions, namespace đều có. Phần còn lại của Tier 3 và hệ sinh thái (tài liệu, packaging) là việc hoàn thiện, không phải năng lực biểu đạt.

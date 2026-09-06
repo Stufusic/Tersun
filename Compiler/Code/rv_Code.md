@@ -61,3 +61,21 @@ fs/gui/keyboard/mouse + gauss_jordan + tst. GUI widgets tốt (MouseTracker/Scro
 ## Kết luận & việc tiếp theo
 
 Code đạt chuẩn để tiếp tục xây Lab. Ba việc nên cắm vào backlog theo ưu tiên: (1) guard 64KB code size, (2) benchmark độc lập cho claim TAFPU, (3) permission flags cho fs/input trước khi phân phối.
+
+---
+
+## 🔄 Cập nhật Tier 3 (2026-09-06 · M1–M5, commits `a0c27c6`…`2827cc1`)
+
+**`src/vm/`:** function table (OP_CALL = index, index 0 reserved, v1 legacy dual-load), `VMValue::FUNCTION` + `VMClosure`, OP_CLOSURE/OP_CALL_INDIRECT (closure trên đỉnh stack, captures sau args trong frame), try/catch unwind + truncate.
+
+**`src/compiler/`:**
+- Emitter: try_depth_ phát OP_POP_TRY khi break/return xuyên try; map/filter/reduce desugar inline (r_slot temp — sai thứ tự stack một lần đã sửa bằng disasm); positional field ctor cho class không init (phục vụ generic struct); turbofish prefix + infix.
+- Monomorphizer v2: type-arg map {T → concrete} từ turbofish/inference; substitute params/return (`return_custom_name` mới — sửa bug "return = arg đầu tiên")/body annotations; **generic struct instantiation** (`Pair(1,"a")` → `Pair__int__string` clone + rewrite call site).
+- TypeChecker: interface methods đăng ký + conformance check + nhánh INTERFACE trong check_method_call; `is_assignable_from` nhận super_name trỏ interface.
+- Parser: turbofish `::<T>` (prefix + infix), lambda `fn (x) => e`, FieldDecl/Parameter/return giữ custom_type_name.
+
+**`src/qvm/`:** disasm khớp 100% ISA (RX/RY/RZ 8-byte, BRANCH3/JUMP absolute) + gate summary + loader validate.
+
+**Đã sửa trong quá trình (regression bắt được):** `QuantumLogicDemo` checksum sai từ trước (struct ctor arg bị bỏ), `ternary_calculator` tooltip không bao giờ hiện, trùng `main` giữa app/thư viện.
+
+**Nợ mới:** closures/generics chưa qua LLVM/emit-c (loud-unsupported), generic method trong generic struct, `verify_opcode_whitelist.py` cần 3 opcode mới.

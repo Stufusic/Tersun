@@ -1,8 +1,8 @@
-# Tersun 1.0.2 🌌
+# Tersun 1.0.3 🌌
 ### The Next-Generation Balanced Ternary, Quantum (QVM) & Exact Algebraic Programming Language
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.0.2-blue.svg?style=for-the-badge" alt="Version 1.0.2">
+  <img src="https://img.shields.io/badge/version-1.0.3-blue.svg?style=for-the-badge" alt="Version 1.0.3">
   <img src="https://img.shields.io/badge/build-passing-brightgreen.svg?style=for-the-badge" alt="Build Status">
   <img src="https://img.shields.io/badge/C%2B%2B-20-blue.svg?style=for-the-badge&logo=c%2B%2B" alt="C++20">
   <img src="https://img.shields.io/badge/LLVM-AOT%20SSA-orange.svg?style=for-the-badge&logo=llvm" alt="LLVM AOT">
@@ -22,7 +22,22 @@ While conventional binary IEEE-754 floating-point numbers inevitably accumulate 
 
 $$\text{Value} = (A + B\sqrt{3}) \cdot 3^{S/2} \quad (A, B, S \in \mathbb{Z})$$
 
-In **Version 1.0.2**, Tersun bridges classical ternary computing with quantum computing via its novel **2-Bit to 1-Qubit state mapping**, a built-in **Quantum Virtual Machine (QVM)**, and native export to industry-standard **OpenQASM 3.0** circuits ready to execute on real IBM Quantum and AWS Braket hardware.
+In **Version 1.0.3**, Tersun bridges classical ternary computing with quantum computing via its novel **2-Bit to 1-Qubit state mapping**, a built-in **Quantum Virtual Machine (QVM)**, and native export to industry-standard **OpenQASM 3.0** circuits ready to execute on real IBM Quantum and AWS Braket hardware.
+
+---
+
+## 🆕 What's New in 1.0.3 (Language Tier 1-3)
+
+- **Modern control flow**: `for` in three styles (C-style, `for x in iterable`, `range(a, b, step)` with negative steps), `break`/`continue` with Java-style labels, `elif`
+- **First-class functions & closures**: `let f = double_it;`, lambdas `fn (x) => x + scale` capturing locals, and `map`/`filter`/`reduce` on arrays
+- **Generics**: `fn pick<T>(a: T, b: T) -> T` with turbofish `pick::<int>(1, 2)` and generic structs `Pair(1, "a")` with inferred type arguments
+- **Interfaces**: `interface Shape { def area(self) -> int; }` with compile-time conformance checking and dynamic dispatch
+- **Exceptions**: `try`/`catch (e)`/`throw` on the bytecode VM and on native executables
+- **Namespaces & visibility**: `import "gui.stn" as gui;` with `pub`/`priv` module members
+- **Unicode GUI & console**: Vietnamese (and any script) renders in `draw_text`, types in `TextInput`, and prints correctly (`ulen`/`uslice`/`uindex` codepoint helpers)
+- **Scale**: the 64 KB bytecode ceiling is gone (function-table calls verified on a 194 KB program)
+- **Better diagnostics**: every compile error carries `file:line:col`; missing methods/fields/imports fail loudly instead of silently returning `nil`
+- **QVM tooling**: `disasm` decodes the full Q-ISA (rotations, branches) with per-gate summaries
 
 ---
 

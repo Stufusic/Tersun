@@ -32,3 +32,11 @@
 2. Đổi toàn bộ version string trong Doc về 1.0.3 hoặc đánh dấu "1.0.2 legacy".
 3. Bổ sung 1 trang "Known limitations" (trần 64KB, Q-ISA demo-grade, emit-c continue) — trung thực sớm rẻ hơn gấp lỗi sau.
 4. Xóa/archive `rv1.md`.
+
+---
+
+## 🔄 Cập nhật Tier 3 (2026-09-06)
+
+Tier 1–3 đã triển khai xong M1–M5 (closures, generics, interface, exceptions, namespaces, Unicode, for/elif/&&||) — **khoảng cách giữa Language_Specification và ngôn ngữ thực tế tăng thêm**, hiện ước ~3 milestone. README.md đã cập nhật 1.0.3 + mục "What's New".
+
+Ưu tiên cập nhật tài liệu điều chỉnh theo thứ tự: (1) Language_Specification theo `Code/tests/stn/` (mỗi test = 1 mục có ví dụ), (2) hướng dẫn `import as` + pub/priv + try/catch, (3) bảng opcode Q-ISA sau khi disasm chuẩn hóa, (4) quy ước len()=byte vs ulen()=codepoint.
