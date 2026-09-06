@@ -99,6 +99,9 @@ private:
     void emit_fstring_lit(const FStringExpr& expr);
     void emit_member_access(const MemberAccessExpr& expr);
     void emit_method_call(const MethodCallExpr& expr);
+    void emit_lambda(const LambdaExpr& expr);
+    std::vector<std::string> collect_lambda_captures(Stmt* body,
+                                                     const std::vector<Parameter>& params);
     void emit_index(const IndexExpr& expr);
     void emit_comptime(const ComptimeExpr& expr);
     void emit_array_lit(const ArrayLiteralExpr& expr);

@@ -832,6 +832,9 @@ TypePtr TypeChecker::check_expr(Expr* expr) {
                     res = functions_[e.name];
                 } else if (type_defs_.find(e.name) != type_defs_.end()) {
                     res = type_defs_[e.name];
+                } else if (functions_.count(e.name)) {
+                    // First-class function value.
+                    res = functions_[e.name];
                 } else {
                     report_error("Use of undeclared identifier '" + e.name + "'.", e.loc);
                     res = Type::make_any();
@@ -859,6 +862,21 @@ TypePtr TypeChecker::check_expr(Expr* expr) {
             res = check_expr(e.expr);
         } else if constexpr (std::is_same_v<T, ArrayLiteralExpr>) {
             res = check_array_lit(e);
+        } else if constexpr (std::is_same_v<T, LambdaExpr>) {
+            std::vector<TypePtr> lam_params;
+            enter_scope();
+            for (const auto& p : e.params) {
+                TypePtr pt = resolve_type_from_data_type(p.type, p.custom_type_name);
+                define_symbol(p.name, pt, true, false, e.loc);
+                lam_params.push_back(pt);
+            }
+            TypePtr lam_ret = resolve_type_from_data_type(e.return_type);
+            TypePtr saved_ret = current_fn_return_type_;
+            current_fn_return_type_ = lam_ret;
+            if (e.body) check_stmt(e.body);
+            current_fn_return_type_ = saved_ret;
+            exit_scope();
+            res = Type::make_function(lam_params, lam_ret);
         }
     }, expr->data);
 
@@ -942,6 +960,19 @@ TypePtr TypeChecker::check_binary(BinaryExpr& expr) {
 }
 
 TypePtr TypeChecker::check_call(CallExpr& expr) {
+    // Indirect call through a closure-typed variable: f(args)
+    auto vsym = resolve_symbol(expr.callee);
+    if (vsym && vsym->type && vsym->type->kind == TypeKind::FUNCTION) {
+        std::vector<TypePtr> indirect_args;
+        for (Expr* arg : expr.args) indirect_args.push_back(check_expr(arg));
+        TypePtr ft = vsym->type;
+        if (indirect_args.size() != ft->param_types.size()) {
+            report_error("Function '" + expr.callee + "' expects "
+                             + std::to_string(ft->param_types.size()) + " argument(s), but received "
+                             + std::to_string(indirect_args.size()) + ".", expr.loc);
+        }
+        return ft->return_type ? ft->return_type : Type::make_any();
+    }
     std::vector<TypePtr> arg_types;
     for (Expr* arg : expr.args) {
         arg_types.push_back(check_expr(arg));
@@ -1072,6 +1103,14 @@ TypePtr TypeChecker::check_method_call(MethodCallExpr& expr) {
         }
         if (expr.method == "join") {
             return Type::make_string();
+        }
+        if (expr.method == "map" || expr.method == "filter") {
+            for (Expr* a : expr.args) check_expr(a);
+            return Type::make_array(Type::make_any());
+        }
+        if (expr.method == "reduce") {
+            for (Expr* a : expr.args) check_expr(a);
+            return Type::make_any();
         }
         return Type::make_any();
     }

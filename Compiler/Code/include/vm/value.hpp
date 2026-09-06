@@ -15,6 +15,7 @@ namespace setun {
 
 struct VMObject;
 struct VTable;
+struct VMClosure;
 
 struct VTable {
     std::string class_name;
@@ -32,11 +33,13 @@ struct VMValue {
         BOOL,
         STRING,
         OBJECT,
-        ARRAY
+        ARRAY,
+        FUNCTION
     };
 
     std::variant<std::monostate, int64_t, int16_t, TafpuNum, double, bool, std::string,
-                 std::shared_ptr<VMObject>, std::shared_ptr<std::vector<VMValue>>> data;
+                 std::shared_ptr<VMObject>, std::shared_ptr<std::vector<VMValue>>,
+                 std::shared_ptr<VMClosure>> data;
 
     VMValue() : data(std::monostate{}) {}
     VMValue(int64_t v) : data(v) {}
@@ -48,6 +51,7 @@ struct VMValue {
     VMValue(const char* v) : data(std::string(v)) {}
     VMValue(std::shared_ptr<VMObject> obj) : data(std::move(obj)) {}
     VMValue(std::shared_ptr<std::vector<VMValue>> arr) : data(std::move(arr)) {}
+    VMValue(std::shared_ptr<VMClosure> fn) : data(std::move(fn)) {}
 
     Type type() const {
         if (std::holds_alternative<int64_t>(data)) return Type::INT;
@@ -58,6 +62,7 @@ struct VMValue {
         if (std::holds_alternative<std::string>(data)) return Type::STRING;
         if (std::holds_alternative<std::shared_ptr<VMObject>>(data)) return Type::OBJECT;
         if (std::holds_alternative<std::shared_ptr<std::vector<VMValue>>>(data)) return Type::ARRAY;
+    if (std::holds_alternative<std::shared_ptr<VMClosure>>(data)) return Type::FUNCTION;
         return Type::NIL;
     }
 
@@ -68,6 +73,8 @@ struct VMValue {
     bool is_bool() const { return std::holds_alternative<bool>(data); }
     bool is_string() const { return std::holds_alternative<std::string>(data); }
     bool is_object() const { return std::holds_alternative<std::shared_ptr<VMObject>>(data); }
+    bool is_function() const { return std::holds_alternative<std::shared_ptr<VMClosure>>(data); }
+    std::shared_ptr<VMClosure> as_closure() const { return std::get<std::shared_ptr<VMClosure>>(data); }
     bool is_array() const { return std::holds_alternative<std::shared_ptr<std::vector<VMValue>>>(data); }
 
     std::shared_ptr<VMObject> as_object() const {
@@ -213,6 +220,14 @@ struct VMValue {
     }
 };
 
+// A first-class function value: entry point (function-table-resolved) plus
+// captured variables for closures.
+struct VMClosure {
+    uint32_t entry{0};
+    std::string name;
+    std::vector<VMValue> captures;
+};
+
 struct VMObject {
     std::string type_name;
     bool is_class{false}; // true: Class (Ref Type), false: Struct (Value Type)
@@ -257,6 +272,11 @@ inline std::string VMValue::to_string() const {
         }
         oss << " }";
         return oss.str();
+    }
+    if (is_function()) {
+        auto f = as_closure();
+        if (!f) return "<fn>";
+        return "<fn " + f->name + ">";
     }
     if (is_array()) {
         auto arr = as_array();

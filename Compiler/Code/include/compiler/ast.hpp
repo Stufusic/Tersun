@@ -180,6 +180,22 @@ struct ArrayLiteralExpr {
 };
 
 // Generic Expr using std::variant
+struct Parameter {
+    std::string name;
+    DataType type{DataType::ANY};
+    std::string custom_type_name; // original identifier for user-defined types
+    TypePtr resolved_type{nullptr};
+};
+
+// Anonymous function: fn (x, y) -> T { body } or fn (x) => expr.
+// Compiled as a hidden function; free variables become captures.
+struct LambdaExpr {
+    std::vector<Parameter> params;
+    DataType return_type{DataType::VOID};
+    Stmt* body{nullptr};     // BlockStmt (the => form wraps a return)
+    SourceLocation loc;
+};
+
 using ExprData = std::variant<
     IntLiteralExpr,
     TryteLiteralExpr,
@@ -198,7 +214,8 @@ using ExprData = std::variant<
     IndexExpr,
     ComptimeExpr,
     ArrayLiteralExpr,
-    AmbiguousTripleExpr
+    AmbiguousTripleExpr,
+    LambdaExpr
 >;
 
 struct Expr {
@@ -313,13 +330,6 @@ struct ThrowStmt {
 struct ReturnStmt {
     Expr* value{nullptr}; // Optional
     SourceLocation loc;
-};
-
-struct Parameter {
-    std::string name;
-    DataType type{DataType::ANY};
-    std::string custom_type_name; // original identifier for user-defined types
-    TypePtr resolved_type{nullptr};
 };
 
 struct FnDeclStmt {

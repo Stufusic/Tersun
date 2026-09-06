@@ -165,6 +165,8 @@ void VM::init_dispatch_table() {
     dispatch_table_[static_cast<uint8_t>(OpCode::OP_TRY)] = &VM::handle_try;
     dispatch_table_[static_cast<uint8_t>(OpCode::OP_THROW)] = &VM::handle_throw;
     dispatch_table_[static_cast<uint8_t>(OpCode::OP_POP_TRY)] = &VM::handle_pop_try;
+    dispatch_table_[static_cast<uint8_t>(OpCode::OP_CLOSURE)] = &VM::handle_closure;
+    dispatch_table_[static_cast<uint8_t>(OpCode::OP_CALL_INDIRECT)] = &VM::handle_call_indirect;
 }
 
 void VM::run(const Chunk& chunk) {
@@ -1517,6 +1519,54 @@ void VM::handle_pop_try(const Chunk&) {
     if (!try_stack_.empty()) {
         try_stack_.pop_back();
     }
+}
+
+
+void VM::handle_closure(const Chunk& chunk) {
+    uint16_t fn_idx = static_cast<uint16_t>(read_int16(chunk));
+    std::cerr << "[dbg] CLOSURE idx=" << fn_idx << "\n";
+    uint8_t capture_count = read_byte(chunk);
+    uint32_t entry = 0;
+    if (chunk.function_table.empty()) {
+        entry = fn_idx;
+    } else {
+        if (fn_idx >= chunk.function_table.size()) {
+            throw VMException("Invalid function index " + std::to_string(fn_idx) + " in OP_CLOSURE.");
+        }
+        entry = chunk.function_table[fn_idx];
+    }
+    std::vector<VMValue> caps;
+    caps.reserve(capture_count);
+    for (int i = 0; i < static_cast<int>(capture_count); ++i) {
+        caps.push_back(stack_.pop());
+    }
+    auto closure = std::make_shared<VMClosure>();
+    closure->entry = entry;
+    for (int i = static_cast<int>(capture_count) - 1; i >= 0; --i) {
+        closure->captures.push_back(caps[static_cast<size_t>(i)]);
+    }
+    stack_.push(VMValue(closure));
+}
+
+void VM::handle_call_indirect(const Chunk& chunk) {
+    uint8_t argc = read_byte(chunk);
+    VMValue fval = stack_.pop();
+    std::cerr << "[dbg] CALL_IND argc=" << (int)argc << " type=" << (int)fval.type() << "\n";
+    if (!fval.is_function() || !fval.as_closure()) {
+        throw VMException("Attempt to call a value that is not a function.");
+    }
+    auto closure = fval.as_closure();
+    size_t new_local_base = locals_.size();
+    size_t cap_count = closure->captures.size();
+    locals_.resize(new_local_base + argc + cap_count + 32);
+    for (int i = static_cast<int>(argc) - 1; i >= 0; --i) {
+        locals_[new_local_base + static_cast<size_t>(i)] = stack_.pop();
+    }
+    for (size_t j = 0; j < cap_count; ++j) {
+        locals_[new_local_base + argc + j] = closure->captures[j];
+    }
+    call_stack_.push_back(CallFrame{ip_, new_local_base});
+    ip_ = closure->entry;
 }
 
 } // namespace setun

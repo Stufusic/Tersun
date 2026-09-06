@@ -1,0 +1,52 @@
+// First-class functions, closures, map/filter/reduce
+fn double_it(x: int) -> int {
+    return x * 2;
+}
+
+fn add(a: int, b: int) -> int {
+    return a + b;
+}
+
+fn main() {
+    // Function as a value
+    let f = double_it;
+    assert_eq(f(21), 42);
+
+    // Lambda without capture
+    let g = fn (x: int) -> int { return x + 1; };
+    assert_eq(g(5), 6);
+
+    // map / filter / reduce with named functions
+    let nums = [1, 2, 3, 4];
+    let mapped = nums.map(double_it);
+    assert_eq(mapped.len(), 4);
+    assert_eq(mapped[0], 2);
+    assert_eq(mapped[3], 8);
+
+    let evens = nums.filter(fn (x: int) -> bool { return x / 2 * 2 == x; });
+    assert_eq(evens.len(), 2);
+    assert_eq(evens[0], 2);
+    assert_eq(evens[1], 4);
+
+    let total = nums.reduce(add, 0);
+    assert_eq(total, 10);
+
+    // Closure capturing a local variable
+    let scale = 100;
+    let scale_up = fn (x: int) -> int { return x + scale; };
+    assert_eq(scale_up(5), 105);
+
+    // Closure over a mutable local (value captured at creation)
+    let base = 7;
+    let with_base = fn (x: int) -> int { return base + x; };
+    assert_eq(with_base(1), 8);
+    base = 70;
+    assert_eq(with_base(1), 8); // snapshot semantics
+
+    // map with a capturing lambda
+    let shifted = nums.map(fn (x: int) -> int { return x + scale; });
+    assert_eq(shifted[0], 101);
+    assert_eq(shifted[3], 104);
+
+    println("CLOSURES_OK");
+}

@@ -141,6 +141,8 @@ private:
     void handle_try(const Chunk& chunk);
     void handle_throw(const Chunk& chunk);
     void handle_pop_try(const Chunk& chunk);
+    void handle_closure(const Chunk& chunk);
+    void handle_call_indirect(const Chunk& chunk);
     void handle_new_array(const Chunk& chunk);
 
     void register_vtable(const std::string& name, std::shared_ptr<VTable> vt) {

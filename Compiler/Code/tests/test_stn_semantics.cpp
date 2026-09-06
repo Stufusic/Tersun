@@ -244,6 +244,11 @@ void test_stn_forward_call() {
     assert(vm.last_output().find("FWD_OK") != std::string::npos);
 }
 
+void test_stn_closures() {
+    VM vm = run_stn_file("closures.stn");
+    assert(vm.last_output().find("CLOSURES_OK") != std::string::npos);
+}
+
 } // namespace
 
 void test_stn_semantics_suite() {
@@ -259,6 +264,7 @@ void test_stn_semantics_suite() {
     test_stn_compound_assign();
     test_stn_unicode();
     test_stn_forward_call();
+    test_stn_closures();
 }
 
 } // namespace setun

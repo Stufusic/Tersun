@@ -7,6 +7,8 @@
 #include <cstring>
 #include <cstdio>
 #include <map>
+#include <functional>
+#include <unordered_set>
 
 namespace setun {
 
@@ -590,6 +592,7 @@ void BytecodeEmitter::emit_expr(Expr* expr) {
         else if constexpr (std::is_same_v<T, IndexExpr>) emit_index(e);
         else if constexpr (std::is_same_v<T, ComptimeExpr>) emit_comptime(e);
         else if constexpr (std::is_same_v<T, ArrayLiteralExpr>) emit_array_lit(e);
+        else if constexpr (std::is_same_v<T, LambdaExpr>) emit_lambda(e);
     }, expr->data);
 }
 
@@ -1113,6 +1116,14 @@ void BytecodeEmitter::emit_bool_lit(const BoolLiteralExpr& expr) {
 void BytecodeEmitter::emit_identifier(const IdentifierExpr& expr) {
     auto opt_sym = symbol_table_.resolve(expr.name);
     if (!opt_sym.has_value()) {
+        // Named function used as a value: build a closure over it.
+        auto fit = functions_.find(expr.name);
+        if (fit != functions_.end()) {
+            chunk_.write_opcode(OpCode::OP_CLOSURE, expr.loc.line);
+            chunk_.write_int16(static_cast<int16_t>(fit->second), expr.loc.line);
+            chunk_.write_byte(0, expr.loc.line);
+            return;
+        }
         throw CompilerException("[Emitter Error] " + loc_str(expr.loc) + " - Undefined variable '" + expr.name + "'.");
     }
     Symbol sym = opt_sym.value();
@@ -1433,6 +1444,18 @@ void BytecodeEmitter::emit_call(const CallExpr& expr) {
                                 + " - range() is only supported as a for-in iterable: 'for i in range(...)'.");
     }
 
+    // Indirect call through a closure-typed variable. The closure value must
+    // be pushed LAST (top of stack) so CALL_INDIRECT pops it as the callee.
+    if (symbol_table_.resolve(expr.callee).has_value()) {
+        for (Expr* arg : expr.args) {
+            emit_expr(arg);
+        }
+        emit_identifier(IdentifierExpr{expr.callee, expr.loc});
+        chunk_.write_opcode(OpCode::OP_CALL_INDIRECT, expr.loc.line);
+        chunk_.write_byte(static_cast<uint8_t>(expr.args.size()), expr.loc.line);
+        return;
+    }
+
     // User-defined function call
     for (Expr* arg : expr.args) {
         emit_expr(arg);
@@ -1567,6 +1590,149 @@ void BytecodeEmitter::emit_member_access(const MemberAccessExpr& expr) {
     chunk_.write_int16(static_cast<int16_t>(id), expr.loc.line);
 }
 
+// Compute the free variables of a lambda body: identifier uses that resolve
+// in the enclosing scope, excluding parameters and locally declared names.
+// Returned in first-use order so capture slots match creation-site loads.
+std::vector<std::string> BytecodeEmitter::collect_lambda_captures(
+    Stmt* body, const std::vector<Parameter>& params) {
+    std::vector<std::string> uses;
+    std::unordered_set<std::string> declared;
+
+    std::function<void(Expr*)> walk_expr = [&](Expr* e) {
+        if (!e) return;
+        std::visit([&](auto& x) {
+            using T = std::decay_t<decltype(x)>;
+            if constexpr (std::is_same_v<T, IdentifierExpr>) {
+                uses.push_back(x.name);
+            } else if constexpr (std::is_same_v<T, BinaryExpr>) {
+                walk_expr(x.left); walk_expr(x.right);
+            } else if constexpr (std::is_same_v<T, UnaryExpr>) {
+                walk_expr(x.operand);
+            } else if constexpr (std::is_same_v<T, CallExpr>) {
+                for (Expr* a : x.args) walk_expr(a);
+            } else if constexpr (std::is_same_v<T, MethodCallExpr>) {
+                walk_expr(x.object);
+                for (Expr* a : x.args) walk_expr(a);
+            } else if constexpr (std::is_same_v<T, MemberAccessExpr>) {
+                walk_expr(x.object);
+            } else if constexpr (std::is_same_v<T, IndexExpr>) {
+                walk_expr(x.object); walk_expr(x.index);
+            } else if constexpr (std::is_same_v<T, ArrayLiteralExpr>) {
+                for (Expr* el : x.elements) walk_expr(el);
+            } else if constexpr (std::is_same_v<T, AmbiguousTripleExpr>) {
+                for (Expr* el : x.elements) walk_expr(el);
+            } else if constexpr (std::is_same_v<T, TafpuConstructExpr>) {
+                walk_expr(x.a); walk_expr(x.b); walk_expr(x.s);
+            } else if constexpr (std::is_same_v<T, FStringExpr>) {
+                for (Expr* c : x.expressions) walk_expr(c);
+            } else if constexpr (std::is_same_v<T, ComptimeExpr>) {
+                walk_expr(x.expr);
+            }
+        }, e->data);
+    };
+
+    std::function<void(Stmt*)> walk_stmt = [&](Stmt* st) {
+        if (!st) return;
+        std::visit([&](auto& s) {
+            using T = std::decay_t<decltype(s)>;
+            if constexpr (std::is_same_v<T, ExprStmt>) {
+                walk_expr(s.expr);
+            } else if constexpr (std::is_same_v<T, VarDeclStmt>) {
+                declared.insert(s.name);
+                walk_expr(s.init);
+            } else if constexpr (std::is_same_v<T, AssignStmt>) {
+                declared.insert(s.name);
+                walk_expr(s.value);
+            } else if constexpr (std::is_same_v<T, MemberAssignStmt>) {
+                walk_expr(s.object); walk_expr(s.value);
+            } else if constexpr (std::is_same_v<T, IndexAssignStmt>) {
+                walk_expr(s.object); walk_expr(s.index); walk_expr(s.value);
+            } else if constexpr (std::is_same_v<T, ReturnStmt>) {
+                walk_expr(s.value);
+            } else if constexpr (std::is_same_v<T, IfStmt>) {
+                walk_expr(s.condition); walk_stmt(s.then_branch); walk_stmt(s.else_branch);
+            } else if constexpr (std::is_same_v<T, WhileStmt>) {
+                walk_expr(s.condition); walk_stmt(s.body);
+            } else if constexpr (std::is_same_v<T, ForStmt>) {
+                walk_stmt(s.init);
+                walk_expr(s.cond);
+                walk_stmt(s.update);
+                walk_expr(s.iterable);
+                walk_stmt(s.body);
+            } else if constexpr (std::is_same_v<T, BlockStmt>) {
+                for (Stmt* c : s.statements) walk_stmt(c);
+            } else if constexpr (std::is_same_v<T, MatchStmt>) {
+                walk_expr(s.condition);
+                for (auto& arm : s.arms) { walk_expr(arm.pattern); if (arm.guard) walk_expr(arm.guard); walk_stmt(arm.body); }
+            } else if constexpr (std::is_same_v<T, Branch3Stmt>) {
+                walk_expr(s.condition); walk_stmt(s.neg_branch); walk_stmt(s.zero_branch); walk_stmt(s.pos_branch);
+            } else if constexpr (std::is_same_v<T, TryCatchStmt>) {
+                walk_stmt(s.try_body); walk_stmt(s.catch_body);
+            } else if constexpr (std::is_same_v<T, ThrowStmt>) {
+                walk_expr(s.value);
+            }
+        }, st->data);
+    };
+
+    walk_stmt(body);
+
+    std::unordered_set<std::string> bound;
+    std::unordered_set<std::string> seen;
+    for (const auto& p : params) bound.insert(p.name);
+    std::vector<std::string> captured;
+    for (const auto& name : uses) {
+        if (bound.count(name) || declared.count(name) || seen.count(name)) continue;
+        seen.insert(name);
+        if (symbol_table_.resolve(name).has_value()) {
+            captured.push_back(name);
+            bound.insert(name);
+        }
+    }
+    return captured;
+}
+
+void BytecodeEmitter::emit_lambda(const LambdaExpr& expr) {
+    std::vector<std::string> captured = collect_lambda_captures(expr.body, expr.params);
+
+    size_t jump_over = chunk_.emit_jump(OpCode::OP_JUMP, expr.loc.line);
+    uint16_t fn_idx = register_function("lambda");
+
+    symbol_table_.enter_scope();
+    uint16_t saved_local_slot = next_local_slot_;
+    next_local_slot_ = 0;
+    for (const auto& p : expr.params) {
+        symbol_table_.define(p.name, DataType::ANY, false, next_local_slot_++);
+    }
+    // Captured names occupy the slots right after the parameters, matching
+    // the VM convention in handle_call_indirect.
+    for (const auto& cap : captured) {
+        symbol_table_.define(cap, DataType::ANY, false, next_local_slot_++);
+    }
+    emit_stmt(expr.body);
+    chunk_.write_opcode(OpCode::OP_PUSH_INT, expr.loc.line);
+    chunk_.write_int64(0, expr.loc.line);
+    chunk_.write_opcode(OpCode::OP_RET, expr.loc.line);
+    symbol_table_.exit_scope();
+    next_local_slot_ = saved_local_slot;
+    chunk_.patch_jump(jump_over);
+
+    // Creation site: load captures in slot order, then build the closure.
+    for (const auto& cap : captured) {
+        auto sym = symbol_table_.resolve(cap);
+        if (sym.has_value()) {
+            if (sym->is_global) {
+                chunk_.write_opcode(OpCode::OP_LOAD_GLOBAL, expr.loc.line);
+            } else {
+                chunk_.write_opcode(OpCode::OP_LOAD_LOCAL, expr.loc.line);
+            }
+            chunk_.write_int16(static_cast<int16_t>(sym->slot_index), expr.loc.line);
+        }
+    }
+    chunk_.write_opcode(OpCode::OP_CLOSURE, expr.loc.line);
+    chunk_.write_int16(static_cast<int16_t>(fn_idx), expr.loc.line);
+    chunk_.write_byte(static_cast<uint8_t>(captured.size()), expr.loc.line);
+}
+
 void BytecodeEmitter::emit_method_call(const MethodCallExpr& expr) {
     // Aliased import call: gui.fn(args) is a plain function call of "gui.fn",
     // or a namespaced constructor when callee names a known class.
@@ -1598,6 +1764,116 @@ void BytecodeEmitter::emit_method_call(const MethodCallExpr& expr) {
             }
             return;
         }
+    }
+
+    // map/filter/reduce on array receivers: desugared into inline loops with
+    // an indirect closure call (no VM re-entrancy needed).
+    bool array_recv = expr.object && expr.object->inferred_type
+                      && expr.object->inferred_type->kind == TypeKind::ARRAY;
+    if (array_recv && (expr.method == "map" || expr.method == "filter" || expr.method == "reduce")
+        && !expr.args.empty() && (expr.method != "reduce" || expr.args.size() >= 2)) {
+        Expr* fn_expr = expr.args[0];
+        auto store_slot = [&](uint16_t slot) {
+            chunk_.write_opcode(OpCode::OP_STORE_LOCAL, expr.loc.line);
+            chunk_.write_int16(static_cast<int16_t>(slot), expr.loc.line);
+        };
+        auto load_slot = [&](uint16_t slot) {
+            chunk_.write_opcode(OpCode::OP_LOAD_LOCAL, expr.loc.line);
+            chunk_.write_int16(static_cast<int16_t>(slot), expr.loc.line);
+        };
+        auto inc_slot = [&](uint16_t slot) {
+            load_slot(slot);
+            chunk_.write_opcode(OpCode::OP_PUSH_INT, expr.loc.line);
+            chunk_.write_int64(1, expr.loc.line);
+            chunk_.write_opcode(OpCode::OP_ADD, expr.loc.line);
+            store_slot(slot);
+        };
+
+        emit_expr(expr.object);
+        const uint16_t arr_slot = next_local_slot_++;
+        store_slot(arr_slot);
+
+        const uint16_t out_slot = next_local_slot_++;
+        if (expr.method == "reduce") {
+            emit_expr(expr.args[1]);
+        } else {
+            chunk_.write_opcode(OpCode::OP_NEW_ARRAY, expr.loc.line);
+            chunk_.write_int16(0, expr.loc.line);
+        }
+        store_slot(out_slot);
+
+        chunk_.write_opcode(OpCode::OP_PUSH_INT, expr.loc.line);
+        chunk_.write_int64(0, expr.loc.line);
+        const uint16_t idx_slot = next_local_slot_++;
+        store_slot(idx_slot);
+
+        load_slot(arr_slot);
+        uint16_t len_fid = chunk_.add_string("length");
+        chunk_.write_opcode(OpCode::OP_GET_FIELD, expr.loc.line);
+        chunk_.write_int16(static_cast<int16_t>(len_fid), expr.loc.line);
+        const uint16_t n_slot = next_local_slot_++;
+        store_slot(n_slot);
+
+        size_t loop_start = chunk_.code.size();
+        load_slot(idx_slot);
+        load_slot(n_slot);
+        chunk_.write_opcode(OpCode::OP_LT, expr.loc.line);
+        size_t exit_jump = chunk_.emit_jump(OpCode::OP_JUMP_IF_FALSE, expr.loc.line);
+
+        load_slot(arr_slot);
+        load_slot(idx_slot);
+        chunk_.write_opcode(OpCode::OP_GET_INDEX, expr.loc.line);
+        const uint16_t x_slot = next_local_slot_++;
+        store_slot(x_slot);
+
+        size_t skip_jump = 0;
+        bool is_reduce = (expr.method == "reduce");
+        // Call the closure: result lands in a temp slot, then map/filter push
+        // the element into the output array (target below argument for INVOKE).
+        const uint16_t r_slot = next_local_slot_++;
+        if (!is_reduce) {
+            load_slot(out_slot); // push target sits below the call result
+        }
+        load_slot(x_slot);       // argument (arg 2 for reduce)
+        if (is_reduce) {
+            load_slot(out_slot); // reduce: acc is arg 1, below x
+        }
+        emit_expr(fn_expr);      // closure on top
+        chunk_.write_opcode(OpCode::OP_CALL_INDIRECT, expr.loc.line);
+        chunk_.write_byte(is_reduce ? 2 : 1, expr.loc.line);
+        store_slot(r_slot);
+
+        if (expr.method == "map") {
+            load_slot(out_slot);
+            load_slot(r_slot);
+            chunk_.write_opcode(OpCode::OP_INVOKE_METHOD, expr.loc.line);
+            uint16_t push_mid = chunk_.add_string("push");
+            chunk_.write_int16(static_cast<int16_t>(push_mid), expr.loc.line);
+            chunk_.write_byte(1, expr.loc.line);
+            chunk_.write_opcode(OpCode::OP_POP, expr.loc.line);
+        } else if (expr.method == "filter") {
+            load_slot(r_slot);
+            skip_jump = chunk_.emit_jump(OpCode::OP_JUMP_IF_FALSE, expr.loc.line);
+            load_slot(out_slot);
+            load_slot(x_slot);   // push the ELEMENT, not the condition
+            chunk_.write_opcode(OpCode::OP_INVOKE_METHOD, expr.loc.line);
+            uint16_t push_mid = chunk_.add_string("push");
+            chunk_.write_int16(static_cast<int16_t>(push_mid), expr.loc.line);
+            chunk_.write_byte(1, expr.loc.line);
+            chunk_.write_opcode(OpCode::OP_POP, expr.loc.line);
+            chunk_.patch_jump(skip_jump);
+        } else {
+            store_slot(out_slot);
+        }
+
+        inc_slot(idx_slot);
+        chunk_.write_opcode(OpCode::OP_JUMP, expr.loc.line);
+        int16_t back_dist = static_cast<int16_t>(loop_start - (chunk_.code.size() + 2));
+        chunk_.write_int16(back_dist, expr.loc.line);
+        chunk_.patch_jump(exit_jump);
+
+        load_slot(out_slot);
+        return;
     }
 
     if (expr.object) emit_expr(expr.object);

@@ -1241,6 +1241,49 @@ Expr* Parser::parse_prefix() {
             return arena_.make<Expr>(UnaryExpr{UnaryOp::NEG, operand, loc}, loc);
         }
 
+        // Lambda: fn (params) => expr  |  fn (params) -> T { body }
+        case TokenType::KW_FN: {
+            if (!check(TokenType::LPAREN)) {
+                throw CompilerException("[Parser Error] " + format_loc(loc)
+                                        + " - Expected '(' after 'fn' in lambda expression.");
+            }
+            advance(); // consume '('
+            LambdaExpr lam;
+            lam.loc = loc;
+            if (!check(TokenType::RPAREN)) {
+                do {
+                    Token p_tok = consume(TokenType::IDENTIFIER, "Expected lambda parameter name.");
+                    DataType p_type = DataType::ANY;
+                    std::string p_custom;
+                    if (match(TokenType::COLON)) {
+                        p_type = parse_type();
+                        p_custom = last_type_name_;
+                    }
+                    lam.params.push_back(Parameter{p_tok.lexeme, p_type, p_custom});
+                } while (match(TokenType::COMMA));
+            }
+            consume(TokenType::RPAREN, "Expected ')' after lambda parameters.");
+            DataType lam_ret = DataType::VOID;
+            std::string lam_ret_custom;
+            if (match(TokenType::ARROW)) {
+                lam_ret = parse_type();
+                lam_ret_custom = last_type_name_;
+            }
+            if (match(TokenType::FAT_ARROW)) {
+                Expr* ret_val = parse_expression();
+                Stmt* ret = arena_.make<Stmt>(ReturnStmt{ret_val, loc}, loc);
+                std::vector<Stmt*> body_stmts;
+                body_stmts.push_back(ret);
+                lam.body = arena_.make<Stmt>(BlockStmt{std::move(body_stmts), loc}, loc);
+            } else {
+                consume(TokenType::LBRACE, "Expected '{' or '=>' after lambda parameters.");
+                current_--;
+                lam.body = parse_block_stmt();
+            }
+            lam.return_type = lam_ret;
+            return arena_.make<Expr>(std::move(lam), loc);
+        }
+
         // Ternary negation: ~expr
         case TokenType::TILDE: {
             Expr* operand = parse_expression(PREC_UNARY);

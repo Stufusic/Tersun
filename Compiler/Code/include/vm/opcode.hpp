@@ -89,6 +89,8 @@ enum class OpCode : uint8_t {
     OP_TRY             = 0xA7, // int16_t catch_offset (pushes a try frame)
     OP_THROW           = 0xA8, // Pops error message string -> raises VMException
     OP_POP_TRY         = 0xA9, // Pops the innermost try frame (normal path)
+    OP_CLOSURE         = 0xAA, // uint16_t fn_index, uint8_t capture_count
+    OP_CALL_INDIRECT   = 0xAB, // uint8_t argc (pops closure, args)
 
     OP_HALT            = 0xFF
 };
