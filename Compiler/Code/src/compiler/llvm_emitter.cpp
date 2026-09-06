@@ -39,7 +39,8 @@ std::string LLVMEmitter::emit_native_c(const Program& program) {
     oss << "#include <iostream>\n";
     oss << "#include <string>\n";
     oss << "#include <cstdint>\n";
-    oss << "#include <cassert>\n\n";
+    oss << "#include <cassert>\n";
+    oss << "#include <stdexcept>\n\n";
     oss << "using namespace setun::runtime;\n\n";
 
     oss << "template<typename T>\n";
@@ -353,8 +354,26 @@ void LLVMEmitter::transpile_stmt(Stmt* stmt, std::ostringstream& oss, int indent
                 oss << pad << "}\n";
             }
         }
-        else if constexpr (std::is_same_v<T, TryCatchStmt> || std::is_same_v<T, ThrowStmt>) {
-            throw CompilerException("[emit-c] exceptions (try/catch/throw) are not supported by the C transpiler yet.");
+        else if constexpr (std::is_same_v<T, ThrowStmt>) {
+            oss << pad << "throw std::runtime_error(";
+            if (s.value) {
+                transpile_expr(s.value, oss);
+            } else {
+                oss << "\"error\"";
+            }
+            oss << ");\n";
+        }
+        else if constexpr (std::is_same_v<T, TryCatchStmt>) {
+            // 1:1 lowering onto C++ exceptions: native runtime errors and
+            // script throws are both catchable.
+            oss << pad << "try {\n";
+            transpile_stmt(s.try_body, oss, indent + 1);
+            oss << pad << "} catch (const std::exception& stn_ex) {\n";
+            if (!s.catch_var.empty()) {
+                oss << pad << "    const char* " << s.catch_var << " = stn_ex.what();\n";
+            }
+            transpile_stmt(s.catch_body, oss, indent + 1);
+            oss << pad << "}\n";
         }
         else if constexpr (std::is_same_v<T, BreakContinueStmt>) {
             oss << pad << (s.is_break ? "break" : "continue") << ";";
