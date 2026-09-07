@@ -1,0 +1,67 @@
+// ============================================================================
+// Gate 4 Benchmark: Shape Inline Caching & Object Layout Stress
+// H5A: Monomorphic single shape field accesses
+// H5B: Bimorphic alternating shapes
+// ============================================================================
+
+class Point2D {
+    pub x: int;
+    pub y: int;
+    def init(self, px: int, py: int) {
+        self.x = px;
+        self.y = py;
+    }
+}
+
+class Point3D {
+    pub x: int;
+    pub y: int;
+    pub z: int;
+    def init(self, px: int, py: int, pz: int) {
+        self.x = px;
+        self.y = py;
+        self.z = pz;
+    }
+}
+
+fn bench_h5a_monomorphic(p: any, n: int) -> int {
+    let mut sum = 0;
+    let pt: Point2D = p;
+    for i in range(n) {
+        sum += pt.x;
+        sum += pt.y;
+    }
+    return sum;
+}
+
+fn bench_h5b_bimorphic(p2: any, p3: any, n: int) -> int {
+    let mut sum = 0;
+    for i in range(n) {
+        if ((i % 2) == 0) {
+            let pt: Point2D = p2;
+            sum += pt.x;
+        } else {
+            let pt: Point3D = p3;
+            sum += pt.x;
+        }
+    }
+    return sum;
+}
+
+fn main() {
+    let p2 = Point2D(10, 20);
+    let p3 = Point3D(30, 40, 50);
+
+    let t0 = time_now_us();
+    let r1 = bench_h5a_monomorphic(p2, 500000);
+    let t1 = time_now_us();
+
+    let t2 = time_now_us();
+    let r2 = bench_h5b_bimorphic(p2, p3, 500000);
+    let t3 = time_now_us();
+
+    print("SHAPE_IC_BENCH H5A_us=");
+    print(t1 - t0);
+    print(" H5B_us=");
+    println(t3 - t2);
+}

@@ -1,0 +1,16 @@
+// ============================================================================
+// Regression: UTF-8 multibyte sequences outside string literals.
+// Comments in Vietnamese + em dash must lex cleanly, and identifiers may
+// carry multibyte characters (giá_trị, tổng). Before the lexer fix a
+// multibyte byte became a separate ILLEGAL token and compilation failed.
+// Mục đích: kiểm tra lexer trên nguồn gốc tiếng Việt có đầy đủ dấu.
+// ============================================================================
+
+fn main() {
+    let giá_trị = 5;
+    let tổng = 0;
+    for i in range(10) {
+        tổng += giá_trị;
+    }
+    println(f"UTF8_OK {tổng}");
+}

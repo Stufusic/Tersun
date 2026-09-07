@@ -66,6 +66,7 @@ enum class TokenType {
     MINUS,            // -
     STAR,             // *
     SLASH,            // /
+    PERCENT,          // % (Integer / Tryte Modulo)
     AT,               // @ (Matrix multiplication / Multiplication-free GEMM)
     EQUAL,            // =
     EQ_EQ,            // ==
@@ -74,15 +75,25 @@ enum class TokenType {
     GREATER,          // >
     LESS_EQ,          // <=
     GREATER_EQ,       // >=
+    LESS_LESS,        // << (Shift Left)
+    GREATER_GREATER,  // >> (Shift Right)
     SPACESHIP,        // <=> (3-way comparison returning -1, 0, +1)
     TILDE,            // ~ (Ternary negation)
-    PIPE,             // | (Closure parameter / Bitwise OR)
+    AMP,              // & (Bitwise AND / Tritwise Kleene Min)
+    PIPE,             // | (Closure parameter / Bitwise OR / Tritwise Kleene Max)
+    CARET,            // ^ (Bitwise XOR / Tritwise GF(3) Addition)
     AMP_AMP,          // && (Logical AND)
     PIPE_PIPE,        // || (Logical OR)
     PLUS_EQUAL,       // +=
     MINUS_EQUAL,      // -=
     STAR_EQUAL,       // *=
     SLASH_EQUAL,      // /=
+    PERCENT_EQUAL,    // %=
+    AMP_EQUAL,        // &=
+    PIPE_EQUAL,       // |=
+    CARET_EQUAL,      // ^=
+    LESS_LESS_EQUAL,  // <<=
+    GREATER_GREATER_EQUAL, // >>=
     KW_MIN,           // min / Kleene AND
     KW_MAX,           // max / Kleene OR
     KW_NOT,           // not

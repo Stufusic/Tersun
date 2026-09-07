@@ -1,0 +1,33 @@
+===================================================================
+  Tersun QVM Multi-Backend & Scaling Benchmark (Statevector vs MPS)
+===================================================================
+
+[Step 1] Layer 2: Backend Equivalence & Fidelity Validation (GHZ State):
+  - GHZ- 4 | SV: 0.01ms (0.000 MB) | MPS: 0.01ms (0.000 MB) | Prob Err: 1.110e-16 => EQUIVALENT!
+  - GHZ- 8 | SV: 0.01ms (0.004 MB) | MPS: 0.01ms (0.001 MB) | Prob Err: 1.110e-16 => EQUIVALENT!
+  - GHZ-12 | SV: 0.10ms (0.062 MB) | MPS: 0.01ms (0.001 MB) | Prob Err: 1.110e-16 => EQUIVALENT!
+  - GHZ-16 | SV: 1.59ms (1.000 MB) | MPS: 0.01ms (0.002 MB) | Prob Err: 1.110e-16 => EQUIVALENT!
+  -> PASSED: Backend Equivalence verified across all test dimensions!
+
+[Step 2] Layer 4: Scalability Benchmark for N = 20, 28, 32, 48, 64 Qubits:
+  * N=20 Statevector Exact : 33.95 ms | Memory: 16.00 MB
+  * N=20 MPS Approximate  : 0.03 ms | Memory: 0.0023 MB | Max Chi: 2 | Prob(1): 0.50 (Fidelity: 1.0000)
+  * N=24 Statevector Exact : 675.40 ms | Memory: 256.00 MB
+  * N=24 MPS Approximate  : 0.01 ms | Memory: 0.0028 MB | Max Chi: 2 | Prob(1): 0.50 (Fidelity: 1.0000)
+  * N=28 Statevector Exact : SKIPPED (Exceeds RAM: 4.0000 GB required!)
+  * N=28 MPS Approximate  : 0.01 ms | Memory: 0.0033 MB | Max Chi: 2 | Prob(1): 0.50 (Fidelity: 1.0000)
+  * N=32 Statevector Exact : SKIPPED (Exceeds RAM: 64.0000 GB required!)
+  * N=32 MPS Approximate  : 0.02 ms | Memory: 0.0038 MB | Max Chi: 2 | Prob(1): 0.50 (Fidelity: 1.0000)
+  * N=48 Statevector Exact : SKIPPED (Exceeds RAM: 4194304.0000 GB required!)
+  * N=48 MPS Approximate  : 0.01 ms | Memory: 0.0057 MB | Max Chi: 2 | Prob(1): 0.50 (Fidelity: 1.0000)
+  * N=64 Statevector Exact : SKIPPED (Exceeds RAM: 0.0000 GB required!)
+  * N=64 MPS Approximate  : 0.01 ms | Memory: 0.0077 MB | Max Chi: 2 | Prob(1): 0.50 (Fidelity: 1.0000)
+
+===================================================================
+  SCIENTIFIC EVALUATION SUMMARY
+===================================================================
+  1. Statevector provides 100% exact mathematical amplitudes for N <= 24.
+  2. MPS allows simulating 64 qubits using < 0.05 MB RAM with 100% fidelity
+     on low-entanglement circuits (GHZ/nearest-neighbor).
+  3. AutoBackend automatically routes exact vs MPS transparently.
+===================================================================

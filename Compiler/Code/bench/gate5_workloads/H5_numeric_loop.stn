@@ -1,0 +1,23 @@
+// ============================================================================
+// Gate 5 Workload H5: Numeric Tight Loop (N = 5,000,000)
+// Tests: Raw bytecode dispatch, loop backedge performance, integer arithmetic
+// ============================================================================
+
+fn main() {
+    let t0 = time_now_us();
+    let mut sum = 0;
+    let n = 5000000;
+
+    for i in range(n) {
+        sum += (i ^ 3) + (i & 7) - (i % 5);
+        if (sum > 1000000000) {
+            sum = sum % 1000000000;
+        }
+    }
+
+    let t1 = time_now_us();
+    print("WORKLOAD_H5_NUMERIC_LOOP checksum=");
+    print(sum);
+    print(" time_us=");
+    println(t1 - t0);
+}

@@ -1,0 +1,37 @@
+// Classical microbenchmarks, self-timed with time_now_us (VM/.tbc path).
+fn fib(n: int) -> int {
+    if (n < 2) {
+        return n;
+    }
+    return fib(n - 1) + fib(n - 2);
+}
+
+fn main() {
+    let t0 = time_now_us();
+    let r1 = fib(24);
+    let t1 = time_now_us();
+    println(f"B1 fib(24)       checksum={r1} time_us={t1 - t0}");
+
+    let acc = 0;
+    let t2 = time_now_us();
+    for i in range(2000000) {
+        if (i > 700000) {
+            acc += i;
+        } else {
+            acc += 1;
+        }
+    }
+    let t3 = time_now_us();
+    println(f"B2 branchy 2M    checksum={acc} time_us={t3 - t2}");
+
+    let s = 0;
+    let t4 = time_now_us();
+    for i in range(5000000) {
+        s += i;
+        if (s > 1000000000) {
+            s = 0;
+        }
+    }
+    let t5 = time_now_us();
+    println(f"B3 sum 5M        checksum={s} time_us={t5 - t4}");
+}

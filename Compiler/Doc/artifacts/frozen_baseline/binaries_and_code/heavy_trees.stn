@@ -1,0 +1,48 @@
+// ============================================================================
+// Heavy Workload H4: Binary Trees Heap Allocation & Traversal (Depth = 14)
+// Tests: 32,767 heap object allocations, pointer/handle chasing, deep recursive traversal
+// Correct checksum: 178973354
+// ============================================================================
+
+class TreeNode {
+    pub left: any;
+    pub right: any;
+    pub item: int;
+    def init(self, it: int) {
+        self.item = it;
+        self.left = 0;
+        self.right = 0;
+    }
+}
+
+fn make_tree(depth: int, item: int) -> any {
+    let node = TreeNode(item);
+    if (depth > 0) {
+        node.left = make_tree(depth - 1, 2 * item - 1);
+        node.right = make_tree(depth - 1, 2 * item);
+    }
+    return node;
+}
+
+fn check_tree(node: any, depth: int) -> int {
+    let n: TreeNode = node;
+    let sum = n.item;
+    if (depth > 0) {
+        sum += check_tree(n.left, depth - 1);
+        sum += check_tree(n.right, depth - 1);
+    }
+    return sum;
+}
+
+fn main() {
+    let t0 = time_now_us();
+    let d = 14;
+    let root = make_tree(d, 1);
+    let chk = check_tree(root, d);
+    let t1 = time_now_us();
+
+    print("HEAVY_TREES checksum=");
+    print(chk);
+    print(" time_us=");
+    println(t1 - t0);
+}

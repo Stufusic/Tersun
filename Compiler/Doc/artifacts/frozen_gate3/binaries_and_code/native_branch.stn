@@ -1,0 +1,16 @@
+// Compute-only (external timing): branchy loop 2M x 20
+fn main() {
+    let sink = 0;
+    for k in range(20) {
+        let acc = 0;
+        for i in range(2000000) {
+            if (i > 700000) {
+                acc += i;
+            } else {
+                acc += 1;
+            }
+        }
+        sink += acc;
+    }
+    println(sink);
+}

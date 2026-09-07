@@ -55,6 +55,7 @@ std::string_view token_type_name(TokenType type) {
         case TokenType::MINUS: return "-";
         case TokenType::STAR: return "*";
         case TokenType::SLASH: return "/";
+        case TokenType::PERCENT: return "%";
         case TokenType::AT: return "@";
         case TokenType::EQUAL: return "=";
         case TokenType::EQ_EQ: return "==";
@@ -63,9 +64,25 @@ std::string_view token_type_name(TokenType type) {
         case TokenType::GREATER: return ">";
         case TokenType::LESS_EQ: return "<=";
         case TokenType::GREATER_EQ: return ">=";
+        case TokenType::LESS_LESS: return "<<";
+        case TokenType::GREATER_GREATER: return ">>";
         case TokenType::SPACESHIP: return "<=>";
         case TokenType::TILDE: return "~";
+        case TokenType::AMP: return "&";
         case TokenType::PIPE: return "|";
+        case TokenType::CARET: return "^";
+        case TokenType::AMP_AMP: return "&&";
+        case TokenType::PIPE_PIPE: return "||";
+        case TokenType::PLUS_EQUAL: return "+=";
+        case TokenType::MINUS_EQUAL: return "-=";
+        case TokenType::STAR_EQUAL: return "*=";
+        case TokenType::SLASH_EQUAL: return "/=";
+        case TokenType::PERCENT_EQUAL: return "%=";
+        case TokenType::AMP_EQUAL: return "&=";
+        case TokenType::PIPE_EQUAL: return "|=";
+        case TokenType::CARET_EQUAL: return "^=";
+        case TokenType::LESS_LESS_EQUAL: return "<<=";
+        case TokenType::GREATER_GREATER_EQUAL: return ">>=";
         case TokenType::KW_MIN: return "min";
         case TokenType::KW_MAX: return "max";
         case TokenType::KW_NOT: return "not";
@@ -188,6 +205,47 @@ bool Lexer::match(char expected) {
     return true;
 }
 
+// Length of a well-formed UTF-8 sequence for this lead byte, or 0. Rejects
+// overlong encodings, surrogates (U+D800..U+DFFF) and values above U+10FFFF
+// via the constrained continuation ranges, so comments/strings (which skip
+// bytes opaquely) and identifiers both stay on well-formed input.
+size_t Lexer::utf8_sequence_length(unsigned char lead) {
+    if (lead >= 0xC2 && lead <= 0xDF) return 2; // U+0080..U+07FF
+    if (lead == 0xE0) return 3;                 // U+0800..U+0FFF (cont checked below)
+    if (lead >= 0xE1 && lead <= 0xEC) return 3; // U+1000..U+CFFF
+    if (lead == 0xED) return 3;                 // U+D000..U+D7FF (surrogates excluded below)
+    if (lead == 0xEE || lead == 0xEF) return 3; // U+E000..U+FFFF
+    if (lead == 0xF0) return 4;                 // U+10000..U+3FFFF (cont checked below)
+    if (lead >= 0xF1 && lead <= 0xF3) return 4; // U+40000..U+FFFFF
+    if (lead == 0xF4) return 4;                 // U+100000..U+10FFFF (cont checked below)
+    return 0;                                   // 0x80..0xC1, 0xF5..0xFF: invalid lead
+}
+
+bool Lexer::utf8_sequence_at(size_t pos) const {
+    if (pos >= source_.size()) return false;
+    unsigned char lead = static_cast<unsigned char>(source_[pos]);
+    size_t len = utf8_sequence_length(lead);
+    if (len == 0 || pos + len > source_.size()) return false;
+    // Stricter continuation range for the boundary-sensitive leads.
+    unsigned char c1 = static_cast<unsigned char>(source_[pos + 1]);
+    if (lead == 0xE0 && (c1 < 0xA0 || c1 > 0xBF)) return false;
+    if (lead == 0xED && (c1 < 0x80 || c1 > 0x9F)) return false;
+    if (lead == 0xF0 && (c1 < 0x90 || c1 > 0xBF)) return false;
+    if (lead == 0xF4 && (c1 < 0x80 || c1 > 0x8F)) return false;
+    for (size_t k = 1; k < len; ++k) {
+        unsigned char cont = static_cast<unsigned char>(source_[pos + k]);
+        if (cont < 0x80 || cont > 0xBF) return false;
+    }
+    return true;
+}
+
+bool Lexer::consume_utf8_sequence() {
+    if (!utf8_sequence_at(current_)) return false;
+    size_t len = utf8_sequence_length(static_cast<unsigned char>(source_[current_]));
+    for (size_t k = 0; k < len; ++k) advance();
+    return true;
+}
+
 void Lexer::skip_whitespace_and_comments() {
     while (!is_at_end()) {
         char c = peek();
@@ -251,8 +309,15 @@ std::vector<Token> Lexer::tokenize() {
 }
 
 Token Lexer::scan_identifier_or_keyword() {
-    while (std::isalnum(peek()) || peek() == '_') {
-        advance();
+    while (true) {
+        unsigned char ch = static_cast<unsigned char>(peek());
+        if (std::isalnum(ch) || ch == '_') {
+            advance();
+        } else if (ch >= 0x80 && consume_utf8_sequence()) {
+            continue; // multibyte identifier character (e.g. giá_trị)
+        } else {
+            break;
+        }
     }
 
     std::string_view text = source_.substr(start_, current_ - start_);
@@ -280,7 +345,7 @@ Token Lexer::scan_number_or_float() {
     // Check for hexadecimal literal (0x... or 0X...)
     if (source_[start_] == '0' && (peek() == 'x' || peek() == 'X')) {
         advance(); // consume 'x' or 'X'
-        while (std::isxdigit(peek())) {
+        while (std::isxdigit(static_cast<unsigned char>(peek()))) {
             advance();
         }
         std::string_view text = source_.substr(start_, current_ - start_);
@@ -297,15 +362,15 @@ Token Lexer::scan_number_or_float() {
     }
 
     bool is_float = false;
-    while (std::isdigit(peek())) {
+    while (std::isdigit(static_cast<unsigned char>(peek()))) {
         advance();
     }
 
     // Check for fractional part
-    if (peek() == '.' && std::isdigit(peek_next())) {
+    if (peek() == '.' && std::isdigit(static_cast<unsigned char>(peek_next()))) {
         is_float = true;
         advance(); // consume '.'
-        while (std::isdigit(peek())) {
+        while (std::isdigit(static_cast<unsigned char>(peek()))) {
             advance();
         }
     }
@@ -434,13 +499,14 @@ Token Lexer::next_token() {
         return scan_string();
     }
 
-    if (std::isalpha(c) || c == '_') {
+    if (std::isalpha(static_cast<unsigned char>(c)) || c == '_' ||
+        (static_cast<unsigned char>(c) >= 0x80 && utf8_sequence_at(current_ - 1))) {
         current_--;
         column_--;
         return scan_identifier_or_keyword();
     }
 
-    if (std::isdigit(c)) {
+    if (std::isdigit(static_cast<unsigned char>(c))) {
         current_--;
         column_--;
         return scan_number_or_float();
@@ -481,16 +547,32 @@ Token Lexer::next_token() {
                 return Token{TokenType::SLASH_EQUAL, "/=", loc};
             }
             return Token{TokenType::SLASH, "/", loc};
+        case '%':
+            if (match('=')) {
+                return Token{TokenType::PERCENT_EQUAL, "%=", loc};
+            }
+            return Token{TokenType::PERCENT, "%", loc};
+        case '^':
+            if (match('=')) {
+                return Token{TokenType::CARET_EQUAL, "^=", loc};
+            }
+            return Token{TokenType::CARET, "^", loc};
         case '|':
             if (match('|')) {
                 return Token{TokenType::PIPE_PIPE, "||", loc};
+            }
+            if (match('=')) {
+                return Token{TokenType::PIPE_EQUAL, "|=", loc};
             }
             return Token{TokenType::PIPE, "|", loc};
         case '&':
             if (match('&')) {
                 return Token{TokenType::AMP_AMP, "&&", loc};
             }
-            break;
+            if (match('=')) {
+                return Token{TokenType::AMP_EQUAL, "&=", loc};
+            }
+            return Token{TokenType::AMP, "&", loc};
         case '.':
             if (match('.')) {
                 return Token{TokenType::DOT_DOT, "..", loc};
@@ -526,6 +608,12 @@ Token Lexer::next_token() {
             }
             break;
         case '<':
+            if (match('<')) {
+                if (match('=')) {
+                    return Token{TokenType::LESS_LESS_EQUAL, "<<=", loc};
+                }
+                return Token{TokenType::LESS_LESS, "<<", loc};
+            }
             if (match('=')) {
                 if (match('>')) {
                     return Token{TokenType::SPACESHIP, "<=>", loc};
@@ -534,6 +622,12 @@ Token Lexer::next_token() {
             }
             return Token{TokenType::LESS, "<", loc};
         case '>':
+            if (match('>')) {
+                if (match('=')) {
+                    return Token{TokenType::GREATER_GREATER_EQUAL, ">>=", loc};
+                }
+                return Token{TokenType::GREATER_GREATER, ">>", loc};
+            }
             if (match('=')) {
                 return Token{TokenType::GREATER_EQ, ">=", loc};
             }

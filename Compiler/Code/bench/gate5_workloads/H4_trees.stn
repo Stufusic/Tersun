@@ -1,0 +1,66 @@
+// ============================================================================
+// Gate 5 Workload H4B: Binary Trees (Depth = 14)
+// Tests: Memory allocation rate, object life-cycle, GC pressure, tree traversal
+// Correct checksum: 178973354
+// ============================================================================
+
+class TreeNode {
+    pub item: int;
+    pub left: any;
+    pub right: any;
+
+    def init(self, val: int, l: any, r: any) {
+        self.item = val;
+        self.left = l;
+        self.right = r;
+    }
+
+    def check(self) -> int {
+        if (self.left == 0) {
+            return self.item;
+        }
+        let l_res = self.left.check();
+        let r_res = self.right.check();
+        return self.item + l_res - r_res;
+    }
+}
+
+fn bottom_up_tree(item: int, depth: int) -> any {
+    if (depth > 0) {
+        let l = bottom_up_tree(2 * item - 1, depth - 1);
+        let r = bottom_up_tree(2 * item, depth - 1);
+        return TreeNode(item, l, r);
+    }
+    return TreeNode(item, 0, 0);
+}
+
+fn main() {
+    let t0 = time_now_us();
+    let max_depth = 14;
+    
+    // Stretch tree
+    let stretch_tree = bottom_up_tree(0, max_depth + 1);
+    let stretch_check = stretch_tree.check();
+
+    // Long-lived tree
+    let long_lived_tree = bottom_up_tree(0, max_depth);
+
+    let total_check = stretch_check;
+    let iterations = 1;
+    for d in range(4, max_depth + 1, 2) {
+        let iters = 1 << (max_depth - d + 4);
+        for i in range(1, iters + 1) {
+            let t1 = bottom_up_tree(i, d);
+            let t2 = bottom_up_tree(0 - i, d);
+            total_check += t1.check() + t2.check();
+        }
+    }
+
+    total_check += long_lived_tree.check();
+
+    let t1 = time_now_us();
+    print("WORKLOAD_H4_TREES checksum=");
+    print(total_check);
+    print(" time_us=");
+    println(t1 - t0);
+}

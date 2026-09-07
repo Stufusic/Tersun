@@ -1,0 +1,29 @@
+// ============================================================================
+// Workload Category 2: Control-Flow Heavy
+// Deep recursion call frames + dense branching
+// ============================================================================
+
+fn fib(n: int) -> int {
+    if (n < 2) {
+        return n;
+    }
+    return fib(n - 1) + fib(n - 2);
+}
+
+fn main() {
+    let t0 = time_now_us();
+    let r1 = fib(24);
+    let t1 = time_now_us();
+    
+    let acc = 0;
+    let t2 = time_now_us();
+    for i in range(2000000) {
+        if (i > 700000) {
+            acc += i;
+        } else {
+            acc += 1;
+        }
+    }
+    let t3 = time_now_us();
+    println(f"CONTROL_FLOW fib_res={r1} fib_us={t1 - t0} branch_res={acc} branch_us={t3 - t2}");
+}

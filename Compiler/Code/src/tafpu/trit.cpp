@@ -103,3 +103,96 @@ std::pair<int64_t, std::vector<BtvpTraceStep>> btvp_add_with_trace(int64_t a, in
 }
 
 } // namespace setun
+
+#include <chrono>
+#include <iostream>
+#include <cstdlib>
+
+extern "C" {
+int64_t tersun_monotonic_now_us() {
+    auto now = std::chrono::steady_clock::now();
+    return std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count();
+}
+
+int64_t tersun_time_now_us() {
+    return tersun_monotonic_now_us();
+}
+
+int64_t tersun_safe_mod_i64(int64_t a, int64_t b) {
+    if (b == 0) {
+        std::cerr << "[Fatal Error] Division by zero in integer modulo.\n";
+        std::abort();
+    }
+    if (a == INT64_MIN && b == -1) return 0;
+    return a % b;
+}
+
+int16_t tersun_tryte_mod(int16_t a, int16_t b) {
+    if (b == 0) {
+        std::cerr << "[Fatal Error] Division by zero in tryte modulo.\n";
+        std::abort();
+    }
+    return static_cast<int16_t>(a % b);
+}
+
+int16_t tersun_tryte_gf3_xor(int16_t a, int16_t b) {
+    auto ta = setun::unpack_tryte(a);
+    auto tb = setun::unpack_tryte(b);
+    std::array<setun::Trit, 6> res;
+    for (size_t i = 0; i < 6; ++i) {
+        int sum = static_cast<int>(ta[i]) + static_cast<int>(tb[i]);
+        if (sum == 2) res[i] = setun::Trit::NEG;
+        else if (sum == -2) res[i] = setun::Trit::POS;
+        else res[i] = static_cast<setun::Trit>(sum);
+    }
+    return setun::pack_tryte(res);
+}
+
+int16_t tersun_tryte_kleene_and(int16_t a, int16_t b) {
+    auto ta = setun::unpack_tryte(a);
+    auto tb = setun::unpack_tryte(b);
+    std::array<setun::Trit, 6> res;
+    for (size_t i = 0; i < 6; ++i) res[i] = setun::trit_min(ta[i], tb[i]);
+    return setun::pack_tryte(res);
+}
+
+int16_t tersun_tryte_kleene_or(int16_t a, int16_t b) {
+    auto ta = setun::unpack_tryte(a);
+    auto tb = setun::unpack_tryte(b);
+    std::array<setun::Trit, 6> res;
+    for (size_t i = 0; i < 6; ++i) res[i] = setun::trit_max(ta[i], tb[i]);
+    return setun::pack_tryte(res);
+}
+
+int16_t tersun_tryte_shl(int16_t a, int64_t k) {
+    if (k < 0) {
+        std::cerr << "[Fatal Error] Negative shift count in tryte shift left.\n";
+        std::abort();
+    }
+    if (k >= 6) return 0;
+    if (k == 0) return a;
+    auto t = setun::unpack_tryte(a);
+    std::array<setun::Trit, 6> res;
+    for (size_t i = 0; i < 6; ++i) {
+        if (i >= static_cast<size_t>(k)) res[i] = t[i - static_cast<size_t>(k)];
+        else res[i] = setun::Trit::ZERO;
+    }
+    return setun::pack_tryte(res);
+}
+
+int16_t tersun_tryte_shr(int16_t a, int64_t k) {
+    if (k < 0) {
+        std::cerr << "[Fatal Error] Negative shift count in tryte shift right.\n";
+        std::abort();
+    }
+    if (k >= 6) return 0;
+    if (k == 0) return a;
+    auto t = setun::unpack_tryte(a);
+    std::array<setun::Trit, 6> res;
+    for (size_t i = 0; i < 6; ++i) {
+        if (i + static_cast<size_t>(k) < 6) res[i] = t[i + static_cast<size_t>(k)];
+        else res[i] = setun::Trit::ZERO;
+    }
+    return setun::pack_tryte(res);
+}
+}

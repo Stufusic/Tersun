@@ -24,6 +24,13 @@ private:
     bool is_at_end() const;
     bool match(char expected);
 
+    // UTF-8 support: identifiers may carry multibyte sequences. A valid
+    // sequence is consumed atomically; anything >= 0x80 that is not a valid
+    // lead byte is left for the ILLEGAL token path.
+    static size_t utf8_sequence_length(unsigned char lead);
+    bool utf8_sequence_at(size_t pos) const;
+    bool consume_utf8_sequence();
+
     void skip_whitespace_and_comments();
 
     Token scan_identifier_or_keyword();

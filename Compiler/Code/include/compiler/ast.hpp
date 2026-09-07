@@ -89,6 +89,12 @@ enum class BinaryOp {
     SUB,          // -
     MUL,          // *
     DIV,          // /
+    MOD,          // % (Integer / Tryte Modulo)
+    BIT_AND,      // & (Bitwise AND / Tritwise Kleene Min)
+    BIT_OR,       // | (Bitwise OR / Tritwise Kleene Max)
+    BIT_XOR,      // ^ (Bitwise XOR / Tritwise GF(3) Addition)
+    SHL,          // << (Shift Left)
+    SHR,          // >> (Shift Right)
     MATMUL,       // @ (Multiplication-free GEMM)
     EQ,           // ==
     NEQ,          // !=

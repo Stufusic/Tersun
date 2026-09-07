@@ -391,6 +391,36 @@ int64_t QVM::run(const QChunk& chunk) {
                 break;
             }
 
+            case QOpCode::OP_RX: {
+                uint8_t q = read_u8();
+                uint64_t bits = 0;
+                for (int k = 0; k < 8; ++k) bits |= (static_cast<uint64_t>(read_u8()) << (k * 8));
+                double ang = 0.0;
+                std::memcpy(&ang, &bits, sizeof(double));
+                GateOps::apply_rx(qreg_, q, ang);
+                break;
+            }
+
+            case QOpCode::OP_RY: {
+                uint8_t q = read_u8();
+                uint64_t bits = 0;
+                for (int k = 0; k < 8; ++k) bits |= (static_cast<uint64_t>(read_u8()) << (k * 8));
+                double ang = 0.0;
+                std::memcpy(&ang, &bits, sizeof(double));
+                GateOps::apply_ry(qreg_, q, ang);
+                break;
+            }
+
+            case QOpCode::OP_RZ: {
+                uint8_t q = read_u8();
+                uint64_t bits = 0;
+                for (int k = 0; k < 8; ++k) bits |= (static_cast<uint64_t>(read_u8()) << (k * 8));
+                double ang = 0.0;
+                std::memcpy(&ang, &bits, sizeof(double));
+                GateOps::apply_rz(qreg_, q, ang);
+                break;
+            }
+
             case QOpCode::OP_CNOT: {
                 uint8_t ctrl = read_u8();
                 uint8_t target = read_u8();

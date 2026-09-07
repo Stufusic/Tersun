@@ -1,0 +1,26 @@
+// ============================================================================
+// Workload Category 4: Arithmetic Operations
+// 5M sawtooth integer reduction + exact TAFPU operations in Q(sqrt(3))
+// ============================================================================
+
+fn main() {
+    let t0 = time_now_us();
+    let s = 0;
+    for i in range(5000000) {
+        s += i;
+        if (s > 1000000000) {
+            s = 0;
+        }
+    }
+    let t1 = time_now_us();
+
+    let t2 = time_now_us();
+    let t_acc: taf3 = [0, 0, 0];
+    let step: taf3 = [1, 1, 0]; // (1 + sqrt(3))
+    for i in range(50000) {
+        t_acc = t_acc + step;
+    }
+    let t3 = time_now_us();
+
+    println(f"ARITHMETIC int_sum={s} int_us={t1 - t0} tafpu_us={t3 - t2}");
+}

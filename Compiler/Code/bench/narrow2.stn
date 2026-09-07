@@ -1,0 +1,13 @@
+// E2: single recursive call in else branch
+fn g(n: int) -> int {
+    let r = 0;
+    if (n < 2) {
+        r = n;
+    } else {
+        r = g(n - 1);
+    }
+    return r;
+}
+fn main() {
+    println(g(5));
+}

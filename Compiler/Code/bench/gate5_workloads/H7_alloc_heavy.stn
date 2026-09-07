@@ -1,0 +1,32 @@
+// ============================================================================
+// Gate 5 Workload H7: Allocation Heavy (Rapid Dynamic Allocations)
+// Tests: Memory allocation rate, buffer expansion, GC pressure, temporary object churn
+// ============================================================================
+
+fn create_and_sum(n: int) -> int {
+    let mut arr = [0, 0, 0, 0];
+    for i in range(n) {
+        arr.push(i * 3 + 1);
+    }
+    let mut s = 0;
+    for i in range(arr.len()) {
+        s += arr[i];
+    }
+    return s;
+}
+
+fn main() {
+    let t0 = time_now_us();
+    let mut total = 0;
+    for i in range(10000) {
+        total += create_and_sum(20);
+        if (total > 1000000000) {
+            total = total % 1000000000;
+        }
+    }
+    let t1 = time_now_us();
+    print("WORKLOAD_H7_ALLOC_HEAVY checksum=");
+    print(total);
+    print(" time_us=");
+    println(t1 - t0);
+}

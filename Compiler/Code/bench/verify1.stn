@@ -1,0 +1,20 @@
+fn g(n: int) -> int {
+    let r = 0;
+    if (n < 2) {
+        r = n;
+    } else {
+        r = g(n - 1) + g(n - 2);
+    }
+    return r;
+}
+fn f(n: int) -> int {
+    if (n < 2) {
+        return n;
+    }
+    return f(n - 1) + f(n - 2);
+}
+fn main() {
+    println(g(10));
+    println(f(10));
+    println(g(5) + g(2));
+}

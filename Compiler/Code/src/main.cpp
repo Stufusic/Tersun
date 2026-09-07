@@ -23,6 +23,8 @@
 #include "qvm/qgate.hpp"
 #include "compiler/llvm2qvm.hpp"
 #include "compiler/q_emitter.hpp"
+#include "compiler/tree_canonicalize.hpp"
+#include "compiler/tree_optimizer.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -88,7 +90,7 @@ std::string read_file(const std::string& path) {
     return buffer.str();
 }
 
-int cmd_run(const std::string& path) {
+int cmd_run(const std::string& path, DispatchMode mode = DispatchMode::REGISTER_CACHED, OptFlags opt_flags = OptFlags::all_enabled(), bool show_telemetry = false) {
     try {
         Chunk chunk;
         // Check if path is a binary .tbc file
@@ -124,12 +126,31 @@ int cmd_run(const std::string& path) {
             Monomorphizer monomorphizer;
             monomorphizer.process_program(program);
 
+            // Gate 5 Frontend Pipeline: Modules 5.1 & 5.2
+            TreeCanonicalizer::canonicalize_program(program, arena);
+            TreeOptimizer tree_opt(arena);
+            tree_opt.optimize_program(program);
+
             BytecodeEmitter emitter;
             chunk = emitter.compile(program);
         }
 
         VM vm;
+        vm.set_dispatch_mode(mode);
+        vm.set_opt_flags(opt_flags);
         vm.run(chunk);
+        if (show_telemetry) {
+            const auto& t = vm.telemetry();
+            std::cout << "\n[VM Telemetry]:\n"
+                      << "  dispatches=" << t.total_dispatches << "\n"
+                      << "  superinstructions=" << t.superinstructions_executed << "\n"
+                      << "  loop_fast_iter=" << t.loop_fast_iterations << "\n"
+                      << "  quick_hits=" << t.quick_hits << "\n"
+                      << "  quick_misses=" << t.quick_misses << "\n"
+                      << "  deopt_count=" << t.deopt_count << "\n"
+                      << "  ic_hits=" << t.ic_hits << "\n"
+                      << "  ic_misses=" << t.ic_misses << "\n";
+        }
         return 0;
     } catch (const SetunException& e) {
         std::cerr << "[Setun Runtime/Compiler Error]: " << e.what() << "\n";
@@ -166,6 +187,11 @@ int cmd_compile(const std::string& source_path, const std::string& out_path) {
 
         Monomorphizer monomorphizer;
         monomorphizer.process_program(program);
+
+        // Gate 5 Frontend Pipeline: Modules 5.1 & 5.2
+        TreeCanonicalizer::canonicalize_program(program, arena);
+        TreeOptimizer tree_opt(arena);
+        tree_opt.optimize_program(program);
 
         BytecodeEmitter emitter;
         Chunk chunk = emitter.compile(program);
@@ -780,18 +806,85 @@ int main(int argc, char* argv[]) {
         return cmd_disasm(argv[2]);
     }
 
-    // 5. Run source or binary: setunc run [--jit] [--jit-ram] [--headless] <file>
+    // 5. Run source or binary: setunc run [--jit] [--jit-ram] [--headless] [--dispatch=...] <file>
     if (cmd == "run" && argc >= 3) {
         bool is_jit = false;
         bool is_jit_ram = false;
         bool is_headless = false;
+        DispatchMode dmode = DispatchMode::REGISTER_CACHED;
         std::string target_file = "";
+        OptFlags opt_flags = OptFlags::all_enabled();
+        bool show_telemetry = false;
 
         for (int i = 2; i < argc; ++i) {
             std::string arg = argv[i];
             if (arg == "--jit") is_jit = true;
             else if (arg == "--jit-ram") is_jit_ram = true;
             else if (arg == "--headless") is_headless = true;
+            else if (arg == "--dispatch=fnptr") dmode = DispatchMode::FUNCTION_POINTER;
+            else if (arg == "--dispatch=switch") dmode = DispatchMode::SWITCH_LOOP;
+            else if (arg == "--dispatch=threaded") dmode = DispatchMode::DIRECT_THREADED;
+            else if (arg == "--dispatch=cached") dmode = DispatchMode::REGISTER_CACHED;
+            else if (arg == "--telemetry") show_telemetry = true;
+            else if (arg == "--no-superinst") {
+                opt_flags.enable_locals = false;
+                opt_flags.enable_array_indexing = false;
+                opt_flags.enable_loop_fusion = false;
+            }
+            else if (arg == "--no-quickening") opt_flags.enable_quickening = false;
+            else if (arg == "--no-field-ic") opt_flags.enable_field_ic = false;
+            else if (arg == "--no-fast-frames") opt_flags.enable_fast_frames = false;
+            else if (arg == "--opt-v3") {
+                opt_flags.enable_locals = false;
+                opt_flags.enable_array_indexing = false;
+                opt_flags.enable_loop_fusion = false;
+                opt_flags.enable_quickening = false;
+                opt_flags.enable_field_ic = false;
+                opt_flags.enable_fast_frames = false;
+            }
+            else if (arg == "--opt-tier-a") {
+                opt_flags.enable_locals = true;
+                opt_flags.enable_array_indexing = false;
+                opt_flags.enable_loop_fusion = false;
+                opt_flags.enable_quickening = false;
+                opt_flags.enable_field_ic = false;
+                opt_flags.enable_fast_frames = false;
+            }
+            else if (arg == "--opt-tier-b") {
+                opt_flags.enable_locals = true;
+                opt_flags.enable_array_indexing = true;
+                opt_flags.enable_loop_fusion = false;
+                opt_flags.enable_quickening = false;
+                opt_flags.enable_field_ic = false;
+                opt_flags.enable_fast_frames = false;
+            }
+            else if (arg == "--opt-tier-c") {
+                opt_flags.enable_locals = true;
+                opt_flags.enable_array_indexing = true;
+                opt_flags.enable_loop_fusion = true;
+                opt_flags.enable_quickening = false;
+                opt_flags.enable_field_ic = false;
+                opt_flags.enable_fast_frames = false;
+            }
+            else if (arg == "--opt-tier-d") {
+                opt_flags.enable_locals = true;
+                opt_flags.enable_array_indexing = true;
+                opt_flags.enable_loop_fusion = true;
+                opt_flags.enable_quickening = true;
+                opt_flags.enable_field_ic = false;
+                opt_flags.enable_fast_frames = false;
+            }
+            else if (arg == "--opt-tier-e") {
+                opt_flags.enable_locals = true;
+                opt_flags.enable_array_indexing = true;
+                opt_flags.enable_loop_fusion = true;
+                opt_flags.enable_quickening = true;
+                opt_flags.enable_field_ic = true;
+                opt_flags.enable_fast_frames = false;
+            }
+            else if (arg == "--opt-v4f" || arg == "--opt-all") {
+                opt_flags = OptFlags::all_enabled();
+            }
             else if (target_file.empty()) target_file = arg;
         }
 
@@ -827,7 +920,7 @@ int main(int argc, char* argv[]) {
                 return 0;
             } else {
                 std::cerr << "[JIT Engine]: Falling back to VM...\n";
-                return cmd_run(target_file);
+                return cmd_run(target_file, dmode, opt_flags, show_telemetry);
             }
         }
 
@@ -843,7 +936,7 @@ int main(int argc, char* argv[]) {
         }
 
         if (!target_file.empty()) {
-            return cmd_run(target_file);
+            return cmd_run(target_file, dmode, opt_flags, show_telemetry);
         }
     }
 

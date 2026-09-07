@@ -1,0 +1,2967 @@
+{
+  "metadata": {
+    "date": "2026-09-06 21:07:03",
+    "host_compiler": "GCC 15.2.0 C++20",
+    "os": "win32"
+  },
+  "variants": [
+    [
+      "V3",
+      "--opt-v3",
+      "Baseline Direct Threaded (Gate 3)"
+    ],
+    [
+      "V4A",
+      "--opt-tier-a",
+      "+ Tier A Superinstructions (Locals 0..3, Incr Imm)"
+    ],
+    [
+      "V4B",
+      "--opt-tier-b",
+      "+ Tier B/C (Array Indexing & Loop Fusion)"
+    ],
+    [
+      "V4C",
+      "--opt-tier-c",
+      "+ Adaptive Quickening (Speculative Int)"
+    ],
+    [
+      "V4D",
+      "--opt-tier-d",
+      "+ Shape-Based Field Inline Caching"
+    ],
+    [
+      "V4E",
+      "--opt-tier-e",
+      "+ Zero-Allocation Frame Architecture"
+    ],
+    [
+      "V4F",
+      "--opt-v4f",
+      "Full Gate 4 Tier-1 Adaptive VM"
+    ]
+  ],
+  "workloads": [
+    "B1",
+    "B2",
+    "B3",
+    "B4",
+    "H1",
+    "H2",
+    "H3",
+    "H4",
+    "P1",
+    "P2",
+    "P3",
+    "H5A",
+    "H5B"
+  ],
+  "results": {
+    "V3": {
+      "id": "V3",
+      "flag": "--opt-v3",
+      "desc": "Baseline Direct Threaded (Gate 3)",
+      "workloads": {
+        "B1": {
+          "stats": {
+            "median": 200.981,
+            "mean": 209.561,
+            "stddev": 19.9438,
+            "min": 197.518,
+            "max": 263.427
+          },
+          "samples": [
+            263.427,
+            209.806,
+            210.626,
+            201.477,
+            197.518,
+            199.075,
+            215.726,
+            197.726,
+            199.75,
+            200.484
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "B2": {
+          "stats": {
+            "median": 423.519,
+            "mean": 425.73,
+            "stddev": 18.124,
+            "min": 399.406,
+            "max": 458.844
+          },
+          "samples": [
+            444.02070000069216,
+            399.40560003742576,
+            410.27310001663864,
+            421.1069999728352,
+            409.59999995538965,
+            458.8444999535568,
+            425.93139997916296,
+            430.0173000083305,
+            417.4039000063203,
+            440.69729995680973
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "B3": {
+          "stats": {
+            "median": 173.078,
+            "mean": 175.829,
+            "stddev": 9.9091,
+            "min": 163.982,
+            "max": 193.597
+          },
+          "samples": [
+            188.8275999808684,
+            167.77719999663532,
+            171.82369995862246,
+            193.59749997965991,
+            172.43740003323182,
+            182.92849999852479,
+            177.7513999841176,
+            173.7188000115566,
+            165.4483000165783,
+            163.98209996987134
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "B4": {
+          "stats": {
+            "median": 38.111,
+            "mean": 39.881,
+            "stddev": 5.9404,
+            "min": 35.299,
+            "max": 56.418
+          },
+          "samples": [
+            35.299,
+            39.357,
+            38.033,
+            56.418,
+            39.187,
+            39.463,
+            37.895,
+            37.969,
+            38.189,
+            36.997
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H1": {
+          "stats": {
+            "median": 29.414,
+            "mean": 29.5,
+            "stddev": 0.8523,
+            "min": 28.208,
+            "max": 30.545
+          },
+          "samples": [
+            29.387,
+            29.441,
+            28.208,
+            28.648,
+            30.404,
+            30.222,
+            28.491,
+            29.35,
+            30.545,
+            30.309
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H2": {
+          "stats": {
+            "median": 190.81,
+            "mean": 196.462,
+            "stddev": 9.0621,
+            "min": 189.246,
+            "max": 206.826
+          },
+          "samples": [
+            190.81,
+            206.826,
+            205.897,
+            189.246,
+            189.531
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H3": {
+          "stats": {
+            "median": 203.891,
+            "mean": 207.468,
+            "stddev": 10.5209,
+            "min": 195.687,
+            "max": 224.373
+          },
+          "samples": [
+            224.373,
+            200.81,
+            201.729,
+            195.687,
+            196.978,
+            206.053,
+            218.424,
+            213.087,
+            198.106,
+            219.429
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H4": {
+          "stats": {
+            "median": 0.0,
+            "mean": 0.0,
+            "stddev": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "samples": [],
+          "telemetry": {},
+          "checksum_verified": false
+        },
+        "P1": {
+          "stats": {
+            "median": 133.296,
+            "mean": 134.332,
+            "stddev": 14.9737,
+            "min": 115.413,
+            "max": 157.06
+          },
+          "samples": [
+            152.156,
+            136.366,
+            130.225,
+            157.06,
+            142.642,
+            147.422,
+            119.218,
+            120.464,
+            115.413,
+            122.35
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "P2": {
+          "stats": {
+            "median": 126.396,
+            "mean": 129.382,
+            "stddev": 10.4591,
+            "min": 115.304,
+            "max": 145.822
+          },
+          "samples": [
+            119.414,
+            115.304,
+            124.523,
+            119.468,
+            127.783,
+            140.419,
+            125.009,
+            137.168,
+            145.822,
+            138.905
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "P3": {
+          "stats": {
+            "median": 162.004,
+            "mean": 167.501,
+            "stddev": 19.1739,
+            "min": 136.376,
+            "max": 191.501
+          },
+          "samples": [
+            136.376,
+            155.171,
+            191.249,
+            190.735,
+            191.501,
+            159.373,
+            151.292,
+            176.586,
+            164.635,
+            158.088
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H5A": {
+          "stats": {
+            "median": 144.595,
+            "mean": 145.489,
+            "stddev": 11.2064,
+            "min": 130.117,
+            "max": 163.009
+          },
+          "samples": [
+            163.009,
+            145.088,
+            144.102,
+            138.409,
+            160.377,
+            151.763,
+            151.655,
+            138.603,
+            131.765,
+            130.117
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H5B": {
+          "stats": {
+            "median": 103.136,
+            "mean": 101.763,
+            "stddev": 4.4919,
+            "min": 93.12,
+            "max": 106.269
+          },
+          "samples": [
+            101.627,
+            105.083,
+            103.846,
+            103.576,
+            106.269,
+            102.697,
+            105.539,
+            101.37,
+            94.508,
+            93.12
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        }
+      }
+    },
+    "V4A": {
+      "id": "V4A",
+      "flag": "--opt-tier-a",
+      "desc": "+ Tier A Superinstructions (Locals 0..3, Incr Imm)",
+      "workloads": {
+        "B1": {
+          "stats": {
+            "median": 218.316,
+            "mean": 219.077,
+            "stddev": 6.9151,
+            "min": 207.677,
+            "max": 231.512
+          },
+          "samples": [
+            219.862,
+            223.499,
+            224.393,
+            231.512,
+            223.189,
+            216.062,
+            211.405,
+            216.77,
+            207.677,
+            216.4
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "B2": {
+          "stats": {
+            "median": 499.184,
+            "mean": 515.651,
+            "stddev": 34.0342,
+            "min": 478.613,
+            "max": 573.775
+          },
+          "samples": [
+            493.82560001686215,
+            486.48670001421124,
+            573.7751999986358,
+            563.6014000046998,
+            512.8664000076242,
+            499.56649995874614,
+            478.6125000100583,
+            498.5846999916248,
+            550.3917000023648,
+            498.80199995823205
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "B3": {
+          "stats": {
+            "median": 200.685,
+            "mean": 201.51,
+            "stddev": 3.8704,
+            "min": 197.484,
+            "max": 207.816
+          },
+          "samples": [
+            200.96200000261888,
+            205.2220999612473,
+            205.21330001065508,
+            197.63549999333918,
+            198.21240002056584,
+            204.50569997774437,
+            200.4084000363946,
+            197.48420000541955,
+            197.63979996787384,
+            207.8159000375308
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "B4": {
+          "stats": {
+            "median": 50.362,
+            "mean": 50.817,
+            "stddev": 1.927,
+            "min": 48.505,
+            "max": 53.62
+          },
+          "samples": [
+            48.505,
+            49.46,
+            50.317,
+            53.136,
+            48.763,
+            49.812,
+            53.62,
+            53.522,
+            50.407,
+            50.627
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H1": {
+          "stats": {
+            "median": 42.163,
+            "mean": 42.577,
+            "stddev": 1.9858,
+            "min": 40.367,
+            "max": 45.465
+          },
+          "samples": [
+            41.734,
+            40.38,
+            40.367,
+            40.495,
+            41.58,
+            42.592,
+            43.44,
+            45.203,
+            44.516,
+            45.465
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H2": {
+          "stats": {
+            "median": 300.488,
+            "mean": 308.624,
+            "stddev": 27.4926,
+            "min": 282.681,
+            "max": 352.939
+          },
+          "samples": [
+            300.488,
+            315.081,
+            291.932,
+            282.681,
+            352.939
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H3": {
+          "stats": {
+            "median": 159.682,
+            "mean": 163.807,
+            "stddev": 14.6657,
+            "min": 150.01,
+            "max": 200.63
+          },
+          "samples": [
+            200.63,
+            172.048,
+            155.941,
+            150.01,
+            154.858,
+            158.691,
+            153.895,
+            170.046,
+            161.277,
+            160.673
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H4": {
+          "stats": {
+            "median": 60.481,
+            "mean": 60.338,
+            "stddev": 1.7681,
+            "min": 57.711,
+            "max": 63.371
+          },
+          "samples": [
+            58.232,
+            60.137,
+            58.999,
+            60.887,
+            57.711,
+            62.031,
+            61.649,
+            59.537,
+            63.371,
+            60.826
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "P1": {
+          "stats": {
+            "median": 105.221,
+            "mean": 106.136,
+            "stddev": 5.2853,
+            "min": 100.497,
+            "max": 119.622
+          },
+          "samples": [
+            104.901,
+            102.357,
+            106.992,
+            105.541,
+            119.622,
+            106.775,
+            103.887,
+            100.497,
+            108.067,
+            102.723
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "P2": {
+          "stats": {
+            "median": 125.85,
+            "mean": 127.227,
+            "stddev": 6.3127,
+            "min": 119.807,
+            "max": 141.533
+          },
+          "samples": [
+            129.133,
+            128.726,
+            132.606,
+            121.163,
+            123.798,
+            141.533,
+            123.808,
+            126.082,
+            119.807,
+            125.617
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "P3": {
+          "stats": {
+            "median": 137.613,
+            "mean": 136.911,
+            "stddev": 6.5205,
+            "min": 127.118,
+            "max": 146.682
+          },
+          "samples": [
+            137.423,
+            144.013,
+            141.366,
+            146.682,
+            140.014,
+            137.803,
+            134.015,
+            133.118,
+            127.118,
+            127.555
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H5A": {
+          "stats": {
+            "median": 118.389,
+            "mean": 119.648,
+            "stddev": 4.3296,
+            "min": 114.717,
+            "max": 127.681
+          },
+          "samples": [
+            118.355,
+            115.62,
+            127.681,
+            115.795,
+            125.488,
+            121.55,
+            118.423,
+            117.452,
+            121.401,
+            114.717
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H5B": {
+          "stats": {
+            "median": 91.535,
+            "mean": 92.177,
+            "stddev": 3.3379,
+            "min": 86.689,
+            "max": 98.488
+          },
+          "samples": [
+            86.689,
+            91.369,
+            91.434,
+            89.404,
+            91.635,
+            94.543,
+            89.878,
+            95.251,
+            98.488,
+            93.075
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        }
+      }
+    },
+    "V4B": {
+      "id": "V4B",
+      "flag": "--opt-tier-b",
+      "desc": "+ Tier B/C (Array Indexing & Loop Fusion)",
+      "workloads": {
+        "B1": {
+          "stats": {
+            "median": 210.817,
+            "mean": 213.434,
+            "stddev": 7.6795,
+            "min": 205.411,
+            "max": 231.528
+          },
+          "samples": [
+            214.24,
+            231.528,
+            211.021,
+            210.235,
+            207.07,
+            205.411,
+            209.191,
+            214.158,
+            220.872,
+            210.613
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "B2": {
+          "stats": {
+            "median": 504.272,
+            "mean": 523.867,
+            "stddev": 40.1662,
+            "min": 481.259,
+            "max": 577.338
+          },
+          "samples": [
+            486.7400000221096,
+            481.2590999645181,
+            491.5342999738641,
+            495.5999999656342,
+            506.03790004970506,
+            546.7429999844171,
+            576.4606000157073,
+            577.3383000050671,
+            574.4524999754503,
+            502.5067999958992
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "B3": {
+          "stats": {
+            "median": 257.976,
+            "mean": 251.822,
+            "stddev": 27.5123,
+            "min": 210.276,
+            "max": 288.893
+          },
+          "samples": [
+            210.27600002707914,
+            216.57600003527477,
+            258.60679999459535,
+            257.3449000483379,
+            271.56389999436215,
+            286.5692999912426,
+            288.8925999868661,
+            261.310699977912,
+            237.88269999204203,
+            229.19919999549165
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "B4": {
+          "stats": {
+            "median": 52.044,
+            "mean": 52.47,
+            "stddev": 1.5307,
+            "min": 51.191,
+            "max": 55.87
+          },
+          "samples": [
+            51.23,
+            51.385,
+            51.191,
+            51.994,
+            52.1,
+            51.784,
+            54.519,
+            55.87,
+            52.094,
+            52.53
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H1": {
+          "stats": {
+            "median": 44.327,
+            "mean": 44.126,
+            "stddev": 1.011,
+            "min": 42.566,
+            "max": 45.39
+          },
+          "samples": [
+            44.095,
+            45.39,
+            44.559,
+            44.728,
+            44.832,
+            43.79,
+            43.17,
+            45.307,
+            42.823,
+            42.566
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H2": {
+          "stats": {
+            "median": 279.804,
+            "mean": 289.583,
+            "stddev": 34.1663,
+            "min": 260.141,
+            "max": 339.909
+          },
+          "samples": [
+            260.141,
+            260.445,
+            307.615,
+            339.909,
+            279.804
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H3": {
+          "stats": {
+            "median": 196.823,
+            "mean": 224.01,
+            "stddev": 89.918,
+            "min": 147.598,
+            "max": 392.809
+          },
+          "samples": [
+            147.598,
+            150.178,
+            201.712,
+            196.045,
+            204.648,
+            197.601,
+            181.064,
+            180.449,
+            392.809,
+            387.994
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H4": {
+          "stats": {
+            "median": 104.819,
+            "mean": 105.955,
+            "stddev": 28.1454,
+            "min": 72.335,
+            "max": 174.362
+          },
+          "samples": [
+            174.362,
+            109.682,
+            115.947,
+            110.341,
+            91.076,
+            113.635,
+            92.53,
+            99.956,
+            79.685,
+            72.335
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "P1": {
+          "stats": {
+            "median": 111.296,
+            "mean": 111.884,
+            "stddev": 8.202,
+            "min": 103.824,
+            "max": 128.792
+          },
+          "samples": [
+            118.826,
+            111.62,
+            104.582,
+            118.887,
+            110.971,
+            105.001,
+            111.923,
+            103.824,
+            104.416,
+            128.792
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "P2": {
+          "stats": {
+            "median": 125.91,
+            "mean": 125.512,
+            "stddev": 7.0728,
+            "min": 113.301,
+            "max": 137.604
+          },
+          "samples": [
+            137.604,
+            132.736,
+            128.0,
+            121.662,
+            122.168,
+            129.617,
+            125.866,
+            125.954,
+            118.208,
+            113.301
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "P3": {
+          "stats": {
+            "median": 133.547,
+            "mean": 137.15,
+            "stddev": 6.8022,
+            "min": 131.394,
+            "max": 148.338
+          },
+          "samples": [
+            131.824,
+            148.338,
+            133.547,
+            133.21,
+            136.108,
+            147.977,
+            131.394,
+            131.897,
+            133.547,
+            143.659
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H5A": {
+          "stats": {
+            "median": 124.516,
+            "mean": 125.68,
+            "stddev": 3.6552,
+            "min": 121.352,
+            "max": 132.046
+          },
+          "samples": [
+            122.611,
+            126.967,
+            125.477,
+            123.129,
+            127.782,
+            130.893,
+            132.046,
+            123.555,
+            121.352,
+            122.987
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H5B": {
+          "stats": {
+            "median": 90.931,
+            "mean": 91.199,
+            "stddev": 1.1493,
+            "min": 89.385,
+            "max": 93.081
+          },
+          "samples": [
+            91.063,
+            90.799,
+            91.904,
+            89.385,
+            91.238,
+            90.618,
+            90.278,
+            92.916,
+            93.081,
+            90.704
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        }
+      }
+    },
+    "V4C": {
+      "id": "V4C",
+      "flag": "--opt-tier-c",
+      "desc": "+ Adaptive Quickening (Speculative Int)",
+      "workloads": {
+        "B1": {
+          "stats": {
+            "median": 69.106,
+            "mean": 71.131,
+            "stddev": 5.3879,
+            "min": 66.035,
+            "max": 83.23
+          },
+          "samples": [
+            66.341,
+            68.856,
+            66.035,
+            68.072,
+            69.355,
+            67.915,
+            71.42,
+            73.144,
+            76.945,
+            83.23
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "B2": {
+          "stats": {
+            "median": 279.105,
+            "mean": 284.704,
+            "stddev": 28.1088,
+            "min": 254.84,
+            "max": 339.561
+          },
+          "samples": [
+            339.5606999984011,
+            327.22160004777834,
+            280.59270000085235,
+            277.61829999508336,
+            272.17320003546774,
+            283.59760000603274,
+            288.66589994868264,
+            267.4379000090994,
+            255.3292000084184,
+            254.83960000565276
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "B3": {
+          "stats": {
+            "median": 103.609,
+            "mean": 103.703,
+            "stddev": 2.7271,
+            "min": 100.672,
+            "max": 107.829
+          },
+          "samples": [
+            106.15289997076616,
+            107.8290999867022,
+            104.86760002095252,
+            101.14749998319894,
+            102.34979999950156,
+            105.85870000068098,
+            101.00309998961166,
+            106.12609999952838,
+            101.02149995509535,
+            100.67160002654418
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "B4": {
+          "stats": {
+            "median": 43.67,
+            "mean": 43.595,
+            "stddev": 1.8397,
+            "min": 40.861,
+            "max": 46.294
+          },
+          "samples": [
+            43.478,
+            43.862,
+            45.838,
+            46.294,
+            44.777,
+            44.411,
+            43.092,
+            42.323,
+            41.016,
+            40.861
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H1": {
+          "stats": {
+            "median": 34.084,
+            "mean": 33.992,
+            "stddev": 0.745,
+            "min": 32.729,
+            "max": 34.975
+          },
+          "samples": [
+            34.818,
+            34.273,
+            34.975,
+            33.794,
+            34.497,
+            33.895,
+            33.769,
+            32.729,
+            34.286,
+            32.882
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H2": {
+          "stats": {
+            "median": 192.726,
+            "mean": 193.237,
+            "stddev": 5.4655,
+            "min": 186.35,
+            "max": 200.606
+          },
+          "samples": [
+            196.208,
+            192.726,
+            186.35,
+            190.293,
+            200.606
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H3": {
+          "stats": {
+            "median": 146.031,
+            "mean": 146.305,
+            "stddev": 3.2747,
+            "min": 141.088,
+            "max": 150.551
+          },
+          "samples": [
+            144.495,
+            150.092,
+            143.665,
+            147.863,
+            143.521,
+            149.713,
+            150.551,
+            144.49,
+            141.088,
+            147.568
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H4": {
+          "stats": {
+            "median": 53.016,
+            "mean": 55.117,
+            "stddev": 5.5327,
+            "min": 51.232,
+            "max": 70.118
+          },
+          "samples": [
+            55.965,
+            70.118,
+            54.871,
+            56.031,
+            52.864,
+            53.169,
+            52.864,
+            52.638,
+            51.232,
+            51.42
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "P1": {
+          "stats": {
+            "median": 43.274,
+            "mean": 43.199,
+            "stddev": 0.7083,
+            "min": 42.281,
+            "max": 44.461
+          },
+          "samples": [
+            42.281,
+            42.329,
+            43.53,
+            43.289,
+            43.879,
+            44.461,
+            42.882,
+            42.496,
+            43.259,
+            43.579
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "P2": {
+          "stats": {
+            "median": 60.969,
+            "mean": 61.333,
+            "stddev": 0.9502,
+            "min": 60.459,
+            "max": 62.886
+          },
+          "samples": [
+            60.608,
+            60.511,
+            61.501,
+            60.546,
+            60.459,
+            60.759,
+            62.047,
+            61.179,
+            62.829,
+            62.886
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "P3": {
+          "stats": {
+            "median": 78.224,
+            "mean": 79.901,
+            "stddev": 5.4061,
+            "min": 76.033,
+            "max": 94.786
+          },
+          "samples": [
+            77.394,
+            77.363,
+            80.494,
+            79.562,
+            78.599,
+            77.184,
+            94.786,
+            79.749,
+            77.849,
+            76.033
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H5A": {
+          "stats": {
+            "median": 88.177,
+            "mean": 89.401,
+            "stddev": 5.8758,
+            "min": 85.61,
+            "max": 105.408
+          },
+          "samples": [
+            86.058,
+            85.924,
+            85.61,
+            89.534,
+            85.872,
+            105.408,
+            90.317,
+            88.585,
+            87.77,
+            88.929
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H5B": {
+          "stats": {
+            "median": 59.157,
+            "mean": 59.731,
+            "stddev": 1.953,
+            "min": 56.915,
+            "max": 62.435
+          },
+          "samples": [
+            62.435,
+            62.053,
+            62.356,
+            60.048,
+            59.066,
+            58.999,
+            59.248,
+            57.818,
+            58.377,
+            56.915
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        }
+      }
+    },
+    "V4D": {
+      "id": "V4D",
+      "flag": "--opt-tier-d",
+      "desc": "+ Shape-Based Field Inline Caching",
+      "workloads": {
+        "B1": {
+          "stats": {
+            "median": 63.2,
+            "mean": 63.577,
+            "stddev": 1.2049,
+            "min": 62.28,
+            "max": 66.266
+          },
+          "samples": [
+            62.728,
+            63.784,
+            66.266,
+            64.541,
+            63.473,
+            62.641,
+            62.805,
+            62.28,
+            64.323,
+            62.928
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "B2": {
+          "stats": {
+            "median": 227.619,
+            "mean": 229.698,
+            "stddev": 7.3588,
+            "min": 222.411,
+            "max": 247.115
+          },
+          "samples": [
+            228.62770000938326,
+            247.1145000308752,
+            236.43719998653978,
+            228.00579998875037,
+            223.72800001176074,
+            226.69650003081188,
+            232.05310001503676,
+            227.23190003307536,
+            224.6754000079818,
+            222.41079999366775
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "B3": {
+          "stats": {
+            "median": 93.36,
+            "mean": 94.55,
+            "stddev": 5.203,
+            "min": 89.788,
+            "max": 107.037
+          },
+          "samples": [
+            99.47610000381246,
+            93.34010002203286,
+            94.39149999525398,
+            93.18069997243583,
+            107.03670000657439,
+            90.20219999365509,
+            90.41760000400245,
+            89.78829998522997,
+            93.37969997432083,
+            94.28420005133376
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "B4": {
+          "stats": {
+            "median": 39.261,
+            "mean": 39.5,
+            "stddev": 1.4843,
+            "min": 38.127,
+            "max": 43.089
+          },
+          "samples": [
+            43.089,
+            39.696,
+            40.694,
+            39.528,
+            39.058,
+            39.465,
+            38.66,
+            38.276,
+            38.127,
+            38.406
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H1": {
+          "stats": {
+            "median": 32.565,
+            "mean": 33.876,
+            "stddev": 5.0094,
+            "min": 31.51,
+            "max": 48.047
+          },
+          "samples": [
+            32.568,
+            33.115,
+            31.51,
+            31.921,
+            31.53,
+            32.0,
+            32.918,
+            32.562,
+            32.59,
+            48.047
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H2": {
+          "stats": {
+            "median": 180.867,
+            "mean": 183.346,
+            "stddev": 6.7156,
+            "min": 178.118,
+            "max": 194.544
+          },
+          "samples": [
+            194.544,
+            184.379,
+            180.867,
+            178.118,
+            178.823
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H3": {
+          "stats": {
+            "median": 133.984,
+            "mean": 134.002,
+            "stddev": 3.7218,
+            "min": 128.702,
+            "max": 139.647
+          },
+          "samples": [
+            131.988,
+            133.97,
+            128.702,
+            136.654,
+            137.869,
+            136.93,
+            133.999,
+            139.647,
+            130.388,
+            129.875
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H4": {
+          "stats": {
+            "median": 52.179,
+            "mean": 53.016,
+            "stddev": 3.4871,
+            "min": 49.169,
+            "max": 59.989
+          },
+          "samples": [
+            49.169,
+            49.483,
+            50.224,
+            50.804,
+            51.109,
+            53.249,
+            59.989,
+            55.321,
+            55.858,
+            54.956
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "P1": {
+          "stats": {
+            "median": 43.736,
+            "mean": 43.722,
+            "stddev": 1.334,
+            "min": 41.958,
+            "max": 45.507
+          },
+          "samples": [
+            44.045,
+            42.306,
+            45.323,
+            45.507,
+            45.113,
+            43.426,
+            43.341,
+            41.958,
+            42.074,
+            44.124
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "P2": {
+          "stats": {
+            "median": 62.408,
+            "mean": 63.278,
+            "stddev": 2.2491,
+            "min": 61.393,
+            "max": 67.291
+          },
+          "samples": [
+            61.526,
+            61.573,
+            64.065,
+            67.291,
+            66.927,
+            63.704,
+            61.686,
+            61.484,
+            61.393,
+            63.13
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "P3": {
+          "stats": {
+            "median": 76.862,
+            "mean": 77.353,
+            "stddev": 2.2161,
+            "min": 73.742,
+            "max": 81.393
+          },
+          "samples": [
+            81.393,
+            77.175,
+            75.945,
+            80.119,
+            75.96,
+            76.305,
+            73.742,
+            76.548,
+            77.897,
+            78.444
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H5A": {
+          "stats": {
+            "median": 84.981,
+            "mean": 84.968,
+            "stddev": 1.4616,
+            "min": 83.492,
+            "max": 88.456
+          },
+          "samples": [
+            88.456,
+            85.46,
+            84.859,
+            83.505,
+            85.103,
+            84.019,
+            83.492,
+            83.963,
+            85.13,
+            85.697
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H5B": {
+          "stats": {
+            "median": 60.083,
+            "mean": 60.265,
+            "stddev": 2.6339,
+            "min": 57.368,
+            "max": 64.955
+          },
+          "samples": [
+            57.766,
+            60.474,
+            57.368,
+            57.617,
+            61.176,
+            64.955,
+            62.413,
+            63.122,
+            59.692,
+            58.071
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        }
+      }
+    },
+    "V4E": {
+      "id": "V4E",
+      "flag": "--opt-tier-e",
+      "desc": "+ Zero-Allocation Frame Architecture",
+      "workloads": {
+        "B1": {
+          "stats": {
+            "median": 68.073,
+            "mean": 67.769,
+            "stddev": 2.1854,
+            "min": 63.727,
+            "max": 70.397
+          },
+          "samples": [
+            63.727,
+            64.716,
+            69.395,
+            66.997,
+            67.596,
+            67.501,
+            70.152,
+            70.397,
+            68.658,
+            68.55
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "B2": {
+          "stats": {
+            "median": 232.726,
+            "mean": 233.129,
+            "stddev": 8.3489,
+            "min": 223.331,
+            "max": 247.905
+          },
+          "samples": [
+            247.90459999348968,
+            234.53369998605922,
+            238.74260002048686,
+            243.1813000002876,
+            228.5658000037074,
+            223.33069995511323,
+            235.04629998933524,
+            230.919299996458,
+            225.34329997142777,
+            223.72249996988103
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "B3": {
+          "stats": {
+            "median": 127.245,
+            "mean": 129.64,
+            "stddev": 18.5533,
+            "min": 108.893,
+            "max": 161.912
+          },
+          "samples": [
+            108.89299999689683,
+            116.35229998501018,
+            109.67959999106824,
+            113.14960004528984,
+            139.5432999706827,
+            161.9118000380695,
+            153.97959999972954,
+            138.40349996462464,
+            126.78419996518642,
+            127.70569999702275
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "B4": {
+          "stats": {
+            "median": 49.058,
+            "mean": 50.153,
+            "stddev": 4.1498,
+            "min": 45.76,
+            "max": 59.382
+          },
+          "samples": [
+            59.382,
+            54.294,
+            51.707,
+            50.491,
+            48.037,
+            47.885,
+            50.078,
+            47.539,
+            45.76,
+            46.361
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H1": {
+          "stats": {
+            "median": 40.816,
+            "mean": 41.067,
+            "stddev": 2.5528,
+            "min": 37.429,
+            "max": 46.346
+          },
+          "samples": [
+            38.981,
+            46.346,
+            40.586,
+            41.047,
+            42.28,
+            43.365,
+            41.538,
+            40.375,
+            38.719,
+            37.429
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H2": {
+          "stats": {
+            "median": 193.599,
+            "mean": 197.648,
+            "stddev": 11.8827,
+            "min": 188.126,
+            "max": 218.107
+          },
+          "samples": [
+            218.107,
+            196.985,
+            188.126,
+            193.599,
+            191.425
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H3": {
+          "stats": {
+            "median": 133.91,
+            "mean": 134.479,
+            "stddev": 3.3863,
+            "min": 128.623,
+            "max": 141.502
+          },
+          "samples": [
+            133.061,
+            128.623,
+            135.978,
+            132.204,
+            141.502,
+            134.923,
+            133.656,
+            137.301,
+            134.164,
+            133.377
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H4": {
+          "stats": {
+            "median": 49.075,
+            "mean": 49.271,
+            "stddev": 0.7914,
+            "min": 48.38,
+            "max": 50.829
+          },
+          "samples": [
+            49.382,
+            49.859,
+            50.829,
+            50.126,
+            48.704,
+            49.227,
+            48.924,
+            48.38,
+            48.847,
+            48.433
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "P1": {
+          "stats": {
+            "median": 43.718,
+            "mean": 44.187,
+            "stddev": 3.2643,
+            "min": 40.847,
+            "max": 52.291
+          },
+          "samples": [
+            40.847,
+            41.232,
+            44.033,
+            43.402,
+            42.283,
+            44.158,
+            42.728,
+            44.833,
+            46.065,
+            52.291
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "P2": {
+          "stats": {
+            "median": 67.58,
+            "mean": 70.327,
+            "stddev": 7.74,
+            "min": 63.156,
+            "max": 87.541
+          },
+          "samples": [
+            70.539,
+            65.684,
+            66.798,
+            66.744,
+            64.13,
+            63.156,
+            68.362,
+            69.884,
+            80.43,
+            87.541
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "P3": {
+          "stats": {
+            "median": 76.809,
+            "mean": 78.401,
+            "stddev": 3.2163,
+            "min": 75.77,
+            "max": 86.204
+          },
+          "samples": [
+            86.204,
+            81.398,
+            78.778,
+            78.764,
+            76.854,
+            75.77,
+            76.442,
+            76.764,
+            76.367,
+            76.672
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H5A": {
+          "stats": {
+            "median": 49.692,
+            "mean": 49.36,
+            "stddev": 1.0858,
+            "min": 48.024,
+            "max": 50.927
+          },
+          "samples": [
+            50.707,
+            49.811,
+            49.947,
+            49.829,
+            50.927,
+            49.573,
+            48.207,
+            48.055,
+            48.024,
+            48.517
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H5B": {
+          "stats": {
+            "median": 36.29,
+            "mean": 36.025,
+            "stddev": 0.6242,
+            "min": 34.597,
+            "max": 36.541
+          },
+          "samples": [
+            36.541,
+            36.357,
+            36.294,
+            36.406,
+            36.426,
+            34.597,
+            35.271,
+            35.844,
+            36.231,
+            36.287
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        }
+      }
+    },
+    "V4F": {
+      "id": "V4F",
+      "flag": "--opt-v4f",
+      "desc": "Full Gate 4 Tier-1 Adaptive VM",
+      "workloads": {
+        "B1": {
+          "stats": {
+            "median": 64.194,
+            "mean": 64.177,
+            "stddev": 1.4629,
+            "min": 61.668,
+            "max": 67.522
+          },
+          "samples": [
+            67.522,
+            64.332,
+            64.273,
+            64.535,
+            63.716,
+            64.114,
+            63.975,
+            64.557,
+            63.075,
+            61.668
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "B2": {
+          "stats": {
+            "median": 234.559,
+            "mean": 235.601,
+            "stddev": 11.2594,
+            "min": 222.914,
+            "max": 260.977
+          },
+          "samples": [
+            235.99060002015904,
+            260.977300000377,
+            240.4537999536842,
+            233.1273999880068,
+            227.88200003560632,
+            241.97209998965263,
+            225.0423000077717,
+            222.9135999805294,
+            227.18350001377985,
+            240.4701000195928
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "B3": {
+          "stats": {
+            "median": 93.576,
+            "mean": 93.139,
+            "stddev": 2.485,
+            "min": 88.326,
+            "max": 96.474
+          },
+          "samples": [
+            94.3228000542149,
+            89.61739996448159,
+            88.32579996669665,
+            96.47400001995265,
+            93.05999998468906,
+            92.6469000405632,
+            93.46020000521094,
+            93.69150002021343,
+            94.32199998991564,
+            95.46849998878315
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "B4": {
+          "stats": {
+            "median": 39.506,
+            "mean": 39.668,
+            "stddev": 0.4618,
+            "min": 39.003,
+            "max": 40.648
+          },
+          "samples": [
+            39.684,
+            39.447,
+            40.198,
+            39.003,
+            39.42,
+            40.648,
+            39.527,
+            39.82,
+            39.485,
+            39.448
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H1": {
+          "stats": {
+            "median": 33.582,
+            "mean": 33.726,
+            "stddev": 0.4123,
+            "min": 33.228,
+            "max": 34.47
+          },
+          "samples": [
+            34.223,
+            34.118,
+            33.582,
+            33.459,
+            33.583,
+            33.228,
+            33.786,
+            34.47,
+            33.444,
+            33.363
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H2": {
+          "stats": {
+            "median": 189.995,
+            "mean": 187.884,
+            "stddev": 4.4548,
+            "min": 182.826,
+            "max": 192.965
+          },
+          "samples": [
+            190.075,
+            189.995,
+            192.965,
+            182.826,
+            183.557
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H3": {
+          "stats": {
+            "median": 34.042,
+            "mean": 34.544,
+            "stddev": 1.1048,
+            "min": 33.775,
+            "max": 37.483
+          },
+          "samples": [
+            34.028,
+            33.954,
+            33.775,
+            34.522,
+            33.896,
+            34.011,
+            34.056,
+            37.483,
+            34.887,
+            34.83
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H4": {
+          "stats": {
+            "median": 48.933,
+            "mean": 50.106,
+            "stddev": 4.9017,
+            "min": 47.073,
+            "max": 63.745
+          },
+          "samples": [
+            49.04,
+            47.073,
+            47.629,
+            47.393,
+            48.034,
+            50.012,
+            49.527,
+            48.826,
+            63.745,
+            49.777
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "P1": {
+          "stats": {
+            "median": 37.487,
+            "mean": 37.736,
+            "stddev": 1.2936,
+            "min": 36.062,
+            "max": 39.874
+          },
+          "samples": [
+            36.186,
+            37.126,
+            38.768,
+            39.874,
+            39.398,
+            38.032,
+            36.939,
+            36.062,
+            37.142,
+            37.832
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "P2": {
+          "stats": {
+            "median": 53.942,
+            "mean": 54.272,
+            "stddev": 0.724,
+            "min": 53.572,
+            "max": 55.782
+          },
+          "samples": [
+            53.678,
+            53.936,
+            53.89,
+            54.19,
+            55.15,
+            53.572,
+            53.949,
+            53.811,
+            55.782,
+            54.763
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "P3": {
+          "stats": {
+            "median": 73.013,
+            "mean": 73.341,
+            "stddev": 1.875,
+            "min": 70.539,
+            "max": 76.285
+          },
+          "samples": [
+            75.703,
+            73.161,
+            71.003,
+            72.298,
+            70.539,
+            72.732,
+            74.591,
+            72.865,
+            76.285,
+            74.234
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H5A": {
+          "stats": {
+            "median": 51.034,
+            "mean": 51.115,
+            "stddev": 1.4103,
+            "min": 49.409,
+            "max": 53.825
+          },
+          "samples": [
+            50.869,
+            51.551,
+            50.564,
+            51.199,
+            52.608,
+            51.836,
+            49.718,
+            53.825,
+            49.571,
+            49.409
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        },
+        "H5B": {
+          "stats": {
+            "median": 37.448,
+            "mean": 37.792,
+            "stddev": 1.4494,
+            "min": 36.574,
+            "max": 41.318
+          },
+          "samples": [
+            38.04,
+            38.958,
+            37.739,
+            37.831,
+            36.873,
+            36.713,
+            36.574,
+            41.318,
+            36.718,
+            37.158
+          ],
+          "telemetry": {
+            "dispatches": 0,
+            "superinstructions": 0,
+            "loop_fast_iter": 0,
+            "quick_hits": 0,
+            "quick_misses": 0,
+            "deopt_count": 0,
+            "ic_hits": 0,
+            "ic_misses": 0
+          },
+          "checksum_verified": true
+        }
+      }
+    }
+  }
+}

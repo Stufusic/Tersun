@@ -1,9 +1,12 @@
 #include "qvm/qgate.hpp"
 #include <sstream>
 #include <cmath>
+#include <stdexcept>
 
 namespace tersun {
 namespace qvm {
+
+static constexpr double pi = 3.14159265358979323846;
 
 // ============================================================================
 // QuantumCircuit Builder
@@ -69,8 +72,96 @@ QuantumCircuit& QuantumCircuit::swap(size_t q1, size_t q2) {
     return *this;
 }
 
+QuantumCircuit& QuantumCircuit::cphase(size_t ctrl, size_t target, double theta) {
+    if (ctrl >= num_qubits_ || target >= num_qubits_ || ctrl == target) {
+        throw std::invalid_argument("cphase requires two distinct in-register qubits");
+    }
+    // Standard CP(theta) = diag(1,1,1,e^{i*theta}) decomposition into
+    // primitives only; exact up to the global phase e^{-i*theta/4}:
+    //   RZ(theta/2) on ctrl; CNOT; RZ(-theta/2) on target; CNOT; RZ(theta/2) on target.
+    rz(ctrl, theta * 0.5);
+    cnot(ctrl, target);
+    rz(target, -theta * 0.5);
+    cnot(ctrl, target);
+    rz(target, theta * 0.5);
+    return *this;
+}
+
 QuantumCircuit& QuantumCircuit::toffoli(size_t c1, size_t c2, size_t target) {
     gates_.emplace_back(GateType::TOFFOLI, c1, c2, target);
+    return *this;
+}
+
+QuantumCircuit& QuantumCircuit::qft(size_t n) {
+    if (n == 0 || n > num_qubits_) {
+        throw std::invalid_argument("qft requires 1 <= n <= circuit qubit count");
+    }
+    // Bit convention: qubit q carries bit q of the basis index (qubit 0 = LSB).
+    // Phase ladder on the MSB first, then bit-reversal swaps. With qubit
+    // b as the "control of history", cphase(b, c, pi / 2^(b-c)) accumulates
+    // the binary-fraction phases of the product-form QFT exactly.
+    for (size_t b = n; b-- > 0;) {
+        h(b);
+        for (size_t c = b; c-- > 0;) {
+            cphase(b, c, pi / std::pow(2.0, static_cast<double>(b - c)));
+        }
+    }
+    for (size_t q = 0; q < n / 2; ++q) {
+        swap(q, n - 1 - q);
+    }
+    return *this;
+}
+
+QuantumCircuit& QuantumCircuit::grover(size_t n, size_t target) {
+    if (n == 0 || n > 3 || n > num_qubits_) {
+        throw std::invalid_argument("grover supports 1 <= n <= 3 qubits on the Q-ISA gate set");
+    }
+    const size_t dim = size_t(1) << n;
+    if (target >= dim) {
+        throw std::invalid_argument("grover target must be a basis state inside [0, 2^n)");
+    }
+
+    // Phase flip on |1...1> using only primitive gates:
+    //   n=1: Z          n=2: CZ           n=3: H * TOFFOLI * H (= CCZ)
+    auto phase_flip_all_ones = [&]() {
+        if (n == 1) {
+            z(0);
+        } else if (n == 2) {
+            cz(0, 1);
+        } else {
+            h(2);
+            toffoli(0, 1, 2);
+            h(2);
+        }
+    };
+
+    // Oracle: mask |target> into |1...1>, phase-flip, unmask.
+    auto apply_oracle = [&]() {
+        for (size_t q = 0; q < n; ++q) {
+            if (!((target >> q) & size_t(1))) x(q);
+        }
+        phase_flip_all_ones();
+        for (size_t q = 0; q < n; ++q) {
+            if (!((target >> q) & size_t(1))) x(q);
+        }
+    };
+
+    // Diffusion: H^n X^n (phase flip on |1...1>) X^n H^n == H^n P(|0...0>) H^n.
+    auto apply_diffusion = [&]() {
+        for (size_t q = 0; q < n; ++q) h(q);
+        for (size_t q = 0; q < n; ++q) x(q);
+        phase_flip_all_ones();
+        for (size_t q = 0; q < n; ++q) x(q);
+        for (size_t q = 0; q < n; ++q) h(q);
+    };
+
+    for (size_t q = 0; q < n; ++q) h(q); // uniform superposition over [0, N)
+    const size_t iterations = static_cast<size_t>(
+        std::floor(pi / 4.0 * std::sqrt(static_cast<double>(dim))));
+    for (size_t it = 0; it < iterations; ++it) {
+        apply_oracle();
+        apply_diffusion();
+    }
     return *this;
 }
 

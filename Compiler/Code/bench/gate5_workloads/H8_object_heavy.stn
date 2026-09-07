@@ -1,0 +1,48 @@
+// ============================================================================
+// Gate 5 Workload H8: Object & Struct Heavy (Class Property Access & Updates)
+// Tests: Shape Inline Caches, object property reads/writes, instance method dispatch
+// ============================================================================
+
+class Particle {
+    pub x: int;
+    pub y: int;
+    pub vx: int;
+    pub vy: int;
+
+    def init(self, px: int, py: int, pvx: int, pvy: int) {
+        self.x = px;
+        self.y = py;
+        self.vx = pvx;
+        self.vy = pvy;
+    }
+
+    def update(self) {
+        self.x += self.vx;
+        self.y += self.vy;
+    }
+
+    def energy(self) -> int {
+        return (self.x * self.x + self.y * self.y) % 1000000007;
+    }
+}
+
+fn main() {
+    let t0 = time_now_us();
+    let p = Particle(10, 20, 2, 3);
+    let mut total_energy = 0;
+    let n = 200000;
+
+    for i in range(n) {
+        p.update();
+        total_energy += p.energy();
+        if (total_energy > 1000000000) {
+            total_energy = total_energy % 1000000000;
+        }
+    }
+
+    let t1 = time_now_us();
+    print("WORKLOAD_H8_OBJECT_HEAVY checksum=");
+    print(total_energy);
+    print(" time_us=");
+    println(t1 - t0);
+}

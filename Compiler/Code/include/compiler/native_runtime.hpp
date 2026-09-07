@@ -1,5 +1,6 @@
 #pragma once
 
+#include "tafpu/trit.hpp"
 #include <cstdint>
 #include <cstring>
 #include <cmath>
@@ -270,5 +271,209 @@ inline void setun_gemm_dispatch(
     }
 }
 
+// 5. Monotonic High-Precision Timing (Microseconds)
+inline int64_t monotonic_now_us() {
+    auto now = std::chrono::steady_clock::now();
+    return std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count();
+}
+
+inline int64_t time_now_us() {
+    return monotonic_now_us();
+}
+
+// 6. Safe Modulo & Tryte Operator Inlines
+inline int64_t safe_mod_i64(int64_t a, int64_t b) {
+    if (b == 0) {
+        std::cerr << "[Fatal Error] Division by zero in integer modulo.\n";
+        std::abort();
+    }
+    if (a == INT64_MIN && b == -1) return 0;
+    return a % b;
+}
+
+inline int16_t tryte_mod_c(int16_t a, int16_t b) {
+    if (b == 0) {
+        std::cerr << "[Fatal Error] Division by zero in tryte modulo.\n";
+        std::abort();
+    }
+    return static_cast<int16_t>(a % b);
+}
+
+inline int16_t tryte_gf3_xor_c(int16_t a, int16_t b) {
+    auto ta = unpack_tryte(a);
+    auto tb = unpack_tryte(b);
+    std::array<Trit, 6> res;
+    for (size_t i = 0; i < 6; ++i) {
+        int sum = static_cast<int>(ta[i]) + static_cast<int>(tb[i]);
+        if (sum == 2) res[i] = Trit::NEG;
+        else if (sum == -2) res[i] = Trit::POS;
+        else res[i] = static_cast<Trit>(sum);
+    }
+    return pack_tryte(res);
+}
+
+inline int16_t tryte_kleene_and_c(int16_t a, int16_t b) {
+    auto ta = unpack_tryte(a);
+    auto tb = unpack_tryte(b);
+    std::array<Trit, 6> res;
+    for (size_t i = 0; i < 6; ++i) res[i] = trit_min(ta[i], tb[i]);
+    return pack_tryte(res);
+}
+
+inline int16_t tryte_kleene_or_c(int16_t a, int16_t b) {
+    auto ta = unpack_tryte(a);
+    auto tb = unpack_tryte(b);
+    std::array<Trit, 6> res;
+    for (size_t i = 0; i < 6; ++i) res[i] = trit_max(ta[i], tb[i]);
+    return pack_tryte(res);
+}
+
+inline int16_t tryte_shl_c(int16_t a, int64_t k) {
+    if (k < 0) {
+        std::cerr << "[Fatal Error] Negative shift count in tryte shift left.\n";
+        std::abort();
+    }
+    if (k >= 6) return 0;
+    if (k == 0) return a;
+    auto t = unpack_tryte(a);
+    std::array<Trit, 6> res;
+    for (size_t i = 0; i < 6; ++i) {
+        if (i >= static_cast<size_t>(k)) res[i] = t[i - static_cast<size_t>(k)];
+        else res[i] = Trit::ZERO;
+    }
+    return pack_tryte(res);
+}
+
+inline int16_t tryte_shr_c(int16_t a, int64_t k) {
+    if (k < 0) {
+        std::cerr << "[Fatal Error] Negative shift count in tryte shift right.\n";
+        std::abort();
+    }
+    if (k >= 6) return 0;
+    if (k == 0) return a;
+    auto t = unpack_tryte(a);
+    std::array<Trit, 6> res;
+    for (size_t i = 0; i < 6; ++i) {
+        if (i + static_cast<size_t>(k) < 6) res[i] = t[i + static_cast<size_t>(k)];
+        else res[i] = Trit::ZERO;
+    }
+    return pack_tryte(res);
+}
+
+// 7. Overloads for TafpuNum_C and Scalar Types in emit-c Transpilation
+inline TafpuNum_C tafpu_mod_c(const TafpuNum_C& a, const TafpuNum_C& b) {
+    return TafpuNum_C(safe_mod_i64(a.a, b.a), 0, 0);
+}
+inline TafpuNum_C tafpu_mod_c(const TafpuNum_C& a, int64_t b) {
+    return TafpuNum_C(safe_mod_i64(a.a, b), 0, 0);
+}
+inline TafpuNum_C tafpu_mod_c(int64_t a, const TafpuNum_C& b) {
+    return TafpuNum_C(safe_mod_i64(a, b.a), 0, 0);
+}
+inline int64_t tafpu_mod_c(int64_t a, int64_t b) {
+    return safe_mod_i64(a, b);
+}
+inline int16_t tafpu_mod_c(int16_t a, int16_t b) {
+    return tryte_mod_c(a, b);
+}
+
+inline TafpuNum_C tafpu_and_c(const TafpuNum_C& a, const TafpuNum_C& b) {
+    return TafpuNum_C(a.a & b.a, 0, 0);
+}
+inline TafpuNum_C tafpu_and_c(const TafpuNum_C& a, int64_t b) {
+    return TafpuNum_C(a.a & b, 0, 0);
+}
+inline TafpuNum_C tafpu_and_c(int64_t a, const TafpuNum_C& b) {
+    return TafpuNum_C(a & b.a, 0, 0);
+}
+inline int64_t tafpu_and_c(int64_t a, int64_t b) {
+    return a & b;
+}
+inline int16_t tafpu_and_c(int16_t a, int16_t b) {
+    return tryte_kleene_and_c(a, b);
+}
+
+inline TafpuNum_C tafpu_or_c(const TafpuNum_C& a, const TafpuNum_C& b) {
+    return TafpuNum_C(a.a | b.a, 0, 0);
+}
+inline TafpuNum_C tafpu_or_c(const TafpuNum_C& a, int64_t b) {
+    return TafpuNum_C(a.a | b, 0, 0);
+}
+inline TafpuNum_C tafpu_or_c(int64_t a, const TafpuNum_C& b) {
+    return TafpuNum_C(a | b.a, 0, 0);
+}
+inline int64_t tafpu_or_c(int64_t a, int64_t b) {
+    return a | b;
+}
+inline int16_t tafpu_or_c(int16_t a, int16_t b) {
+    return tryte_kleene_or_c(a, b);
+}
+
+inline TafpuNum_C tafpu_xor_c(const TafpuNum_C& a, const TafpuNum_C& b) {
+    return TafpuNum_C(a.a ^ b.a, 0, 0);
+}
+inline TafpuNum_C tafpu_xor_c(const TafpuNum_C& a, int64_t b) {
+    return TafpuNum_C(a.a ^ b, 0, 0);
+}
+inline TafpuNum_C tafpu_xor_c(int64_t a, const TafpuNum_C& b) {
+    return TafpuNum_C(a ^ b.a, 0, 0);
+}
+inline int64_t tafpu_xor_c(int64_t a, int64_t b) {
+    return a ^ b;
+}
+inline int16_t tafpu_xor_c(int16_t a, int16_t b) {
+    return tryte_gf3_xor_c(a, b);
+}
+
+inline TafpuNum_C tafpu_shl_c(const TafpuNum_C& a, const TafpuNum_C& b) {
+    return TafpuNum_C(a.a << b.a, 0, 0);
+}
+inline TafpuNum_C tafpu_shl_c(const TafpuNum_C& a, int64_t b) {
+    return TafpuNum_C(a.a << b, 0, 0);
+}
+inline TafpuNum_C tafpu_shl_c(int64_t a, const TafpuNum_C& b) {
+    return TafpuNum_C(a << b.a, 0, 0);
+}
+inline int64_t tafpu_shl_c(int64_t a, int64_t b) {
+    return a << b;
+}
+inline int16_t tafpu_shl_c(int16_t a, int64_t b) {
+    return tryte_shl_c(a, b);
+}
+inline int16_t tafpu_shl_c(int16_t a, int16_t b) {
+    return tryte_shl_c(a, static_cast<int64_t>(b));
+}
+
+inline TafpuNum_C tafpu_shr_c(const TafpuNum_C& a, const TafpuNum_C& b) {
+    return TafpuNum_C(a.a >> b.a, 0, 0);
+}
+inline TafpuNum_C tafpu_shr_c(const TafpuNum_C& a, int64_t b) {
+    return TafpuNum_C(a.a >> b, 0, 0);
+}
+inline TafpuNum_C tafpu_shr_c(int64_t a, const TafpuNum_C& b) {
+    return TafpuNum_C(a >> b.a, 0, 0);
+}
+inline int64_t tafpu_shr_c(int64_t a, int64_t b) {
+    return a >> b;
+}
+inline int16_t tafpu_shr_c(int16_t a, int64_t b) {
+    return tryte_shr_c(a, b);
+}
+inline int16_t tafpu_shr_c(int16_t a, int16_t b) {
+    return tryte_shr_c(a, static_cast<int64_t>(b));
+}
+
 } // namespace runtime
 } // namespace setun
+
+extern "C" {
+inline int64_t tersun_monotonic_now_us() { return setun::runtime::monotonic_now_us(); }
+inline int64_t tersun_time_now_us() { return setun::runtime::monotonic_now_us(); }
+inline int64_t tersun_safe_mod_i64(int64_t a, int64_t b) { return setun::runtime::safe_mod_i64(a, b); }
+inline int16_t tersun_tryte_mod(int16_t a, int16_t b) { return setun::runtime::tryte_mod_c(a, b); }
+inline int16_t tersun_tryte_gf3_xor(int16_t a, int16_t b) { return setun::runtime::tryte_gf3_xor_c(a, b); }
+inline int16_t tersun_tryte_kleene_and(int16_t a, int16_t b) { return setun::runtime::tryte_kleene_and_c(a, b); }
+inline int16_t tersun_tryte_kleene_or(int16_t a, int16_t b) { return setun::runtime::tryte_kleene_or_c(a, b); }
+inline int16_t tersun_tryte_shl(int16_t a, int64_t k) { return setun::runtime::tryte_shl_c(a, k); }
+inline int16_t tersun_tryte_shr(int16_t a, int64_t k) { return setun::runtime::tryte_shr_c(a, k); }
+}

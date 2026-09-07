@@ -1,0 +1,25 @@
+// ============================================================================
+// M6 Quantum Algorithms Probe (Q-ISA target only - compile with --qvm)
+// ============================================================================
+// Pipeline:
+//   setunc compile quantum_algorithms.stn --qvm -o quantum_algorithms.qbc
+//   setunc run-qvm  quantum_algorithms.qbc
+//   setunc emit-qasm quantum_algorithms.stn -o quantum_algorithms.qasm
+//
+// grover(2, 3) searches 4 states for |11>. The builtin prepares its own
+// uniform superposition, so the target qubits must start in |0...0>.
+// R = floor(pi/4 * sqrt(4)) = 1 iteration amplifies |11> to amplitude
+// sin(3*pi/6) = 1.0 exactly, so qmeasure(0) collapses q0 to 1
+// deterministically and the program exits with code 1.
+// qft(2) afterwards is a Q-ISA gate-sequence smoke on the collapsed register;
+// its amplitude parity against the reference DFT is asserted in the C++
+// suite (tests 10/14). Qubit convention: qubit q = bit q of the target.
+// ============================================================================
+
+fn main() -> int {
+    grover(2, 3);   // amplify |11> on qubits 0..1 (requires fresh |0> register)
+    qmeasure(0);    // collapse q0 into classical register 0 -> 1
+    qmeasure(1);    // collapse q1 into classical register 1 -> 1
+    qft(2);         // QFT smoke over qubits 0..1 (RZ/CNOT/SWAP path)
+    return 0;       // exit code = measured bit of q0 = 1
+}

@@ -1,0 +1,17 @@
+// Compute-only (external timing): recursive fibonacci x 200
+fn fib(n: int) -> int {
+    let r = 0;
+    if (n < 2) {
+        r = n;
+    } else {
+        r = fib(n - 1) + fib(n - 2);
+    }
+    return r;
+}
+fn main() {
+    let sink = 0;
+    for k in range(200) {
+        sink += fib(24);
+    }
+    println(sink);
+}

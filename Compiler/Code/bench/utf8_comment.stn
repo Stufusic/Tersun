@@ -1,0 +1,9 @@
+// em dash in comment: target only — compile with --qvm
+// các ký tự unicode trong comment: tiếng Việt
+fn main() {
+    let acc = 0;
+    for i in range(100) {
+        acc += i;
+    }
+    println(acc);
+}

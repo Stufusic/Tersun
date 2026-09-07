@@ -425,7 +425,10 @@ void LLVMEmitter::transpile_expr(Expr* expr, std::ostringstream& oss) {
         }
         else if constexpr (std::is_same_v<T, MethodCallExpr>) {
             transpile_expr(e.object, oss);
-            oss << "." << e.method << "(";
+            std::string method = e.method;
+            if (method == "push") method = "push_back";
+            else if (method == "len" || method == "length") method = "size";
+            oss << "." << method << "(";
             for (size_t i = 0; i < e.args.size(); ++i) {
                 if (i > 0) oss << ", ";
                 transpile_expr(e.args[i], oss);
@@ -466,6 +469,24 @@ void LLVMEmitter::transpile_expr(Expr* expr, std::ostringstream& oss) {
                 case BinaryOp::MUL:
                 case BinaryOp::MATMUL:
                     oss << "tafpu_mul_c("; transpile_expr(e.left, oss); oss << ", "; transpile_expr(e.right, oss); oss << ")";
+                    break;
+                case BinaryOp::MOD:
+                    oss << "tafpu_mod_c("; transpile_expr(e.left, oss); oss << ", "; transpile_expr(e.right, oss); oss << ")";
+                    break;
+                case BinaryOp::BIT_AND:
+                    oss << "tafpu_and_c("; transpile_expr(e.left, oss); oss << ", "; transpile_expr(e.right, oss); oss << ")";
+                    break;
+                case BinaryOp::BIT_OR:
+                    oss << "tafpu_or_c("; transpile_expr(e.left, oss); oss << ", "; transpile_expr(e.right, oss); oss << ")";
+                    break;
+                case BinaryOp::BIT_XOR:
+                    oss << "tafpu_xor_c("; transpile_expr(e.left, oss); oss << ", "; transpile_expr(e.right, oss); oss << ")";
+                    break;
+                case BinaryOp::SHL:
+                    oss << "tafpu_shl_c("; transpile_expr(e.left, oss); oss << ", "; transpile_expr(e.right, oss); oss << ")";
+                    break;
+                case BinaryOp::SHR:
+                    oss << "tafpu_shr_c("; transpile_expr(e.left, oss); oss << ", "; transpile_expr(e.right, oss); oss << ")";
                     break;
                 case BinaryOp::SPACESHIP:
                     oss << "TafpuNum_C(tafpu_cmp_c("; transpile_expr(e.left, oss); oss << ", "; transpile_expr(e.right, oss); oss << "), 0, 0)";
@@ -670,6 +691,16 @@ void LLVMEmitter::emit_llvm_global_decls(std::ostringstream& oss) {
     oss << "declare i8* @malloc(i64) nounwind\n";
     oss << "declare void @free(i8*) nounwind\n";
     oss << "declare void @abort() noreturn nounwind\n\n";
+
+    oss << "declare i64 @tersun_monotonic_now_us() nounwind\n";
+    oss << "declare i64 @tersun_time_now_us() nounwind\n";
+    oss << "declare i64 @tersun_safe_mod_i64(i64, i64)\n";
+    oss << "declare i16 @tersun_tryte_mod(i16, i16)\n";
+    oss << "declare i16 @tersun_tryte_gf3_xor(i16, i16)\n";
+    oss << "declare i16 @tersun_tryte_kleene_and(i16, i16)\n";
+    oss << "declare i16 @tersun_tryte_kleene_or(i16, i16)\n";
+    oss << "declare i16 @tersun_tryte_shl(i16, i64)\n";
+    oss << "declare i16 @tersun_tryte_shr(i16, i64)\n\n";
 
     oss << "declare i32 @setun2d_init(i32, i32, i8*)\n";
     oss << "declare i32 @setun2d_is_running()\n";
@@ -1120,6 +1151,29 @@ LLVMValue LLVMEmitter::emit_typed_expr(Expr* expr, std::ostringstream& oss) {
                     oss << "    " << res << " = alloca %struct.TafpuNum, align 8\n";
                     oss << "    call void @tafpu_div_native(%struct.TafpuNum* " << res << ", %struct.TafpuNum* " << l_ptr << ", %struct.TafpuNum* " << r_ptr << ")\n";
                     result = { res, "%struct.TafpuNum*", true };
+                } else if (e.op == BinaryOp::MOD) {
+                    std::string res = next_temp();
+                    oss << "    " << res << " = alloca %struct.TafpuNum, align 8\n";
+                    std::string a1_ptr = next_temp();
+                    oss << "    " << a1_ptr << " = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << l_ptr << ", i32 0, i32 0\n";
+                    std::string a1 = next_temp();
+                    oss << "    " << a1 << " = load i64, i64* " << a1_ptr << ", align 8\n";
+                    std::string a2_ptr = next_temp();
+                    oss << "    " << a2_ptr << " = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << r_ptr << ", i32 0, i32 0\n";
+                    std::string a2 = next_temp();
+                    oss << "    " << a2 << " = load i64, i64* " << a2_ptr << ", align 8\n";
+                    std::string mod_val = next_temp();
+                    oss << "    " << mod_val << " = call i64 @tersun_safe_mod_i64(i64 " << a1 << ", i64 " << a2 << ")\n";
+                    std::string r_a = next_temp();
+                    oss << "    " << r_a << " = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res << ", i32 0, i32 0\n";
+                    oss << "    store i64 " << mod_val << ", i64* " << r_a << ", align 8\n";
+                    std::string r_b = next_temp();
+                    oss << "    " << r_b << " = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res << ", i32 0, i32 1\n";
+                    oss << "    store i64 0, i64* " << r_b << ", align 8\n";
+                    std::string r_s = next_temp();
+                    oss << "    " << r_s << " = getelementptr inbounds %struct.TafpuNum, %struct.TafpuNum* " << res << ", i32 0, i32 2\n";
+                    oss << "    store i32 0, i32* " << r_s << ", align 4\n";
+                    result = { res, "%struct.TafpuNum*", true };
                 } else if (e.op == BinaryOp::SPACESHIP) {
                     std::string cmp = next_temp();
                     oss << "    " << cmp << " = call i32 @tafpu_cmp_native(%struct.TafpuNum* " << l_ptr << ", %struct.TafpuNum* " << r_ptr << ")\n";
@@ -1188,6 +1242,94 @@ LLVMValue LLVMEmitter::emit_typed_expr(Expr* expr, std::ostringstream& oss) {
                     std::string t = next_temp();
                     oss << "    " << t << " = sdiv " << type << " " << left_val.val << ", " << right_val.val << "\n";
                     result = { t, type, false };
+                } else if (e.op == BinaryOp::MOD) {
+                    if (type == "i16") {
+                        std::string t = next_temp();
+                        oss << "    " << t << " = call i16 @tersun_tryte_mod(i16 " << left_val.val << ", i16 " << right_val.val << ")\n";
+                        result = { t, "i16", false };
+                    } else {
+                        std::string l_val = left_val.val;
+                        std::string r_val = right_val.val;
+                        if (type != "i64") {
+                            std::string c_l = next_temp();
+                            oss << "    " << c_l << " = sext " << type << " " << l_val << " to i64\n";
+                            l_val = c_l;
+                            std::string c_r = next_temp();
+                            oss << "    " << c_r << " = sext " << type << " " << r_val << " to i64\n";
+                            r_val = c_r;
+                        }
+                        std::string t = next_temp();
+                        oss << "    " << t << " = call i64 @tersun_safe_mod_i64(i64 " << l_val << ", i64 " << r_val << ")\n";
+                        if (type != "i64") {
+                            std::string tr = next_temp();
+                            oss << "    " << tr << " = trunc i64 " << t << " to " << type << "\n";
+                            result = { tr, type, false };
+                        } else {
+                            result = { t, "i64", false };
+                        }
+                    }
+                } else if (e.op == BinaryOp::BIT_AND) {
+                    if (type == "i16") {
+                        std::string t = next_temp();
+                        oss << "    " << t << " = call i16 @tersun_tryte_kleene_and(i16 " << left_val.val << ", i16 " << right_val.val << ")\n";
+                        result = { t, "i16", false };
+                    } else {
+                        std::string t = next_temp();
+                        oss << "    " << t << " = and " << type << " " << left_val.val << ", " << right_val.val << "\n";
+                        result = { t, type, false };
+                    }
+                } else if (e.op == BinaryOp::BIT_OR) {
+                    if (type == "i16") {
+                        std::string t = next_temp();
+                        oss << "    " << t << " = call i16 @tersun_tryte_kleene_or(i16 " << left_val.val << ", i16 " << right_val.val << ")\n";
+                        result = { t, "i16", false };
+                    } else {
+                        std::string t = next_temp();
+                        oss << "    " << t << " = or " << type << " " << left_val.val << ", " << right_val.val << "\n";
+                        result = { t, type, false };
+                    }
+                } else if (e.op == BinaryOp::BIT_XOR) {
+                    if (type == "i16") {
+                        std::string t = next_temp();
+                        oss << "    " << t << " = call i16 @tersun_tryte_gf3_xor(i16 " << left_val.val << ", i16 " << right_val.val << ")\n";
+                        result = { t, "i16", false };
+                    } else {
+                        std::string t = next_temp();
+                        oss << "    " << t << " = xor " << type << " " << left_val.val << ", " << right_val.val << "\n";
+                        result = { t, type, false };
+                    }
+                } else if (e.op == BinaryOp::SHL) {
+                    if (type == "i16") {
+                        std::string r_val = right_val.val;
+                        if (right_val.type != "i64") {
+                            std::string c_r = next_temp();
+                            oss << "    " << c_r << " = sext " << right_val.type << " " << r_val << " to i64\n";
+                            r_val = c_r;
+                        }
+                        std::string t = next_temp();
+                        oss << "    " << t << " = call i16 @tersun_tryte_shl(i16 " << left_val.val << ", i64 " << r_val << ")\n";
+                        result = { t, "i16", false };
+                    } else {
+                        std::string t = next_temp();
+                        oss << "    " << t << " = shl " << type << " " << left_val.val << ", " << right_val.val << "\n";
+                        result = { t, type, false };
+                    }
+                } else if (e.op == BinaryOp::SHR) {
+                    if (type == "i16") {
+                        std::string r_val = right_val.val;
+                        if (right_val.type != "i64") {
+                            std::string c_r = next_temp();
+                            oss << "    " << c_r << " = sext " << right_val.type << " " << r_val << " to i64\n";
+                            r_val = c_r;
+                        }
+                        std::string t = next_temp();
+                        oss << "    " << t << " = call i16 @tersun_tryte_shr(i16 " << left_val.val << ", i64 " << r_val << ")\n";
+                        result = { t, "i16", false };
+                    } else {
+                        std::string t = next_temp();
+                        oss << "    " << t << " = ashr " << type << " " << left_val.val << ", " << right_val.val << "\n";
+                        result = { t, type, false };
+                    }
                 } else if (e.op == BinaryOp::SPACESHIP) {
                     std::string lt = next_temp();
                     std::string gt = next_temp();
@@ -1342,6 +1484,11 @@ LLVMValue LLVMEmitter::emit_typed_expr(Expr* expr, std::ostringstream& oss) {
                 std::string t = next_temp();
                 oss << "    " << t << " = call i32 @setun2d_get_key()\n";
                 result = { t, "i32", false };
+            }
+            else if (e.callee == "monotonic_now_us" || e.callee == "time_now_us") {
+                std::string t = next_temp();
+                oss << "    " << t << " = call i64 @tersun_monotonic_now_us()\n";
+                result = { t, "i64", false };
             }
             else {
                 std::vector<LLVMValue> arg_vals;

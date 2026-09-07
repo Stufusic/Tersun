@@ -1,0 +1,14 @@
+// E3: two recursive calls (original failing shape)
+fn g(n: int) -> int {
+    let r = 0;
+    if (n < 2) {
+        r = n;
+    } else {
+        r = g(n - 1) + g(n - 2);
+    }
+    return r;
+}
+fn main() {
+    println(g(3));
+    println(g(5));
+}

@@ -815,7 +815,13 @@ Stmt* Parser::parse_for_stmt() {
                 || tokens_[current_ + 1].type == TokenType::PLUS_EQUAL
                 || tokens_[current_ + 1].type == TokenType::MINUS_EQUAL
                 || tokens_[current_ + 1].type == TokenType::STAR_EQUAL
-                || tokens_[current_ + 1].type == TokenType::SLASH_EQUAL)) {
+                || tokens_[current_ + 1].type == TokenType::SLASH_EQUAL
+                || tokens_[current_ + 1].type == TokenType::PERCENT_EQUAL
+                || tokens_[current_ + 1].type == TokenType::AMP_EQUAL
+                || tokens_[current_ + 1].type == TokenType::PIPE_EQUAL
+                || tokens_[current_ + 1].type == TokenType::CARET_EQUAL
+                || tokens_[current_ + 1].type == TokenType::LESS_LESS_EQUAL
+                || tokens_[current_ + 1].type == TokenType::GREATER_GREATER_EQUAL)) {
             Token name_tok = advance();
             Token op_tok = advance();
             Expr* val = parse_expression();
@@ -826,6 +832,13 @@ Stmt* Parser::parse_for_stmt() {
                     case TokenType::PLUS_EQUAL: b_op = BinaryOp::ADD; break;
                     case TokenType::MINUS_EQUAL: b_op = BinaryOp::SUB; break;
                     case TokenType::STAR_EQUAL: b_op = BinaryOp::MUL; break;
+                    case TokenType::SLASH_EQUAL: b_op = BinaryOp::DIV; break;
+                    case TokenType::PERCENT_EQUAL: b_op = BinaryOp::MOD; break;
+                    case TokenType::AMP_EQUAL: b_op = BinaryOp::BIT_AND; break;
+                    case TokenType::PIPE_EQUAL: b_op = BinaryOp::BIT_OR; break;
+                    case TokenType::CARET_EQUAL: b_op = BinaryOp::BIT_XOR; break;
+                    case TokenType::LESS_LESS_EQUAL: b_op = BinaryOp::SHL; break;
+                    case TokenType::GREATER_GREATER_EQUAL: b_op = BinaryOp::SHR; break;
                     default: b_op = BinaryOp::DIV; break;
                 }
                 Expr* lhs = arena_.make<Expr>(IdentifierExpr{name_tok.lexeme, op_tok.location}, op_tok.location);
@@ -937,16 +950,26 @@ Stmt* Parser::parse_expr_stmt() {
         return arena_.make<Stmt>(AssignStmt{"_tmp", val, loc}, loc);
     }
 
-    // Compound assignment: x += v / a.b -= v / arr[i] *= v
+    // Compound assignment: x += v / a.b -= v / arr[i] *= v / etc.
     TokenType comp_tok = peek().type;
     if (comp_tok == TokenType::PLUS_EQUAL || comp_tok == TokenType::MINUS_EQUAL
-        || comp_tok == TokenType::STAR_EQUAL || comp_tok == TokenType::SLASH_EQUAL) {
+        || comp_tok == TokenType::STAR_EQUAL || comp_tok == TokenType::SLASH_EQUAL
+        || comp_tok == TokenType::PERCENT_EQUAL || comp_tok == TokenType::AMP_EQUAL
+        || comp_tok == TokenType::PIPE_EQUAL || comp_tok == TokenType::CARET_EQUAL
+        || comp_tok == TokenType::LESS_LESS_EQUAL || comp_tok == TokenType::GREATER_GREATER_EQUAL) {
         advance();
         BinaryOp b_op;
         switch (comp_tok) {
             case TokenType::PLUS_EQUAL: b_op = BinaryOp::ADD; break;
             case TokenType::MINUS_EQUAL: b_op = BinaryOp::SUB; break;
             case TokenType::STAR_EQUAL: b_op = BinaryOp::MUL; break;
+            case TokenType::SLASH_EQUAL: b_op = BinaryOp::DIV; break;
+            case TokenType::PERCENT_EQUAL: b_op = BinaryOp::MOD; break;
+            case TokenType::AMP_EQUAL: b_op = BinaryOp::BIT_AND; break;
+            case TokenType::PIPE_EQUAL: b_op = BinaryOp::BIT_OR; break;
+            case TokenType::CARET_EQUAL: b_op = BinaryOp::BIT_XOR; break;
+            case TokenType::LESS_LESS_EQUAL: b_op = BinaryOp::SHL; break;
+            case TokenType::GREATER_GREATER_EQUAL: b_op = BinaryOp::SHR; break;
             default: b_op = BinaryOp::DIV; break;
         }
         Expr* val = parse_expression();
@@ -985,6 +1008,9 @@ int Parser::get_infix_precedence(TokenType type) const {
         case TokenType::QUESTION_QUESTION: return PREC_NULL_COALESCE;
         case TokenType::PIPE_PIPE: return PREC_LOGICAL_OR;
         case TokenType::AMP_AMP: return PREC_LOGICAL_AND;
+        case TokenType::PIPE: return PREC_BIT_OR;
+        case TokenType::CARET: return PREC_BIT_XOR;
+        case TokenType::AMP: return PREC_BIT_AND;
         case TokenType::SPACESHIP: return PREC_TERNARY_CMP;
         case TokenType::EQ_EQ:
         case TokenType::BANG_EQ:
@@ -992,10 +1018,13 @@ int Parser::get_infix_precedence(TokenType type) const {
         case TokenType::GREATER:
         case TokenType::LESS_EQ:
         case TokenType::GREATER_EQ: return PREC_COMPARISON;
+        case TokenType::LESS_LESS:
+        case TokenType::GREATER_GREATER: return PREC_SHIFT;
         case TokenType::PLUS:
         case TokenType::MINUS: return PREC_TERM;
         case TokenType::STAR:
         case TokenType::SLASH:
+        case TokenType::PERCENT:
         case TokenType::AT: return PREC_FACTOR;
         case TokenType::KW_MIN:
         case TokenType::KW_MAX: return PREC_KLEENE;
@@ -1398,6 +1427,12 @@ Expr* Parser::parse_infix(Expr* left) {
         case TokenType::MINUS: b_op = BinaryOp::SUB; break;
         case TokenType::STAR: b_op = BinaryOp::MUL; break;
         case TokenType::SLASH: b_op = BinaryOp::DIV; break;
+        case TokenType::PERCENT: b_op = BinaryOp::MOD; break;
+        case TokenType::AMP: b_op = BinaryOp::BIT_AND; break;
+        case TokenType::PIPE: b_op = BinaryOp::BIT_OR; break;
+        case TokenType::CARET: b_op = BinaryOp::BIT_XOR; break;
+        case TokenType::LESS_LESS: b_op = BinaryOp::SHL; break;
+        case TokenType::GREATER_GREATER: b_op = BinaryOp::SHR; break;
         case TokenType::AT: b_op = BinaryOp::MATMUL; break;
         case TokenType::QUESTION_QUESTION:
             throw CompilerException("The '?\?' (null-coalescing) operator is not supported yet; use an explicit if statement instead.");

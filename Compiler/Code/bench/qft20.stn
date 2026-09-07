@@ -1,0 +1,4 @@
+fn main() -> int {
+    qft(20);
+    return 0;
+}

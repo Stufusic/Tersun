@@ -1,0 +1,135 @@
+{
+  "metadata": {
+    "compiler": "g++ (GCC) 15.2.0 -O3",
+    "python": "3.14.3",
+    "repetitions": 5,
+    "date": "2026-09-06 17:59:20"
+  },
+  "workloads": {
+    "heavy_sieve": {
+      "title": "H1 Prime Sieve (100k)",
+      "engines": {
+        "Tersun_VM": {
+          "median": 50.139,
+          "mean": 49.663,
+          "stddev": 1.0571,
+          "min": 48.316,
+          "max": 50.719
+        },
+        "Tersun_Native": {
+          "median": 1.931,
+          "mean": 1.925,
+          "stddev": 0.0488,
+          "min": 1.876,
+          "max": 1.997
+        },
+        "CPython_3.14": {
+          "median": 24.243,
+          "mean": 25.024,
+          "stddev": 2.728,
+          "min": 21.71,
+          "max": 28.776
+        },
+        "CPP_O3": {
+          "median": 0.11,
+          "mean": 0.113,
+          "stddev": 0.0062,
+          "min": 0.11,
+          "max": 0.124
+        }
+      }
+    },
+    "heavy_matmul": {
+      "title": "H2 Matmul (100x100)",
+      "engines": {
+        "Tersun_VM": {
+          "median": 299.325,
+          "mean": 314.898,
+          "stddev": 62.4463,
+          "min": 249.253,
+          "max": 410.983
+        },
+        "Tersun_Native": {
+          "median": 3.312,
+          "mean": 3.401,
+          "stddev": 0.2538,
+          "min": 3.259,
+          "max": 3.853
+        },
+        "CPython_3.14": {
+          "median": 201.811,
+          "mean": 204.975,
+          "stddev": 30.1323,
+          "min": 163.645,
+          "max": 242.255
+        },
+        "CPP_O3": {
+          "median": 0.599,
+          "mean": 0.661,
+          "stddev": 0.1438,
+          "min": 0.537,
+          "max": 0.846
+        }
+      }
+    },
+    "heavy_nqueens": {
+      "title": "H3 N-Queens (N=11)",
+      "engines": {
+        "Tersun_VM": {
+          "median": 53.397,
+          "mean": 53.467,
+          "stddev": 1.3913,
+          "min": 51.694,
+          "max": 55.484
+        },
+        "Tersun_Native": {
+          "median": 1.503,
+          "mean": 1.618,
+          "stddev": 0.229,
+          "min": 1.444,
+          "max": 1.988
+        },
+        "CPython_3.14": {
+          "median": 53.507,
+          "mean": 61.513,
+          "stddev": 20.8719,
+          "min": 42.771,
+          "max": 95.446
+        },
+        "CPP_O3": {
+          "median": 2.25,
+          "mean": 2.434,
+          "stddev": 0.4045,
+          "min": 2.062,
+          "max": 2.891
+        }
+      }
+    },
+    "heavy_trees": {
+      "title": "H4 Binary Trees (D=14)",
+      "engines": {
+        "Tersun_VM": {
+          "median": 82.449,
+          "mean": 103.388,
+          "stddev": 56.8026,
+          "min": 59.862,
+          "max": 199.031
+        },
+        "CPython_3.14": {
+          "median": 14.948,
+          "mean": 15.757,
+          "stddev": 3.2138,
+          "min": 13.018,
+          "max": 21.057
+        },
+        "CPP_O3": {
+          "median": 1.598,
+          "mean": 1.607,
+          "stddev": 0.0392,
+          "min": 1.56,
+          "max": 1.662
+        }
+      }
+    }
+  }
+}

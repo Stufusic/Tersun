@@ -1,0 +1,43 @@
+{
+  "metadata": {
+    "timestamp": "2026-09-06T18:13:00Z",
+    "profiler": "hardware_profiler.cpp (2-pass: timing + cache simulation)",
+    "compiler": "GCC 15.2.0 (-std=c++20 -O3)",
+    "cpu": "12th Gen Intel Core i5-1245U (10C/12T, P-core Golden Cove)",
+    "l1d": "32 KB, 8-way, 64B line",
+    "l2": "1.25 MB/core, 16-way, 64B line",
+    "llc": "12 MB shared, 16-way, 64B line",
+    "os": "Windows 11 (10.0.26200)",
+    "ram": "16 GB",
+    "repetitions": 3
+  },
+  "runs": [
+    {
+      "run_id": 1,
+      "v0_b3": {"runtime_ms": 60.575, "cycles": 151216405, "instructions": 130000000, "ipc": 0.860, "loads": 100000000, "stores": 75000000, "l1d_misses": 4, "l2_misses": 4, "llc_misses": 4, "branch_misses": 4955279, "allocations": 0, "peak_rss_kb": 6224},
+      "v0_h4": {"runtime_ms": 2.046, "cycles": 5107623, "instructions": 6356798, "ipc": 1.245, "loads": 294903, "stores": 294903, "l1d_misses": 49187, "l2_misses": 49176, "llc_misses": 49176, "branch_misses": 8191, "allocations": 32767, "peak_heap_kb": 2816, "peak_rss_kb": 9384},
+      "v2_b3": {"runtime_ms": 26.32, "cycles": 65724791, "instructions": 60000000, "ipc": 0.913, "loads": 40000000, "stores": 30000000, "l1d_misses": 2, "l2_misses": 2, "llc_misses": 2, "branch_misses": 4955279, "allocations": 0, "peak_rss_kb": 6192},
+      "v2_h4": {"runtime_ms": 0.234, "cycles": 586716, "instructions": 1638350, "ipc": 2.792, "loads": 65534, "stores": 65534, "l1d_misses": 8192, "l2_misses": 8192, "llc_misses": 8192, "branch_misses": 2730, "allocations": 1, "peak_heap_kb": 512, "peak_rss_kb": 6720},
+      "v3_b3": {"runtime_ms": 5.409, "cycles": 13543809, "instructions": 30000000, "ipc": 2.215, "loads": 20000000, "stores": 15000000, "l1d_misses": 2, "l2_misses": 2, "llc_misses": 2, "branch_misses": 4955279, "allocations": 0, "peak_rss_kb": 6176},
+      "v3_h4": {"runtime_ms": 0.209, "cycles": 524755, "instructions": 917476, "ipc": 1.748, "loads": 65534, "stores": 65534, "l1d_misses": 8192, "l2_misses": 8192, "llc_misses": 8192, "branch_misses": 2730, "allocations": 1, "peak_heap_kb": 512, "peak_rss_kb": 6716}
+    },
+    {
+      "run_id": 2,
+      "v0_b3": {"runtime_ms": 59.766, "cycles": 149202870, "instructions": 130000000, "ipc": 0.871, "loads": 100000000, "stores": 75000000, "l1d_misses": 4, "l2_misses": 4, "llc_misses": 4, "branch_misses": 4955279, "allocations": 0, "peak_rss_kb": 6224},
+      "v0_h4": {"runtime_ms": 2.286, "cycles": 5705446, "instructions": 6356798, "ipc": 1.114, "loads": 294903, "stores": 294903, "l1d_misses": 49191, "l2_misses": 49179, "llc_misses": 49179, "branch_misses": 8191, "allocations": 32767, "peak_heap_kb": 2816, "peak_rss_kb": 9376},
+      "v2_b3": {"runtime_ms": 26.003, "cycles": 64928720, "instructions": 60000000, "ipc": 0.924, "loads": 40000000, "stores": 30000000, "l1d_misses": 2, "l2_misses": 2, "llc_misses": 2, "branch_misses": 4955279, "allocations": 0, "peak_rss_kb": 6192},
+      "v2_h4": {"runtime_ms": 0.240, "cycles": 599341, "instructions": 1638350, "ipc": 2.734, "loads": 65534, "stores": 65534, "l1d_misses": 8192, "l2_misses": 8192, "llc_misses": 8192, "branch_misses": 2730, "allocations": 1, "peak_heap_kb": 512, "peak_rss_kb": 6720},
+      "v3_b3": {"runtime_ms": 5.402, "cycles": 13511791, "instructions": 30000000, "ipc": 2.220, "loads": 20000000, "stores": 15000000, "l1d_misses": 2, "l2_misses": 2, "llc_misses": 2, "branch_misses": 4955279, "allocations": 0, "peak_rss_kb": 6184},
+      "v3_h4": {"runtime_ms": 0.241, "cycles": 603819, "instructions": 917476, "ipc": 1.520, "loads": 65534, "stores": 65534, "l1d_misses": 8192, "l2_misses": 8192, "llc_misses": 8192, "branch_misses": 2730, "allocations": 1, "peak_heap_kb": 512, "peak_rss_kb": 6720}
+    },
+    {
+      "run_id": 3,
+      "v0_b3": {"runtime_ms": 63.673, "cycles": 158958513, "instructions": 130000000, "ipc": 0.818, "loads": 100000000, "stores": 75000000, "l1d_misses": 4, "l2_misses": 4, "llc_misses": 4, "branch_misses": 4955279, "allocations": 0, "peak_rss_kb": 6224},
+      "v0_h4": {"runtime_ms": 2.300, "cycles": 5741013, "instructions": 6356798, "ipc": 1.107, "loads": 294903, "stores": 294903, "l1d_misses": 49193, "l2_misses": 49179, "llc_misses": 49179, "branch_misses": 8191, "allocations": 32767, "peak_heap_kb": 2816, "peak_rss_kb": 9376},
+      "v2_b3": {"runtime_ms": 26.357, "cycles": 65815532, "instructions": 60000000, "ipc": 0.912, "loads": 40000000, "stores": 30000000, "l1d_misses": 2, "l2_misses": 2, "llc_misses": 2, "branch_misses": 4955279, "allocations": 0, "peak_rss_kb": 6200},
+      "v2_h4": {"runtime_ms": 0.206, "cycles": 516630, "instructions": 1638350, "ipc": 3.171, "loads": 65534, "stores": 65534, "l1d_misses": 8192, "l2_misses": 8192, "llc_misses": 8192, "branch_misses": 2730, "allocations": 1, "peak_heap_kb": 512, "peak_rss_kb": 6728},
+      "v3_b3": {"runtime_ms": 6.075, "cycles": 15214803, "instructions": 30000000, "ipc": 1.972, "loads": 20000000, "stores": 15000000, "l1d_misses": 2, "l2_misses": 2, "llc_misses": 2, "branch_misses": 4955279, "allocations": 0, "peak_rss_kb": 6192},
+      "v3_h4": {"runtime_ms": 0.229, "cycles": 572430, "instructions": 917476, "ipc": 1.603, "loads": 65534, "stores": 65534, "l1d_misses": 8192, "l2_misses": 8192, "llc_misses": 8192, "branch_misses": 2730, "allocations": 1, "peak_heap_kb": 512, "peak_rss_kb": 6728}
+    }
+  ]
+}

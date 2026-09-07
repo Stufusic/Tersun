@@ -23,6 +23,8 @@ struct Chunk {
     // Empty table (format v1) means legacy chunks where the operand is the
     // entry offset directly.
     std::vector<uint32_t> function_table;
+    std::vector<uint16_t> function_frame_sizes;
+    size_t toplevel_frame_size{64};
 
     void write_byte(uint8_t byte, size_t line);
     void write_opcode(OpCode op, size_t line);

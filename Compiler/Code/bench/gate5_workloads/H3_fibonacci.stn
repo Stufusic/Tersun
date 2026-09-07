@@ -1,0 +1,23 @@
+// ============================================================================
+// Gate 5 Workload H3B: Deep Recursive Fibonacci (N = 28)
+// Tests: Function call frame creation/destruction, local variable access
+// Correct checksum: fib(28) = 317811
+// ============================================================================
+
+fn fib(n: int) -> int {
+    if (n < 2) {
+        return n;
+    }
+    return fib(n - 1) + fib(n - 2);
+}
+
+fn main() {
+    let t0 = time_now_us();
+    let res = fib(28);
+    let t1 = time_now_us();
+
+    print("WORKLOAD_H3_FIBONACCI checksum=");
+    print(res);
+    print(" time_us=");
+    println(t1 - t0);
+}

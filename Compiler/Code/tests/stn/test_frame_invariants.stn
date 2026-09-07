@@ -1,0 +1,150 @@
+// Test Frame Layout Invariants: Locals 31, 32, 33, 64 calling functions, lambdas, recursive functions, nested lambdas
+
+fn child_func(a: int, b: int) -> int {
+    let temp1 = a + 10;
+    let temp2 = b + 20;
+    return temp1 + temp2;
+}
+
+fn recursive_func(n: int) -> int {
+    if (n <= 1) {
+        return 1;
+    }
+    return n + recursive_func(n - 1);
+}
+
+fn test_locals_31() {
+    let x0 = 0;   let x1 = 1;   let x2 = 2;   let x3 = 3;   let x4 = 4;
+    let x5 = 5;   let x6 = 6;   let x7 = 7;   let x8 = 8;   let x9 = 9;
+    let x10 = 10; let x11 = 11; let x12 = 12; let x13 = 13; let x14 = 14;
+    let x15 = 15; let x16 = 16; let x17 = 17; let x18 = 18; let x19 = 19;
+    let x20 = 20; let x21 = 21; let x22 = 22; let x23 = 23; let x24 = 24;
+    let x25 = 25; let x26 = 26; let x27 = 27; let x28 = 28; let x29 = 29;
+    let x30 = 3000;
+
+    // Call child function
+    let r1 = child_func(1, 2);
+    assert_eq(r1, 33);
+    assert_eq(x30, 3000);
+    assert_eq(x0, 0);
+
+    // Call lambda
+    let lam = fn (v: int) -> int { return v * 3; };
+    let r2 = lam(10);
+    assert_eq(r2, 30);
+    assert_eq(x30, 3000);
+
+    // Call nested lambda
+    let nest = fn (v: int) -> int {
+        let inner = fn (w: int) -> int { return w + 5; };
+        return inner(v * 2);
+    };
+    let r3 = nest(10);
+    assert_eq(r3, 25);
+    assert_eq(x30, 3000);
+}
+
+fn test_locals_32() {
+    let x0 = 0;   let x1 = 1;   let x2 = 2;   let x3 = 3;   let x4 = 4;
+    let x5 = 5;   let x6 = 6;   let x7 = 7;   let x8 = 8;   let x9 = 9;
+    let x10 = 10; let x11 = 11; let x12 = 12; let x13 = 13; let x14 = 14;
+    let x15 = 15; let x16 = 16; let x17 = 17; let x18 = 18; let x19 = 19;
+    let x20 = 20; let x21 = 21; let x22 = 22; let x23 = 23; let x24 = 24;
+    let x25 = 25; let x26 = 26; let x27 = 27; let x28 = 28; let x29 = 29;
+    let x30 = 30;
+    let x31 = 3100;
+
+    let r1 = child_func(5, 5);
+    assert_eq(r1, 40);
+    assert_eq(x31, 3100);
+    assert_eq(x30, 30);
+    assert_eq(x0, 0);
+
+    let lam = fn (v: int) -> int { return v + 100; };
+    assert_eq(lam(5), 105);
+    assert_eq(x31, 3100);
+
+    let nest = fn (v: int) -> int {
+        let inner = fn (w: int) -> int { return w + 7; };
+        return inner(v + 3);
+    };
+    assert_eq(nest(10), 20);
+    assert_eq(x31, 3100);
+}
+
+fn test_locals_33() {
+    let x0 = 0;   let x1 = 1;   let x2 = 2;   let x3 = 3;   let x4 = 4;
+    let x5 = 5;   let x6 = 6;   let x7 = 7;   let x8 = 8;   let x9 = 9;
+    let x10 = 10; let x11 = 11; let x12 = 12; let x13 = 13; let x14 = 14;
+    let x15 = 15; let x16 = 16; let x17 = 17; let x18 = 18; let x19 = 19;
+    let x20 = 20; let x21 = 21; let x22 = 22; let x23 = 23; let x24 = 24;
+    let x25 = 25; let x26 = 26; let x27 = 27; let x28 = 28; let x29 = 29;
+    let x30 = 30; let x31 = 31;
+    let x32 = 3200;
+
+    let r1 = child_func(10, 20);
+    assert_eq(r1, 60);
+    assert_eq(x32, 3200);
+    assert_eq(x31, 31);
+    assert_eq(x0, 0);
+
+    let lam = fn (v: int) -> int { return v * v; };
+    assert_eq(lam(9), 81);
+    assert_eq(x32, 3200);
+
+    let nest = fn (v: int) -> int {
+        let inner = fn (w: int) -> int { return w * 2; };
+        return inner(v + 1);
+    };
+    assert_eq(nest(5), 12);
+    assert_eq(x32, 3200);
+}
+
+fn test_locals_64() {
+    let x0 = 0;   let x1 = 1;   let x2 = 2;   let x3 = 3;   let x4 = 4;
+    let x5 = 5;   let x6 = 6;   let x7 = 7;   let x8 = 8;   let x9 = 9;
+    let x10 = 10; let x11 = 11; let x12 = 12; let x13 = 13; let x14 = 14;
+    let x15 = 15; let x16 = 16; let x17 = 17; let x18 = 18; let x19 = 19;
+    let x20 = 20; let x21 = 21; let x22 = 22; let x23 = 23; let x24 = 24;
+    let x25 = 25; let x26 = 26; let x27 = 27; let x28 = 28; let x29 = 29;
+    let x30 = 30; let x31 = 31; let x32 = 32; let x33 = 33; let x34 = 34;
+    let x35 = 35; let x36 = 36; let x37 = 37; let x38 = 38; let x39 = 39;
+    let x40 = 40; let x41 = 41; let x42 = 42; let x43 = 43; let x44 = 44;
+    let x45 = 45; let x46 = 46; let x47 = 47; let x48 = 48; let x49 = 49;
+    let x50 = 50; let x51 = 51; let x52 = 52; let x53 = 53; let x54 = 54;
+    let x55 = 55; let x56 = 56; let x57 = 57; let x58 = 58; let x59 = 59;
+    let x60 = 60; let x61 = 61; let x62 = 62;
+    let x63 = 6300;
+
+    let r1 = child_func(100, 200);
+    assert_eq(r1, 330);
+    assert_eq(x63, 6300);
+    assert_eq(x32, 32);
+    assert_eq(x0, 0);
+
+    // Deep recursion
+    let r_rec = recursive_func(10);
+    assert_eq(r_rec, 55);
+    assert_eq(x63, 6300);
+
+    // Lambda capturing outer local
+    let lam = fn (v: int) -> int { return v + x63; };
+    assert_eq(lam(10), 6310);
+    assert_eq(x63, 6300);
+
+    // Nested lambda capturing across levels
+    let nest = fn (v: int) -> int {
+        let inner = fn (w: int) -> int { return w + x63; };
+        return inner(v + 20);
+    };
+    assert_eq(nest(5), 6325);
+    assert_eq(x63, 6300);
+}
+
+fn main() {
+    test_locals_31();
+    test_locals_32();
+    test_locals_33();
+    test_locals_64();
+    println("ALL_FRAME_INVARIANTS_OK");
+}

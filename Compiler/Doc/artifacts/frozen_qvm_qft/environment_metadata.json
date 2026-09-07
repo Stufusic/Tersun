@@ -1,0 +1,20 @@
+{
+  "freeze_date": "2026-09-06 21:50:54",
+  "component": "Tersun QVM (Quantum Fourier Transform Scaling N=16..22)",
+  "architecture": "x86_64 Host",
+  "compiler": "GCC 15.2.0 -std=c++20 -O3",
+  "sim_backend": "Statevector Exact Complex128",
+  "fidelity": "1.0000000000 (100% exact analytical)",
+  "scaling_divergence_analysis": {
+    "n16_to_n20": "Well-behaved O(N^2 * 2^N) FLOP scaling within CPU L3 Cache (1MB -> 16MB)",
+    "knee_point": "N=21 -> N=22 (32MB -> 64MB)",
+    "root_cause": "Exceeds CPU L3 Cache (~16MB-24MB) -> Memory bus saturation and TLB thrashing on 4.19M statevector"
+  },
+  "hashes": {
+    "bench_qft_scaling.cpp": "a91408f222b78f4167f2a70e5c7bba79d04ac2cf88c14ba46ed821bb38d65e34",
+    "bench_qft_scaling.exe": "ab18b0b86926ffdf581a955fce7273f1583f9afdbb6dba892ba1906a6b23ab4a",
+    "qft_scaling_curves.png": "831c8447188663e4f999209f8411e5ff9ebaf80716fc0cbf440092ca67e7a720",
+    "qft_scaling_curves.svg": "5bacbce90cdcd8ce6c207f5f1d49262a554ebd76a8449e1163fd04c502f4d103",
+    "qft_scaling_data.json": "27c1e2fbb5886006d3202408b6607309841046b1e1b9c09b952b335c2e4824b7"
+  }
+}

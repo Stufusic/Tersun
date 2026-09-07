@@ -7,11 +7,11 @@ namespace compiler {
 using namespace setun;
 
 QEmitter::QEmitter()
-    : circuit_(16) {}
+    : circuit_(kMaxQubits) {}
 
 size_t QEmitter::allocate_qubit() {
     if (next_qubit_id_ >= kMaxQubits) {
-        throw CompilerException("[Q-ISA] quantum register exhausted: this program needs more than 16 qubits.");
+        throw CompilerException("[Q-ISA] quantum register exhausted: this program needs more than " + std::to_string(kMaxQubits) + " qubits.");
     }
     return next_qubit_id_++;
 }
@@ -42,6 +42,79 @@ bool QEmitter::is_const_int(Expr* expr, int64_t& out_value) {
         }
     }
     return false;
+}
+
+// Serialize gates appended to circuit_ since from_index into Q-ISA bytes,
+// keeping the QuantumCircuit (QASM/execute view) and the .qbc stream in sync.
+void QEmitter::emit_gates_to_chunk(size_t from_index, qvm::QChunk& chunk) {
+    const std::vector<qvm::QuantumGate>& gates = circuit_.gates();
+    for (size_t i = from_index; i < gates.size(); ++i) {
+        const qvm::QuantumGate& g = gates[i];
+        switch (g.type) {
+            case qvm::GateType::H:
+                chunk.emit_byte(static_cast<uint8_t>(qvm::QOpCode::OP_H));
+                chunk.emit_byte(static_cast<uint8_t>(g.targets[0]));
+                break;
+            case qvm::GateType::X:
+                chunk.emit_byte(static_cast<uint8_t>(qvm::QOpCode::OP_X));
+                chunk.emit_byte(static_cast<uint8_t>(g.targets[0]));
+                break;
+            case qvm::GateType::Y:
+                chunk.emit_byte(static_cast<uint8_t>(qvm::QOpCode::OP_Y));
+                chunk.emit_byte(static_cast<uint8_t>(g.targets[0]));
+                break;
+            case qvm::GateType::Z:
+                chunk.emit_byte(static_cast<uint8_t>(qvm::QOpCode::OP_Z));
+                chunk.emit_byte(static_cast<uint8_t>(g.targets[0]));
+                break;
+            case qvm::GateType::S:
+                chunk.emit_byte(static_cast<uint8_t>(qvm::QOpCode::OP_S));
+                chunk.emit_byte(static_cast<uint8_t>(g.targets[0]));
+                break;
+            case qvm::GateType::T:
+                chunk.emit_byte(static_cast<uint8_t>(qvm::QOpCode::OP_T));
+                chunk.emit_byte(static_cast<uint8_t>(g.targets[0]));
+                break;
+            case qvm::GateType::RX:
+                chunk.emit_byte(static_cast<uint8_t>(qvm::QOpCode::OP_RX));
+                chunk.emit_byte(static_cast<uint8_t>(g.targets[0]));
+                chunk.emit_f64(g.param);
+                break;
+            case qvm::GateType::RY:
+                chunk.emit_byte(static_cast<uint8_t>(qvm::QOpCode::OP_RY));
+                chunk.emit_byte(static_cast<uint8_t>(g.targets[0]));
+                chunk.emit_f64(g.param);
+                break;
+            case qvm::GateType::RZ:
+                chunk.emit_byte(static_cast<uint8_t>(qvm::QOpCode::OP_RZ));
+                chunk.emit_byte(static_cast<uint8_t>(g.targets[0]));
+                chunk.emit_f64(g.param);
+                break;
+            case qvm::GateType::CNOT:
+                chunk.emit_byte(static_cast<uint8_t>(qvm::QOpCode::OP_CNOT));
+                chunk.emit_byte(static_cast<uint8_t>(g.targets[0]));
+                chunk.emit_byte(static_cast<uint8_t>(g.targets[1]));
+                break;
+            case qvm::GateType::CZ:
+                chunk.emit_byte(static_cast<uint8_t>(qvm::QOpCode::OP_CZ));
+                chunk.emit_byte(static_cast<uint8_t>(g.targets[0]));
+                chunk.emit_byte(static_cast<uint8_t>(g.targets[1]));
+                break;
+            case qvm::GateType::SWAP:
+                chunk.emit_byte(static_cast<uint8_t>(qvm::QOpCode::OP_SWAP));
+                chunk.emit_byte(static_cast<uint8_t>(g.targets[0]));
+                chunk.emit_byte(static_cast<uint8_t>(g.targets[1]));
+                break;
+            case qvm::GateType::TOFFOLI:
+                chunk.emit_byte(static_cast<uint8_t>(qvm::QOpCode::OP_TOFFOLI));
+                chunk.emit_byte(static_cast<uint8_t>(g.targets[0]));
+                chunk.emit_byte(static_cast<uint8_t>(g.targets[1]));
+                chunk.emit_byte(static_cast<uint8_t>(g.targets[2]));
+                break;
+            default:
+                throw CompilerException("[Q-ISA] gate kind is not serializable to Q-ISA bytecode.");
+        }
+    }
 }
 
 void QEmitter::emit_expr(Expr* expr, size_t dst_q, qvm::QChunk& chunk) {
@@ -136,6 +209,48 @@ void QEmitter::emit_expr(Expr* expr, size_t dst_q, qvm::QChunk& chunk) {
             chunk.emit_byte(static_cast<uint8_t>(dst_q));
         }
         else if constexpr (std::is_same_v<T, CallExpr>) {
+            // Quantum algorithm builtins (M6): statement-style, like the
+            // bitnet_* builtins on the classical targets. qft/grover expand
+            // into primitive Q-ISA gates on qubits [0, n); qmeasure collapses
+            // qubit q into classical register q so run-qvm can report it.
+            if (e.callee == "qft" || e.callee == "grover" || e.callee == "qmeasure") {
+                std::vector<int64_t> args;
+                for (Expr* a : e.args) {
+                    int64_t v = 0;
+                    if (!is_const_int(a, v)) {
+                        throw CompilerException("[Q-ISA] " + e.callee + "() arguments must be compile-time integer constants.");
+                    }
+                    args.push_back(v);
+                }
+                if (e.callee == "qft") {
+                    if (args.size() != 1 || args[0] < 1 || args[0] > static_cast<int64_t>(kMaxQubits)) {
+                        throw CompilerException("[Q-ISA] qft(n) requires one constant n with 1 <= n <= " + std::to_string(kMaxQubits) + ".");
+                    }
+                    size_t from = circuit_.gates().size();
+                    circuit_.qft(static_cast<size_t>(args[0]));
+                    emit_gates_to_chunk(from, chunk);
+                } else if (e.callee == "grover") {
+                    if (args.size() != 2 || args[0] < 1 || args[0] > 3) {
+                        throw CompilerException("[Q-ISA] grover(n, target) requires constant n with 1 <= n <= 3.");
+                    }
+                    int64_t n = args[0];
+                    if (args[1] < 0 || args[1] >= (int64_t(1) << n)) {
+                        throw CompilerException("[Q-ISA] grover target must lie in [0, 2^n).");
+                    }
+                    size_t from = circuit_.gates().size();
+                    circuit_.grover(static_cast<size_t>(n), static_cast<size_t>(args[1]));
+                    emit_gates_to_chunk(from, chunk);
+                } else { // qmeasure(q)
+                    if (args.size() != 1 || args[0] < 0 || args[0] >= static_cast<int64_t>(kMaxQubits)) {
+                        throw CompilerException("[Q-ISA] qmeasure(q) requires one constant q with 0 <= q < " + std::to_string(kMaxQubits) + ".");
+                    }
+                    uint8_t q = static_cast<uint8_t>(args[0]);
+                    chunk.emit_byte(static_cast<uint8_t>(qvm::QOpCode::OP_MEASURE));
+                    chunk.emit_byte(q); // classical register q
+                    chunk.emit_byte(q); // qubit q
+                }
+                return;
+            }
             for (Expr* a : e.args) {
                 size_t arg_q = next_qubit_id_++;
                 emit_expr(a, arg_q, chunk);
@@ -440,14 +555,14 @@ void QEmitter::emit_stmt(Stmt* stmt, qvm::QChunk& chunk) {
 
 qvm::QChunk QEmitter::compile(const Program& program) {
     qvm::QChunk chunk;
-    chunk.num_qubits = 16;
+    chunk.num_qubits = kMaxQubits;
     chunk.code.clear();
     next_qubit_id_ = 0;
     var_to_qubit_.clear();
-    circuit_ = qvm::QuantumCircuit(16);
+    circuit_ = qvm::QuantumCircuit(kMaxQubits);
 
     chunk.emit_byte(static_cast<uint8_t>(qvm::QOpCode::OP_INIT));
-    chunk.emit_byte(16);
+    chunk.emit_byte(static_cast<uint8_t>(kMaxQubits));
 
     for (Stmt* stmt : program.statements) {
         emit_stmt(stmt, chunk);

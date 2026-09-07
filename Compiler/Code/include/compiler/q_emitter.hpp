@@ -30,7 +30,10 @@ public:
     std::string emit_qasm(const Program& program, const std::string& circuit_name = "tersun_native_qasm");
 
 private:
-    qvm::QuantumCircuit circuit_{16};
+    static constexpr size_t kMaxQubits = 24;
+    static constexpr int kMaxUnrollTrips = 256;
+
+    qvm::QuantumCircuit circuit_{kMaxQubits};
     std::unordered_map<std::string, size_t> var_to_qubit_;
     size_t next_qubit_id_{0};
 
@@ -43,11 +46,11 @@ private:
     };
     std::vector<UnrollContext> unroll_stack_;
 
-    static constexpr size_t kMaxQubits = 16;
-    static constexpr int kMaxUnrollTrips = 256;
-
     size_t get_or_allocate_qubit(const std::string& name);
     size_t allocate_qubit();
+    // Serialize circuit_ gates appended since from_index into Q-ISA bytecode
+    // (used by the quantum algorithm builtins qft/grover).
+    void emit_gates_to_chunk(size_t from_index, qvm::QChunk& chunk);
     void emit_stmt(Stmt* stmt, qvm::QChunk& chunk);
     void emit_unroll_stmt(Stmt* stmt, qvm::QChunk& chunk);
     void emit_unroll_body(Stmt* body, qvm::QChunk& chunk);

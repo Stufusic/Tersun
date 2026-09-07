@@ -71,8 +71,23 @@ public:
     QuantumCircuit& cz(size_t ctrl, size_t target);
     QuantumCircuit& swap(size_t q1, size_t q2);
 
+    // Controlled-Phase, expanded at build time into the standard primitive
+    // decomposition (RZ on the control, CNOT, RZ on the target, CNOT, RZ on
+    // the target) so execute()/QASM/Q-ISA bytecode need no new gate kind.
+    // Exact up to the global phase e^{-i*theta/4}.
+    QuantumCircuit& cphase(size_t ctrl, size_t target, double theta);
+
     // 3-Qubit Gate Application
     QuantumCircuit& toffoli(size_t c1, size_t c2, size_t target);
+
+    // Algorithm builders (operate on qubits [0, n), qubit q = bit q of the
+    // basis index). Both expand into primitive gates only.
+    // QFT: |j> -> (1/sqrt(N)) * sum_k e^{2*pi*i*j*k/N} |k>.
+    QuantumCircuit& qft(size_t n);
+    // Grover search: marks |target> with R = floor(pi/4 * sqrt(N)) iterations
+    // of (diffusion after oracle); n <= 3 (multi-controlled Z via CZ/TOFFOLI).
+    // Prepares its own uniform superposition, so the qubits must start in |0...0>.
+    QuantumCircuit& grover(size_t n, size_t target);
 
     // Ternary Gates
     QuantumCircuit& ternary_cycle(size_t q);

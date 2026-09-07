@@ -1,0 +1,15 @@
+// Compute-only (external timing): raw sum loop 5M x 20
+fn main() {
+    let sink = 0;
+    for k in range(20) {
+        let s = 0;
+        for i in range(5000000) {
+            s += i;
+            if (s > 1000000000) {
+                s = 0;
+            }
+        }
+        sink += s;
+    }
+    println(sink);
+}

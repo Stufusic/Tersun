@@ -1,0 +1,30 @@
+// ============================================================================
+// Regression: recursive functions whose result flows through a local variable
+// (let/if-else/return) must return per-frame values. Before the CallFrame
+// stack_depth fix, the callee's leftover operand-stack values contaminated
+// the caller's expression evaluation and g(10) returned 0 instead of 55.
+// ============================================================================
+
+fn g(n: int) -> int {
+    let r = 0;
+    if (n < 2) {
+        r = n;
+    } else {
+        r = g(n - 1) + g(n - 2);
+    }
+    return r;
+}
+
+fn f(n: int) -> int {
+    if (n < 2) {
+        return n;
+    }
+    return f(n - 1) + f(n - 2);
+}
+
+fn main() {
+    let a = g(10);          // 55 via local-variable recursion
+    let b = f(10);          // 55 via early-return recursion (must not regress)
+    let c = g(5) + g(2);    // 5 + 1 = 6, two calls inside one expression
+    println(f"RECUR_OK {a} {b} {c}");
+}

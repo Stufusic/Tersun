@@ -1,0 +1,5 @@
+fn main() {
+    let a = 3;
+    let bé = 4;
+    println(a + bé);
+}

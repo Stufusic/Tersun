@@ -1,0 +1,17 @@
+// ============================================================================
+// Workload Category 3: Memory & Array Operations
+// Dynamic array creation, indexing, reading and writing
+// ============================================================================
+
+fn main() {
+    let t0 = time_now_us();
+    let arr = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    let sum = 0;
+    for i in range(200000) {
+        let idx = i - (i / 10) * 10;
+        arr[idx] = arr[idx] + 1;
+        sum += arr[idx];
+    }
+    let t1 = time_now_us();
+    println(f"MEMORY_ARRAY sum={sum} time_us={t1 - t0}");
+}

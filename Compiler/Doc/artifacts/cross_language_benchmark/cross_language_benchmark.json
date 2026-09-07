@@ -1,0 +1,120 @@
+{
+  "metadata": {
+    "date": "2026-09-06 21:13:22",
+    "compiler_cpp": "g++ 15.2.0 -O3",
+    "compiler_rust": "N/A",
+    "python_version": "3.14.3",
+    "tersun_version": "1.0.3 (Gate 4 Tier-1 Adaptive VM)",
+    "reps": 10
+  },
+  "benchmarks": {
+    "H1": {
+      "name": "H1: Prime Sieve (N=100,000)",
+      "expected_checksum": "9592",
+      "targets": {
+        "cpp20": {
+          "median": 0.121,
+          "mean": 0.125,
+          "stddev": 0.0087,
+          "min": 0.118,
+          "max": 0.144
+        },
+        "tersun_vm": {
+          "median": 25.424,
+          "mean": 26.936,
+          "stddev": 3.6811,
+          "min": 24.366,
+          "max": 34.57
+        },
+        "python": {
+          "median": 24.297,
+          "mean": 25.717,
+          "stddev": 4.3194,
+          "min": 21.93,
+          "max": 36.147
+        }
+      }
+    },
+    "H2": {
+      "name": "H2: Matrix Multiplication (100x100)",
+      "expected_checksum": "20250000",
+      "targets": {
+        "cpp20": {
+          "median": 0.364,
+          "mean": 0.362,
+          "stddev": 0.0088,
+          "min": 0.35,
+          "max": 0.38
+        },
+        "tersun_vm": {
+          "median": 154.825,
+          "mean": 158.995,
+          "stddev": 9.4054,
+          "min": 151.579,
+          "max": 178.172
+        },
+        "python": {
+          "median": 170.39,
+          "mean": 171.752,
+          "stddev": 7.7669,
+          "min": 157.172,
+          "max": 181.742
+        }
+      }
+    },
+    "H3": {
+      "name": "H3: N-Queens (N=11)",
+      "expected_checksum": "2680",
+      "targets": {
+        "cpp20": {
+          "median": 0.922,
+          "mean": 0.961,
+          "stddev": 0.0981,
+          "min": 0.891,
+          "max": 1.206
+        },
+        "tersun_vm": {
+          "median": 29.521,
+          "mean": 29.652,
+          "stddev": 1.8293,
+          "min": 26.816,
+          "max": 32.791
+        },
+        "python": {
+          "median": 43.399,
+          "mean": 43.308,
+          "stddev": 0.9758,
+          "min": 41.402,
+          "max": 44.366
+        }
+      }
+    },
+    "H4": {
+      "name": "H4: Binary Trees (Depth=14)",
+      "expected_checksum": "178973354",
+      "targets": {
+        "cpp20": {
+          "median": 1.04,
+          "mean": 1.115,
+          "stddev": 0.2171,
+          "min": 0.995,
+          "max": 1.717
+        },
+        "tersun_vm": {
+          "median": 38.218,
+          "mean": 38.844,
+          "stddev": 2.7984,
+          "min": 36.88,
+          "max": 46.674
+        },
+        "python": {
+          "median": 7.88,
+          "mean": 7.876,
+          "stddev": 0.3732,
+          "min": 7.285,
+          "max": 8.522
+        }
+      }
+    }
+  }
+}

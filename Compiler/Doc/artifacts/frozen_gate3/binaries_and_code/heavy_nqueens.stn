@@ -1,0 +1,35 @@
+// ============================================================================
+// Heavy Workload H3: N-Queens Bitmask Backtracking Solver (N = 11)
+// Tests: Bitwise operations (&, |, ^, <<, >>), recursive stack frames, branch prediction
+// Correct solutions count for N = 11: 2680
+// ============================================================================
+
+fn solve_nqueens(row: int, n: int, cols: int, diag1: int, diag2: int) -> int {
+    if (row == n) {
+        return 1;
+    }
+    let count = 0;
+    let all_ones = (1 << n) - 1;
+    let occupied = cols | diag1 | diag2;
+    let available = all_ones ^ (all_ones & occupied);
+
+    while (available > 0) {
+        // Pick the lowest set bit
+        let bit = available & (0 - available);
+        available = available ^ bit;
+        count += solve_nqueens(row + 1, n, cols | bit, (diag1 | bit) << 1, (diag2 | bit) >> 1);
+    }
+    return count;
+}
+
+fn main() {
+    let t0 = time_now_us();
+    let n = 11;
+    let solutions = solve_nqueens(0, n, 0, 0, 0);
+    let t1 = time_now_us();
+
+    print("HEAVY_NQUEENS solutions=");
+    print(solutions);
+    print(" time_us=");
+    println(t1 - t0);
+}

@@ -1,0 +1,39 @@
+// ============================================================================
+// Heavy Workload H1: Prime Sieve of Eratosthenes (N = 100,000)
+// Tests: Memory allocation, array mutation, cache line traversal, tight branches
+// Correct checksum: primes up to 100,000 = 9592
+// ============================================================================
+
+fn main() {
+    let t0 = time_now_us();
+    let n = 100000;
+    
+    // Initialize flags array of size 100,000 (0 = prime, 1 = composite)
+    let flags = [0, 0, 0, 0];
+    for i in range(25000) {
+        flags.push(0); flags.push(0); flags.push(0); flags.push(0);
+    }
+
+    for p in range(2, 320) {
+        if (flags[p] == 0) {
+            let mult = p * p;
+            while (mult <= n) {
+                flags[mult] = 1;
+                mult += p;
+            }
+        }
+    }
+
+    let count = 0;
+    for i in range(2, n + 1) {
+        if (flags[i] == 0) {
+            count += 1;
+        }
+    }
+
+    let t1 = time_now_us();
+    print("HEAVY_SIEVE count=");
+    print(count);
+    print(" time_us=");
+    println(t1 - t0);
+}

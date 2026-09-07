@@ -1,0 +1,37 @@
+{
+  "timestamp": "2026-09-06 14:07:50 UTC",
+  "platform": {
+    "system": "Windows",
+    "release": "11",
+    "version": "10.0.26200",
+    "machine": "AMD64",
+    "processor": "Intel64 Family 6 Model 154 Stepping 4, GenuineIntel"
+  },
+  "git": {
+    "commit": "753d8385b021312db8f426f60559b9974c86b68a",
+    "clean": false
+  },
+  "toolchain": {
+    "compiler": "g++ (GCC) 15.2.0 -std=c++20",
+    "python": "3.14.3 (tags/v3.14.3:323c59a, Feb  3 2026, 16:04:56) [MSC v.1944 64 bit (AMD64)]"
+  },
+  "gate": "Gate 4 (Tier-1 Adaptive VM: Superinstructions, Quickening, Shape Inline Caching)",
+  "artifacts": {
+    "setunc.exe": "dbd750360d466cb1de526840c284eb88c65b1270430078d13d93fc509b166026",
+    "setunc_test.exe": "8bb940929f77a3601058c4acc7557ed2e282a1deb448bfddc0783984b1eccf5c",
+    "libtersun_rt.a": "c361cc990000055023296e3cbd9ee8e3dd2fc7f7f3bedb113742cba60b8be04a",
+    "opcode.hpp": "924d0692e8eca7abd5d10e2c92de0adf92e299cdf1565e61101b050eeeb4b2da",
+    "opt_bytecode.hpp": "f190f7f4eb0fc09b6345df12ba9b842903ec609564d4455403c654abc73dec09",
+    "value.hpp": "012baf2848169cc376fbf92ee77bf272f173d09ac2507c1e5acbaf9046439b9b",
+    "vm.hpp": "7a05cffe9b38538d756d18753c46c186dd666818ff37eb77c15a2130bfa45d36",
+    "vm.cpp": "18719e9de2cb53b150e768c079664abaf4b05306e86d8a7721c2c266ee6ec2c2",
+    "emitter.cpp": "7f2d07e355592ce3901af41d762b5bdfe2fc5443eac8c0a4892bf27743a56372",
+    "main.cpp": "c9ec89c2ade451de24400c0b36d6e4bc964e68a5236ac5685c3c7bf450d90d8c",
+    "test_gate4_semantics_boundary.cpp": "58b4082a15bce4de230d6cc22039bb523d58a10401e18f7f27551d9a6a4be75e",
+    "test_frame_invariants.stn": "efabbd03b3a8f324e6cbb4d28667c2096b783ef38b7287358c64091b569bc0d9",
+    "bench_polymorphic.stn": "8b2763cd360d50c6be37b548fb1ff0949fc91038b8e9a9f69154ed9ab6445e71",
+    "bench_shape_ic.stn": "c37d15ca34bf203721a1df45933c37739f355ab3292bd8e3c0e8423c82c2c531",
+    "run_gate4_ablation_study.py": "309b6febf6f3cc300a7fd68dd7ba1a8e181a77e581d816742205d19101f24646",
+    "gate4_ablation_matrix.json": "43d7bbb2b2a25aa51e4116faef1cf957f5d7b52fc76e04b3d61b71b4a514148a"
+  }
+}

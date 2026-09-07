@@ -1,0 +1,548 @@
+{
+  "metadata": {
+    "timestamp": "2026-09-06 15:46:02",
+    "repetitions": 10,
+    "dispatch_modes": [
+      "fnptr",
+      "switch",
+      "threaded",
+      "cached"
+    ]
+  },
+  "workloads": {
+    "dispatch_3m": {
+      "name": "Dispatch-Heavy (3M ops)",
+      "tiers": {
+        "fnptr": {
+          "name": "Variant 0: Function Pointer",
+          "raw_ms": [
+            1039.682,
+            1065.602,
+            1055.403,
+            1064.984,
+            1087.13,
+            1075.697,
+            1058.121,
+            1046.924,
+            1042.354,
+            1048.931
+          ],
+          "median_ms": 1056.76,
+          "mean_ms": 1058.48,
+          "stdev_ms": 15.12,
+          "variance": 228.6674,
+          "speedup_vs_baseline": 1.0,
+          "reduction_pct": 0.0
+        },
+        "switch": {
+          "name": "Variant 1: Inlined Switch",
+          "raw_ms": [
+            1550.558,
+            1289.945,
+            1285.32,
+            1274.776,
+            1314.864,
+            1412.031,
+            1290.504,
+            1285.186,
+            1368.282,
+            1311.975
+          ],
+          "median_ms": 1301.24,
+          "mean_ms": 1338.34,
+          "stdev_ms": 86.23,
+          "variance": 7435.2012,
+          "speedup_vs_baseline": 0.812,
+          "reduction_pct": -23.1
+        },
+        "threaded": {
+          "name": "Variant 2: Direct Threaded",
+          "raw_ms": [
+            1262.44,
+            1242.643,
+            1260.472,
+            1249.963,
+            1298.272,
+            1288.576,
+            1254.25,
+            1239.055,
+            1255.493,
+            1290.701
+          ],
+          "median_ms": 1257.98,
+          "mean_ms": 1264.19,
+          "stdev_ms": 20.95,
+          "variance": 438.7632,
+          "speedup_vs_baseline": 0.84,
+          "reduction_pct": -19.0
+        },
+        "cached": {
+          "name": "Variant 3: Register Cached",
+          "raw_ms": [
+            1067.052,
+            1034.381,
+            1047.867,
+            1036.247,
+            1017.098,
+            1056.637,
+            1079.158,
+            1035.579,
+            1020.066,
+            1027.751
+          ],
+          "median_ms": 1035.91,
+          "mean_ms": 1042.18,
+          "stdev_ms": 20.26,
+          "variance": 410.3628,
+          "speedup_vs_baseline": 1.02,
+          "reduction_pct": 2.0
+        }
+      }
+    },
+    "fib_24": {
+      "name": "Recursive Call fib(24)",
+      "tiers": {
+        "fnptr": {
+          "name": "Variant 0: Function Pointer",
+          "raw_ms": [
+            21.674,
+            28.011,
+            22.59,
+            21.672,
+            23.687,
+            22.141,
+            22.908,
+            22.728,
+            28.573,
+            31.697
+          ],
+          "median_ms": 22.82,
+          "mean_ms": 24.57,
+          "stdev_ms": 3.53,
+          "variance": 12.4666,
+          "speedup_vs_baseline": 1.0,
+          "reduction_pct": 0.0
+        },
+        "switch": {
+          "name": "Variant 1: Inlined Switch",
+          "raw_ms": [
+            29.519,
+            28.816,
+            31.874,
+            31.575,
+            34.326,
+            35.123,
+            29.775,
+            29.01,
+            27.951,
+            28.788
+          ],
+          "median_ms": 29.65,
+          "mean_ms": 30.68,
+          "stdev_ms": 2.47,
+          "variance": 6.0797,
+          "speedup_vs_baseline": 0.77,
+          "reduction_pct": -29.9
+        },
+        "threaded": {
+          "name": "Variant 2: Direct Threaded",
+          "raw_ms": [
+            30.191,
+            28.608,
+            27.866,
+            27.729,
+            28.377,
+            28.258,
+            28.198,
+            27.244,
+            27.811,
+            28.173
+          ],
+          "median_ms": 28.19,
+          "mean_ms": 28.25,
+          "stdev_ms": 0.78,
+          "variance": 0.616,
+          "speedup_vs_baseline": 0.81,
+          "reduction_pct": -23.5
+        },
+        "cached": {
+          "name": "Variant 3: Register Cached",
+          "raw_ms": [
+            24.044,
+            22.398,
+            22.238,
+            22.19,
+            22.397,
+            22.751,
+            22.965,
+            22.198,
+            39.404,
+            29.865
+          ],
+          "median_ms": 22.57,
+          "mean_ms": 25.05,
+          "stdev_ms": 5.56,
+          "variance": 30.9065,
+          "speedup_vs_baseline": 1.011,
+          "reduction_pct": 1.1
+        }
+      }
+    },
+    "branch_2m": {
+      "name": "Dense Branching (2M ops)",
+      "tiers": {
+        "fnptr": {
+          "name": "Variant 0: Function Pointer",
+          "raw_ms": [
+            800.13,
+            806.259,
+            834.241,
+            819.729,
+            821.898,
+            804.0,
+            808.066,
+            842.134,
+            976.774,
+            964.929
+          ],
+          "median_ms": 820.81,
+          "mean_ms": 847.82,
+          "stdev_ms": 66.27,
+          "variance": 4391.5169,
+          "speedup_vs_baseline": 1.0,
+          "reduction_pct": 0.0
+        },
+        "switch": {
+          "name": "Variant 1: Inlined Switch",
+          "raw_ms": [
+            984.544,
+            1051.847,
+            1004.31,
+            1220.135,
+            1175.399,
+            1176.71,
+            1000.653,
+            939.951,
+            954.191,
+            959.376
+          ],
+          "median_ms": 1002.48,
+          "mean_ms": 1046.71,
+          "stdev_ms": 104.84,
+          "variance": 10992.3971,
+          "speedup_vs_baseline": 0.819,
+          "reduction_pct": -22.1
+        },
+        "threaded": {
+          "name": "Variant 2: Direct Threaded",
+          "raw_ms": [
+            1010.646,
+            936.719,
+            933.337,
+            995.927,
+            925.213,
+            922.6,
+            927.627,
+            938.932,
+            942.401,
+            931.64
+          ],
+          "median_ms": 935.03,
+          "mean_ms": 946.5,
+          "stdev_ms": 30.74,
+          "variance": 944.6781,
+          "speedup_vs_baseline": 0.878,
+          "reduction_pct": -13.9
+        },
+        "cached": {
+          "name": "Variant 3: Register Cached",
+          "raw_ms": [
+            754.411,
+            744.329,
+            733.622,
+            738.521,
+            746.856,
+            737.516,
+            743.35,
+            780.699,
+            871.719,
+            922.287
+          ],
+          "median_ms": 745.59,
+          "mean_ms": 777.33,
+          "stdev_ms": 65.52,
+          "variance": 4292.4999,
+          "speedup_vs_baseline": 1.101,
+          "reduction_pct": 9.2
+        }
+      }
+    },
+    "memory_200k": {
+      "name": "Memory & Dynamic Array (200k ops)",
+      "tiers": {
+        "fnptr": {
+          "name": "Variant 0: Function Pointer",
+          "raw_ms": [
+            173.24,
+            163.481,
+            163.369,
+            161.116,
+            160.297,
+            160.986,
+            170.156,
+            174.508,
+            182.28,
+            181.863
+          ],
+          "median_ms": 166.82,
+          "mean_ms": 169.13,
+          "stdev_ms": 8.53,
+          "variance": 72.8434,
+          "speedup_vs_baseline": 1.0,
+          "reduction_pct": 0.0
+        },
+        "switch": {
+          "name": "Variant 1: Inlined Switch",
+          "raw_ms": [
+            160.524,
+            155.506,
+            158.017,
+            162.021,
+            169.857,
+            164.513,
+            179.277,
+            164.115,
+            159.669,
+            157.868
+          ],
+          "median_ms": 161.27,
+          "mean_ms": 163.14,
+          "stdev_ms": 7.0,
+          "variance": 48.9797,
+          "speedup_vs_baseline": 1.034,
+          "reduction_pct": 3.3
+        },
+        "threaded": {
+          "name": "Variant 2: Direct Threaded",
+          "raw_ms": [
+            153.745,
+            152.572,
+            153.893,
+            153.429,
+            153.03,
+            159.966,
+            152.349,
+            152.28,
+            152.774,
+            151.812
+          ],
+          "median_ms": 152.9,
+          "mean_ms": 153.59,
+          "stdev_ms": 2.34,
+          "variance": 5.4698,
+          "speedup_vs_baseline": 1.091,
+          "reduction_pct": 8.3
+        },
+        "cached": {
+          "name": "Variant 3: Register Cached",
+          "raw_ms": [
+            131.629,
+            128.912,
+            124.837,
+            123.74,
+            127.598,
+            129.922,
+            127.826,
+            142.438,
+            126.607,
+            122.289
+          ],
+          "median_ms": 127.71,
+          "mean_ms": 128.58,
+          "stdev_ms": 5.63,
+          "variance": 31.7433,
+          "speedup_vs_baseline": 1.306,
+          "reduction_pct": 23.4
+        }
+      }
+    },
+    "arith_5m": {
+      "name": "Integer Arithmetic (5M ops)",
+      "tiers": {
+        "fnptr": {
+          "name": "Variant 0: Function Pointer",
+          "raw_ms": [
+            2946.088,
+            2687.079,
+            2694.722,
+            2556.875,
+            2701.45,
+            2649.797,
+            2766.274,
+            2434.006,
+            2442.959,
+            2516.394
+          ],
+          "median_ms": 2668.44,
+          "mean_ms": 2639.56,
+          "stdev_ms": 157.11,
+          "variance": 24684.7772,
+          "speedup_vs_baseline": 1.0,
+          "reduction_pct": 0.0
+        },
+        "switch": {
+          "name": "Variant 1: Inlined Switch",
+          "raw_ms": [
+            2557.133,
+            2492.091,
+            2487.614,
+            2498.078,
+            2571.608,
+            2500.869,
+            2515.673,
+            2481.824,
+            2558.335,
+            2518.472
+          ],
+          "median_ms": 2508.27,
+          "mean_ms": 2518.17,
+          "stdev_ms": 32.71,
+          "variance": 1070.1241,
+          "speedup_vs_baseline": 1.064,
+          "reduction_pct": 6.0
+        },
+        "threaded": {
+          "name": "Variant 2: Direct Threaded",
+          "raw_ms": [
+            2555.664,
+            2449.934,
+            2479.032,
+            2639.347,
+            3020.028,
+            2446.434,
+            2437.624,
+            2469.841,
+            2540.85,
+            2639.769
+          ],
+          "median_ms": 2509.94,
+          "mean_ms": 2567.85,
+          "stdev_ms": 175.98,
+          "variance": 30969.5385,
+          "speedup_vs_baseline": 1.063,
+          "reduction_pct": 5.9
+        },
+        "cached": {
+          "name": "Variant 3: Register Cached",
+          "raw_ms": [
+            2097.054,
+            1962.854,
+            1966.901,
+            2051.438,
+            1987.194,
+            1977.062,
+            1937.015,
+            1966.564,
+            2053.925,
+            1999.962
+          ],
+          "median_ms": 1982.13,
+          "mean_ms": 2000.0,
+          "stdev_ms": 50.8,
+          "variance": 2580.4272,
+          "speedup_vs_baseline": 1.346,
+          "reduction_pct": 25.7
+        }
+      }
+    },
+    "tafpu_50k": {
+      "name": "TAFPU Algebraic in Q(sqrt(3)) (50k ops)",
+      "tiers": {
+        "fnptr": {
+          "name": "Variant 0: Function Pointer",
+          "raw_ms": [
+            20.578,
+            26.768,
+            21.616,
+            19.666,
+            20.427,
+            18.607,
+            18.468,
+            17.939,
+            19.874,
+            20.463
+          ],
+          "median_ms": 20.15,
+          "mean_ms": 20.44,
+          "stdev_ms": 2.49,
+          "variance": 6.2077,
+          "speedup_vs_baseline": 1.0,
+          "reduction_pct": 0.0
+        },
+        "switch": {
+          "name": "Variant 1: Inlined Switch",
+          "raw_ms": [
+            18.683,
+            18.734,
+            18.936,
+            18.537,
+            18.977,
+            18.623,
+            18.574,
+            18.746,
+            18.817,
+            19.003
+          ],
+          "median_ms": 18.74,
+          "mean_ms": 18.76,
+          "stdev_ms": 0.17,
+          "variance": 0.0278,
+          "speedup_vs_baseline": 1.075,
+          "reduction_pct": 7.0
+        },
+        "threaded": {
+          "name": "Variant 2: Direct Threaded",
+          "raw_ms": [
+            19.091,
+            18.138,
+            18.373,
+            23.267,
+            18.527,
+            18.608,
+            21.284,
+            18.261,
+            19.871,
+            18.061
+          ],
+          "median_ms": 18.57,
+          "mean_ms": 19.35,
+          "stdev_ms": 1.7,
+          "variance": 2.8801,
+          "speedup_vs_baseline": 1.085,
+          "reduction_pct": 7.9
+        },
+        "cached": {
+          "name": "Variant 3: Register Cached",
+          "raw_ms": [
+            14.621,
+            14.108,
+            15.935,
+            15.973,
+            14.368,
+            14.581,
+            14.6,
+            14.978,
+            14.955,
+            15.809
+          ],
+          "median_ms": 14.79,
+          "mean_ms": 14.99,
+          "stdev_ms": 0.68,
+          "variance": 0.4613,
+          "speedup_vs_baseline": 1.363,
+          "reduction_pct": 26.6
+        }
+      }
+    }
+  }
+}

@@ -31,6 +31,7 @@ void TypeChecker::init_builtins() {
     functions_["encode_tafpu"] = Type::make_function({Type::make_any()}, Type::make_taf3());
     functions_["to_double"] = Type::make_function({Type::make_taf3()}, Type::make_float());
     functions_["time_now_us"] = Type::make_function({}, Type::make_int());
+    functions_["monotonic_now_us"] = Type::make_function({}, Type::make_int());
     functions_["assert_eq"] = Type::make_function({Type::make_any(), Type::make_any()}, Type::make_void());
 
     // Setun2D Graphics
@@ -950,6 +951,30 @@ TypePtr TypeChecker::check_binary(BinaryExpr& expr) {
             }
             if (left_type->kind == TypeKind::TVEC3 || right_type->kind == TypeKind::TVEC3) {
                 return Type::make_tvec3();
+            }
+            return Type::make_int();
+
+        case BinaryOp::MOD:
+            if (left_type->kind == TypeKind::TRYTE || right_type->kind == TypeKind::TRYTE) {
+                return Type::make_tryte();
+            }
+            return Type::make_int();
+
+        case BinaryOp::BIT_AND:
+        case BinaryOp::BIT_OR:
+        case BinaryOp::BIT_XOR:
+            if (left_type->kind == TypeKind::TRYTE || right_type->kind == TypeKind::TRYTE) {
+                return Type::make_tryte();
+            }
+            if (left_type->kind == TypeKind::BOOL && right_type->kind == TypeKind::BOOL) {
+                return Type::make_bool();
+            }
+            return Type::make_int();
+
+        case BinaryOp::SHL:
+        case BinaryOp::SHR:
+            if (left_type->kind == TypeKind::TRYTE) {
+                return Type::make_tryte();
             }
             return Type::make_int();
 

@@ -1,0 +1,14 @@
+// ============================================================================
+// Workload Category 1: Dispatch-Heavy
+// Tests pure opcode dispatch overhead: LOAD_LOCAL, STORE_LOCAL, ADD, JUMP
+// ============================================================================
+
+fn main() {
+    let t0 = time_now_us();
+    let x = 0;
+    for i in range(3000000) {
+        x = x + 1;
+    }
+    let t1 = time_now_us();
+    println(f"DISPATCH_HEAVY checksum={x} time_us={t1 - t0}");
+}

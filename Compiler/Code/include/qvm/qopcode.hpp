@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cstring>
 #include <vector>
 #include <string>
 
@@ -72,6 +73,16 @@ struct QChunk {
         code.push_back(static_cast<uint8_t>((v >> 8) & 0xFF));
         code.push_back(static_cast<uint8_t>((v >> 16) & 0xFF));
         code.push_back(static_cast<uint8_t>((v >> 24) & 0xFF));
+    }
+
+    // Inline little-endian f64 for rotation angles (read back by the f64
+    // operand decoder shared with QChunk::disassemble).
+    void emit_f64(double v) {
+        uint64_t bits = 0;
+        std::memcpy(&bits, &v, sizeof(double));
+        for (int k = 0; k < 8; ++k) {
+            code.push_back(static_cast<uint8_t>((bits >> (k * 8)) & 0xFF));
+        }
     }
 
     bool save_to_file(const std::string& path) const;

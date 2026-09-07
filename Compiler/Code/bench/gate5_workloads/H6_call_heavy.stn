@@ -1,0 +1,33 @@
+// ============================================================================
+// Gate 5 Workload H6: Function-Call Heavy (750,000 Function Invocations)
+// Tests: Call frame setup, argument passing, stack depth sync, return value unwinding
+// ============================================================================
+
+fn helper(a: int, b: int, c: int) -> int {
+    return (a * 3 + b * 2 + c) % 1000000007;
+}
+
+fn worker(x: int) -> int {
+    let r1 = helper(x, x + 1, x + 2);
+    let r2 = helper(r1, x, r1 - x);
+    return r2;
+}
+
+fn main() {
+    let t0 = time_now_us();
+    let mut acc = 0;
+    let n = 250000;
+
+    for i in range(n) {
+        acc += worker(i % 1000);
+        if (acc > 1000000000) {
+            acc = acc % 1000000000;
+        }
+    }
+
+    let t1 = time_now_us();
+    print("WORKLOAD_H6_CALL_HEAVY checksum=");
+    print(acc);
+    print(" time_us=");
+    println(t1 - t0);
+}

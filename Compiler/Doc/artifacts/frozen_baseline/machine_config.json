@@ -1,0 +1,30 @@
+{
+  "os": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "system": "Windows",
+    "release": "11",
+    "version": "10.0.26200",
+    "architecture": "64bit"
+  },
+  "cpu": {
+    "model": "12th Gen Intel(R) Core(TM) i5-1245U",
+    "physical_cores": 10,
+    "logical_processors": 12,
+    "base_clock_mhz": 1600,
+    "l1_cache": "32 KB D-Cache + 48 KB I-Cache per P-core",
+    "l2_cache_kb": 6656,
+    "l3_cache_kb": 12288
+  },
+  "memory": {
+    "total_physical_ram_kb": 16454352,
+    "ram_gb": 16.0
+  },
+  "compilers": {
+    "host_cxx": "GCC 15.2.0 (MinGW-w64 x86_64-posix-seh)",
+    "host_cxx_flags": "-std=c++20 -O3",
+    "python_runtime": "CPython 3.14.3 (CPython)",
+    "tersun_version": "1.0.3",
+    "tersun_vm_representation": "Gate 1 (16B TaggedValue, alignas(16))",
+    "date_frozen": "2026-09-06 17:20:29"
+  }
+}

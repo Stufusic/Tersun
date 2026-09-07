@@ -13,18 +13,22 @@ namespace setun {
 
 enum Precedence {
     PREC_NONE = 0,
-    PREC_ASSIGNMENT = 1,   // =
+    PREC_ASSIGNMENT = 1,   // =, +=, -=, *=, /=, %=, &=, |=, ^=, <<=, >>=
     PREC_NULL_COALESCE = 2,// ?? (reserved)
     PREC_LOGICAL_OR = 3,   // ||
     PREC_LOGICAL_AND = 4,  // &&
-    PREC_TERNARY_CMP = 5,  // <=>
-    PREC_COMPARISON = 6,   // ==, !=, <, <=, >, >=
-    PREC_TERM = 7,         // +, -
-    PREC_FACTOR = 8,       // *, /, @ (MatMul)
-    PREC_KLEENE = 9,       // min, max
-    PREC_UNARY = 10,       // -, ~, not
-    PREC_POSTFIX = 11,     // ., ?., (), []
-    PREC_PRIMARY = 12
+    PREC_BIT_OR = 5,       // |
+    PREC_BIT_XOR = 6,      // ^
+    PREC_BIT_AND = 7,      // &
+    PREC_TERNARY_CMP = 8,  // <=>
+    PREC_COMPARISON = 9,   // ==, !=, <, <=, >, >=
+    PREC_SHIFT = 10,       // <<, >>
+    PREC_TERM = 11,        // +, -
+    PREC_FACTOR = 12,      // *, /, %, @ (MatMul)
+    PREC_KLEENE = 13,      // min, max
+    PREC_UNARY = 14,       // -, ~, not
+    PREC_POSTFIX = 15,     // ., ?., (), []
+    PREC_PRIMARY = 16
 };
 
 class Parser {

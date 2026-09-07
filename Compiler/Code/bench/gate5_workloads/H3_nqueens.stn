@@ -1,0 +1,38 @@
+// ============================================================================
+// Gate 5 Workload H3: N-Queens Solver (N = 11, Bit-Parallel Backtracking)
+// Tests: Deep call stack, branch divergence, bitwise tryte logic
+// Correct checksum: solutions = 2680
+// ============================================================================
+
+fn solve(row: int, cols: int, diag1: int, diag2: int, n: int) -> int {
+    if (row == n) {
+        return 1;
+    }
+    let count = 0;
+    for col in range(n) {
+        let col_bit = 1 << col;
+        let d1_bit = 1 << (row + col);
+        let d2_bit = 1 << (row - col + n);
+
+        if ((cols & col_bit) == 0) {
+            if ((diag1 & d1_bit) == 0) {
+                if ((diag2 & d2_bit) == 0) {
+                    count += solve(row + 1, cols | col_bit, diag1 | d1_bit, diag2 | d2_bit, n);
+                }
+            }
+        }
+    }
+    return count;
+}
+
+fn main() {
+    let t0 = time_now_us();
+    let n = 11;
+    let solutions = solve(0, 0, 0, 0, n);
+    let t1 = time_now_us();
+
+    print("WORKLOAD_H3_NQUEENS checksum=");
+    print(solutions);
+    print(" time_us=");
+    println(t1 - t0);
+}

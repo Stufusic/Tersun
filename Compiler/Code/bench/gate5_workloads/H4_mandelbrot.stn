@@ -1,0 +1,42 @@
+// ============================================================================
+// Gate 5 Workload H4: Mandelbrot Fractal Computation
+// Grid: 200 x 200 pixels, max 100 iterations
+// Tests: Floating-point arithmetic throughput, complex math, tight branch divergence
+// Correct checksum: 842053
+// ============================================================================
+
+fn main() {
+    let t0 = time_now_us();
+    let width = 200;
+    let height = 200;
+    let max_iter = 100;
+    let total_iterations = 0;
+
+    for py in range(height) {
+        let y0 = 0.0 - 1.5 + (py * 3.0) / 200.0;
+        for px in range(width) {
+            let x0 = 0.0 - 2.0 + (px * 3.0) / 200.0;
+            let x = 0.0;
+            let y = 0.0;
+            let iter = 0;
+            while (iter < max_iter) {
+                let x2 = x * x;
+                let y2 = y * y;
+                if (x2 + y2 > 4.0) {
+                    break;
+                }
+                let y_new = 2.0 * x * y + y0;
+                x = x2 - y2 + x0;
+                y = y_new;
+                iter += 1;
+            }
+            total_iterations += iter;
+        }
+    }
+
+    let t1 = time_now_us();
+    print("WORKLOAD_H4_MANDELBROT checksum=");
+    print(total_iterations);
+    print(" time_us=");
+    println(t1 - t0);
+}

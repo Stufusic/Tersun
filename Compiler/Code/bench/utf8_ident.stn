@@ -1,0 +1,5 @@
+fn main() {
+    let giá = 5;
+    let trị = 7;
+    println(giá + trị);
+}

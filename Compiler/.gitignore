@@ -17,3 +17,8 @@ scratch/
 # OS noise
 Thumbs.db
 Desktop.ini
+*.tmp
+*.log
+.zcode/
+Code/test_err.txt
+Code/test_out.txt

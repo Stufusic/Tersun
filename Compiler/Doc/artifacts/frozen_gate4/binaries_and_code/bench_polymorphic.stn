@@ -1,0 +1,66 @@
+// ============================================================================
+// Gate 4 Benchmark: Polymorphic Quickening & Transition Stability
+// P1: Monomorphic (100% pure int arithmetic via generic helper)
+// P2: Bimorphic (alternating int and float arithmetic via generic helper)
+// P3: Megamorphic (cycling multiple types via generic helper)
+// ============================================================================
+
+fn poly_add(a: any, b: any) -> any {
+    return a + b;
+}
+
+fn bench_p1_monomorphic(n: int) -> any {
+    let mut sum: any = 0;
+    for i in range(n) {
+        sum = poly_add(sum, 1);
+    }
+    return sum;
+}
+
+fn bench_p2_bimorphic(n: int) -> any {
+    let mut acc: any = 0;
+    for i in range(n) {
+        if ((i % 2) == 0) {
+            acc = poly_add(acc, 1);
+        } else {
+            acc = poly_add(acc, 0.5);
+        }
+    }
+    return acc;
+}
+
+fn bench_p3_megamorphic(n: int) -> any {
+    let mut acc: any = 0;
+    for i in range(n) {
+        let m = i % 3;
+        if (m == 0) {
+            acc = poly_add(acc, 1);
+        } else if (m == 1) {
+            acc = poly_add(acc, 0.5);
+        } else {
+            acc = poly_add(acc, 2);
+        }
+    }
+    return acc;
+}
+
+fn main() {
+    let t0 = time_now_us();
+    let r1 = bench_p1_monomorphic(1000000);
+    let t1 = time_now_us();
+
+    let t2 = time_now_us();
+    let r2 = bench_p2_bimorphic(1000000);
+    let t3 = time_now_us();
+
+    let t4 = time_now_us();
+    let r3 = bench_p3_megamorphic(1000000);
+    let t5 = time_now_us();
+
+    print("POLY_BENCH P1_us=");
+    print(t1 - t0);
+    print(" P2_us=");
+    print(t3 - t2);
+    print(" P3_us=");
+    println(t5 - t4);
+}
