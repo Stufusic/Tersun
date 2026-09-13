@@ -68,13 +68,13 @@ $$\mathbf{a} \mathbin{\%} \mathbf{b} = \operatorname{tryte}(\mathcal{V}(\mathbf{
 ### 2.3. Xử lý Biên Bắt buộc: Zero-Check Guard & Signed Integer Overflow
 Trong kiến trúc phần cứng x86-64 và LLVM IR:
 1. `b == 0`: Phép chia cho 0 kích hoạt ngắt phần cứng Hardware Fault (`#DE`) hoặc gây ra Undefined Behavior (UB) trong LLVM.
-2. `a == INT64_MIN && b == -1`: Trong hệ nhị phân bù 2, thương $\operatorname{INT64\_MIN} / -1 = 2^{63}$ vượt quá giới hạn cực đại `INT64_MAX` ($2^{63} - 1$), dẫn đến tràn số phần cứng trên lệnh x86 `idiv` và gây UB.
+2. `a == INT64_MIN && b == -1`: Trong hệ nhị phân bù 2, thương $(-2^{63}) / (-1) = 2^{63}$ (tương ứng `INT64_MIN / -1`) vượt quá giới hạn cực đại `INT64_MAX` ($2^{63} - 1$), dẫn đến tràn số phần cứng trên lệnh x86 `idiv` và gây UB.
 
 **Hợp đồng Thực thi Chuẩn mực (Execution Contract)**:
 Trước mọi phép tính $a \mathbin{\%} b$, hệ thống runtime và compiler bắt buộc phải thiết lập chốt chặn an toàn:
 $$\begin{cases}
 \mathbf{trap}(\text{DivisionByZeroException}), & \text{nếu } b = 0 \\
-0, & \text{nếu } a = \text{INT64\_MIN} \land b = -1
+0, & \text{nếu } a = -2^{63} \land b = -1
 \end{cases}$$
 
 - **Trên Máy ảo Bytecode VM**: Kích hoạt ngoại lệ `VMException("Division by zero in integer modulo.")`, cho phép bắt an toàn qua khối `try / catch`.
@@ -171,7 +171,7 @@ $$(\mathbf{t} \gg k)_i = \begin{cases} t_{i+k}, & \text{nếu } i + k < 6 \\ 0, 
 
 - **Bản chất Clock**: Sử dụng `std::chrono::steady_clock` (tương đương `CLOCK_MONOTONIC` trên POSIX hoặc `QueryPerformanceCounter` trên Windows).
 - **Tính chất Đảm bảo**: **Monotonic Non-Decreasing** (Đơn điệu không giảm):
-  $$\forall t_2 > t_1 \implies \text{monotonic\_now\_us}(t_2) \ge \text{monotonic\_now\_us}(t_1)$$
+  $$\forall t_2 > t_1 \implies \operatorname{now}(t_2) \ge \operatorname{now}(t_1)$$
 - **Đơn vị Đo**: Microseconds ($\mu s$).
 - **Giao diện API Chuẩn**:
   - Tên chính thức: `monotonic_now_us()`
@@ -192,7 +192,7 @@ Toàn bộ không gian trạng thái của `tryte` 6-trit ($3^6 = 729$ giá tr�
 | **`tryte % tryte`** (Truncated Rem) | Toàn bộ cặp với $\mathcal{V}(b) \neq 0$ | $729 \times 728 = \mathbf{530,712}$ | $\text{VM} \equiv \text{Native AOT} \equiv \text{Truncated Mod}$ |
 | **`tryte << k`** (Shift Left) | Mọi $a \in \mathbb{T}^6$, $k \in [0, 6]$ | $729 \times 7 = \mathbf{5,103}$ | $\text{VM} \equiv \text{Native AOT} \equiv \text{Trit Shift Def}$ |
 | **`tryte >> k`** (Shift Right) | Mọi $a \in \mathbb{T}^6$, $k \in [0, 6]$ | $729 \times 7 = \mathbf{5,103}$ | $\text{VM} \equiv \text{Native AOT} \equiv \text{Trit Shift Def}$ |
-| **Edge Case Division** | $b = 0$ và $\text{INT64\_MIN} \mathbin{\%} -1$ | Ma trận biên | Bẫy ném ngoại lệ nhất quán |
+| **Edge Case Division** | $b = 0$ và $a = -2^{63} \mathbin{\%} -1$ (`INT64_MIN`) | Ma trận biên | Bẫy ném ngoại lệ nhất quán |
 
 > [!NOTE]
 > **Tổng cộng kiểm thử**: Hơn **$2,135,241$ phép toán kiểm định vét cạn** bảo chứng tính tương đương ngữ nghĩa $100\%$ không suy hao giữa Bytecode VM, JIT/OSR Runtime, và Trình biên dịch LLVM AOT.
