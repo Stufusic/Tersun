@@ -7,7 +7,7 @@
 ```
              ┌─────────────────────────────────────────────────────────────┐
              │       TERSUN COMPUTER SYSTEMS & PROGRAMMING CURRICULUM      │
-             │           Đại học Khoa học Máy tính & Kỹ thuật Hệ thống     │
+             │        Hệ Thống Giáo Trình & Kỹ Nghệ Ngôn Ngữ Tersun        │
              └──────────────────────────────┬──────────────────────────────┘
                                             │
                     ┌───────────────────────┴───────────────────────┐
@@ -324,6 +324,6 @@ Mỗi chương trong giáo trình đều được liên kết trực tiếp vớ
 ---
 
 > **Bản quyền & Giữ nguyên Nội dung**:  
-> Toàn bộ nội dung chi tiết trong 6 tập giáo trình gốc được bảo toàn 100% nguyên trạng, chuẩn hóa cấu trúc định hướng học thuật và liên kết điều hướng thông suốt qua tài liệu này.  
-> *Đại học Công nghệ & Hệ thống Tính toán Tersun (Tersun Computing Systems Group).*
+> Toàn bộ nội dung chi tiết trong 6 tập giáo trình gốc được bảo toàn 100% nguyên trạng, chuẩn hóa cấu trúc định hướng học thuật và liên kết điều hướng thông suốt qua tài liệu này.
+
 
