@@ -1,0 +1,102 @@
+{
+  "numpy": {
+    "10": {
+      "dim": 1024,
+      "mem_mb": 0.015625,
+      "total_ms": 2.138199983164668,
+      "status": "SUCCESS"
+    },
+    "14": {
+      "dim": 16384,
+      "mem_mb": 0.25,
+      "total_ms": 2.0938999950885773,
+      "status": "SUCCESS"
+    },
+    "18": {
+      "dim": 262144,
+      "mem_mb": 4.0,
+      "total_ms": 104.39149988815188,
+      "status": "SUCCESS"
+    },
+    "20": {
+      "dim": 1048576,
+      "mem_mb": 16.0,
+      "total_ms": 461.8416999001056,
+      "status": "SUCCESS"
+    },
+    "22": {
+      "dim": 4194304,
+      "mem_mb": 64.0,
+      "total_ms": 1995.2620998956263,
+      "status": "SUCCESS"
+    },
+    "24": {
+      "dim": 16777216,
+      "mem_mb": 256.0,
+      "total_ms": 10182.348199887201,
+      "status": "SUCCESS"
+    },
+    "25": {
+      "dim": 33554432,
+      "mem_mb": 512.0,
+      "total_ms": 23307.45439999737,
+      "status": "SUCCESS"
+    },
+    "26": {
+      "dim": 67108864,
+      "mem_mb": 1024.0,
+      "total_ms": 47106.93360003643,
+      "status": "SUCCESS"
+    }
+  },
+  "qiskit": {
+    "4": {
+      "dim": 16,
+      "mem_mb": 0.000244140625,
+      "total_ms": 17.183999996632338,
+      "status": "SUCCESS"
+    },
+    "6": {
+      "dim": 64,
+      "mem_mb": 0.0009765625,
+      "total_ms": 1.0435001458972692,
+      "status": "SUCCESS"
+    },
+    "8": {
+      "dim": 256,
+      "mem_mb": 0.00390625,
+      "total_ms": 1.320399809628725,
+      "status": "SUCCESS"
+    },
+    "10": {
+      "dim": 1024,
+      "mem_mb": 0.015625,
+      "total_ms": 4.946599947288632,
+      "status": "SUCCESS"
+    },
+    "12": {
+      "dim": 4096,
+      "mem_mb": 0.0625,
+      "total_ms": 18.293699948117137,
+      "status": "SUCCESS"
+    },
+    "14": {
+      "dim": 16384,
+      "mem_mb": 0.25,
+      "total_ms": 101.34669998660684,
+      "status": "SUCCESS"
+    },
+    "16": {
+      "dim": 65536,
+      "mem_mb": 1.0,
+      "total_ms": 413.5104001034051,
+      "status": "SUCCESS"
+    },
+    "18": {
+      "dim": 262144,
+      "mem_mb": 4.0,
+      "total_ms": 1955.5724998936057,
+      "status": "SUCCESS"
+    }
+  }
+}

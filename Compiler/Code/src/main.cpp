@@ -28,6 +28,8 @@
 #include "compiler/opt_ir.hpp"
 #include "compiler/cfg.hpp"
 #include "compiler/ir_optimizer.hpp"
+#include "compiler/compiler_arena.hpp"
+#include "compiler/ir_to_bytecode.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -105,14 +107,14 @@ int cmd_run(const std::string& path, DispatchMode mode = DispatchMode::REGISTER_
         } else {
             // Text source (.taf / .setun)
             std::string source = read_file(path);
-            ArenaAllocator arena;
+            CompilerArena compiler_arena;
             Lexer lexer(source, path);
             auto tokens = lexer.tokenize();
 
-            Parser parser(tokens, arena);
+            Parser parser(tokens, compiler_arena.ast_arena());
             Program program = parser.parse_program();
 
-            ModuleResolver resolver(arena);
+            ModuleResolver resolver(compiler_arena.ast_arena());
             if (!resolver.resolve_program(program, path)) {
                 for (const auto& diag : resolver.get_diagnostics()) {
                     std::cerr << "[Module Error]: " << diag << "\n";
@@ -130,8 +132,8 @@ int cmd_run(const std::string& path, DispatchMode mode = DispatchMode::REGISTER_
             monomorphizer.process_program(program);
 
             // Gate 5 Frontend Pipeline: Modules 5.1 & 5.2
-            TreeCanonicalizer::canonicalize_program(program, arena);
-            TreeOptimizer tree_opt(arena);
+            TreeCanonicalizer::canonicalize_program(program, compiler_arena.opt_arena());
+            TreeOptimizer tree_opt(compiler_arena.opt_arena());
             tree_opt.optimize_program(program);
 
             // Gate 5 Intermediate Pipeline: Modules 5.3 & 5.4 (Linear IR & CFG Optimization)
@@ -140,8 +142,12 @@ int cmd_run(const std::string& path, DispatchMode mode = DispatchMode::REGISTER_
             IROptimizer ir_opt;
             ir_opt.optimize_module(ir_mod);
 
-            BytecodeEmitter emitter;
-            chunk = emitter.compile(program);
+            // Gate 5.5B: Direct IR to Bytecode Emitter
+            IRToBytecodeEmitter ir_emitter;
+            chunk = ir_emitter.emit(ir_mod, &program);
+
+            // Gate 5.5A: O(1) Compiler Arena Memory Reclamation
+            compiler_arena.reset_all();
         }
 
         VM vm;
@@ -173,14 +179,14 @@ int cmd_run(const std::string& path, DispatchMode mode = DispatchMode::REGISTER_
 int cmd_compile(const std::string& source_path, const std::string& out_path) {
     try {
         std::string source = read_file(source_path);
-        ArenaAllocator arena;
+        CompilerArena compiler_arena;
         Lexer lexer(source, source_path);
         auto tokens = lexer.tokenize();
 
-        Parser parser(tokens, arena);
+        Parser parser(tokens, compiler_arena.ast_arena());
         Program program = parser.parse_program();
 
-        ModuleResolver resolver(arena);
+        ModuleResolver resolver(compiler_arena.ast_arena());
         if (!resolver.resolve_program(program, source_path)) {
             for (const auto& diag : resolver.get_diagnostics()) {
                 std::cerr << "[Module Error]: " << diag << "\n";
@@ -198,8 +204,8 @@ int cmd_compile(const std::string& source_path, const std::string& out_path) {
         monomorphizer.process_program(program);
 
         // Gate 5 Frontend Pipeline: Modules 5.1 & 5.2
-        TreeCanonicalizer::canonicalize_program(program, arena);
-        TreeOptimizer tree_opt(arena);
+        TreeCanonicalizer::canonicalize_program(program, compiler_arena.opt_arena());
+        TreeOptimizer tree_opt(compiler_arena.opt_arena());
         tree_opt.optimize_program(program);
 
         // Gate 5 Intermediate Pipeline: Modules 5.3 & 5.4 (Linear IR & CFG Optimization)
@@ -208,8 +214,12 @@ int cmd_compile(const std::string& source_path, const std::string& out_path) {
         IROptimizer ir_opt;
         ir_opt.optimize_module(ir_mod);
 
-        BytecodeEmitter emitter;
-        Chunk chunk = emitter.compile(program);
+        // Gate 5.5B: Direct IR to Bytecode Emitter
+        IRToBytecodeEmitter ir_emitter;
+        Chunk chunk = ir_emitter.emit(ir_mod, &program);
+
+        // Gate 5.5A: O(1) Compiler Arena Memory Reclamation
+        compiler_arena.reset_all();
 
         if (!chunk.save_to_file(out_path)) {
             std::cerr << "[Error]: Failed to write binary bytecode to " << out_path << "\n";

@@ -65,7 +65,7 @@ std::string LLVMEmitter::emit_native_c(const Program& program) {
 
     // Forward declarations and struct/class definitions
     for (Stmt* s : program.statements) {
-        if (std::holds_alternative<StructDeclStmt>(s->data)) {
+        if (std::holds_alternative<StructDeclStmt>(s->data) || std::holds_alternative<ClassDeclStmt>(s->data)) {
             transpile_stmt(s, oss, 0);
             oss << "\n";
         }
@@ -303,7 +303,42 @@ void LLVMEmitter::transpile_stmt(Stmt* stmt, std::ostringstream& oss, int indent
             oss << pad << "};\n";
         }
         else if constexpr (std::is_same_v<T, ClassDeclStmt>) {
-            oss << pad << "// Class " << s.name << " (Reference Type with ARC)\n";
+            oss << pad << "struct " << s.name << " {\n";
+            for (const auto& f : s.fields) {
+                std::string ft = (f.resolved_type && f.resolved_type->kind == TypeKind::STRUCT) ? f.resolved_type->name : type_to_c(f.type);
+                oss << pad << "    " << ft << " " << f.name << ";\n";
+            }
+            oss << pad << "    " << s.name << "() = default;\n";
+            oss << pad << "    " << s.name << "(";
+            for (size_t i = 0; i < s.fields.size(); ++i) {
+                if (i > 0) oss << ", ";
+                std::string ft = (s.fields[i].resolved_type && s.fields[i].resolved_type->kind == TypeKind::STRUCT) ? s.fields[i].resolved_type->name : type_to_c(s.fields[i].type);
+                oss << ft << " _" << s.fields[i].name;
+            }
+            oss << ") : ";
+            for (size_t i = 0; i < s.fields.size(); ++i) {
+                if (i > 0) oss << ", ";
+                oss << s.fields[i].name << "(_" << s.fields[i].name << ")";
+            }
+            oss << " {}\n";
+            for (const auto& m : s.methods) {
+                if (m.name == "init") continue;
+                std::string mret = (m.return_type == DataType::VOID) ? "void" : type_to_c(m.return_type);
+                oss << pad << "    " << mret << " " << m.name << "(";
+                size_t start_p = 0;
+                if (!m.params.empty() && m.params[0].name == "self") start_p = 1;
+                for (size_t i = start_p; i < m.params.size(); ++i) {
+                    if (i > start_p) oss << ", ";
+                    oss << type_to_c(m.params[i].type) << " " << m.params[i].name;
+                }
+                oss << ") {\n";
+                oss << pad << "        auto& self = *this;\n";
+                if (m.body) {
+                    transpile_stmt(m.body, oss, indent + 2);
+                }
+                oss << pad << "    }\n";
+            }
+            oss << pad << "};\n";
         }
         else if constexpr (std::is_same_v<T, InterfaceDeclStmt>) {
             oss << pad << "// Interface " << s.name << "\n";

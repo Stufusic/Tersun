@@ -118,6 +118,8 @@ struct alignas(8) VMValue {
         return v;
     }
 
+    uint64_t as_raw() const { return raw_; }
+
     // Float Constructor (IEEE 754 with canonical NaN)
     VMValue(double v) {
         if (std::isnan(v)) {
@@ -175,6 +177,10 @@ struct alignas(8) VMValue {
     // --- Tag & Classification Helpers ---
     inline static uint64_t encode_heap(HeapSubtype sub, uint32_t handle) {
         return TAG_HEAP | (static_cast<uint64_t>(sub) << 32) | static_cast<uint64_t>(handle);
+    }
+
+    inline static VMValue make_heap(HeapSubtype sub, uint32_t handle) {
+        return VMValue::from_raw(encode_heap(sub, handle));
     }
 
     inline uint64_t major_tag() const {

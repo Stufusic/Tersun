@@ -13,16 +13,20 @@ Giấy phép này áp dụng cho toàn bộ dự án **Tersun Programming Langua
    - Tầng chuẩn hóa & tối ưu hóa cây cú pháp (Tree Canonicalization & 8-pass Tree Optimizer) đạt chuẩn 2.13 triệu bất biến toán học.
    - Tầng mã trung gian tuyến tính (Linear 3-Address IR) và Đồ thị luồng điều khiển (CFG).
    - Máy ảo đa chế độ (Stack-based TVM, Direct Threading Dispatch, NaN-Boxing 64-bit, Adaptive Quickening, Shape Inline Caching).
-   - Hệ thống hạ cấp biên dịch bản địa (Native AOT LLVM Lowering Pipeline).
+   - **Động cơ Biên dịch JIT Đa tầng & OSR (Gate 5.7 & Gate 5.8)**: Bộ biên dịch Baseline JIT trên RAM x86-64, cơ chế thay thế khung thực thi giữa vòng lặp On-Stack Replacement (OSR) và giải tỏa suy đoán an toàn (Speculative Deoptimization Bailout với MachineState).
+   - **Bộ Quản lý Bộ nhớ Managed Heap & Tri-Color GC (Gate 5.6)**: Cơ chế thu gom rác ba màu với Rào ghi (Write Barrier), xử lý an toàn đồ thị vòng $A \to B \to C \to A$ và danh sách sâu 10,000 nút với cam kết 0.00% độ trôi bộ nhớ (Memory Flatline).
+   - Hệ thống hạ cấp biên dịch bản địa (Native AOT C++20 / LLVM Lowering Pipeline).
 2. **Các Sáng chế Kiến trúc Phần cứng & Số học Độc quyền**:
    - **Vi kiến trúc TAFPU (Ternary Algebraic Floating-Point Unit)**: Hệ thống số học đại số trên trường số $\mathbb{Q}(\sqrt{3})$ với cấu trúc bộ ba $(\alpha, \beta, \gamma)$ đảm bảo **0% sai số tích lũy làm tròn** (Zero Representation Drift), triệt tiêu các khiếm khuyết cơ bản của chuẩn IEEE 754.
    - **Bộ xử lý Tam phân Cân bằng BTVP (Balanced Ternary Virtual Processor)**: Bộ cộng và hệ toán tử tam phân cân bằng $\{-1, 0, 1\}$ triệt tiêu hiện tượng lan truyền sóng nhớ.
    - **Thuật toán BitNet 1.58-bit GEMM không cần bộ nhân**: Phép nhân tích chập ma trận cho AI chạy trên số học tam phân không tiêu tốn chu kỳ nhân phần cứng.
-   - **Máy ảo Lượng tử QVM (Quantum Virtual Machine)**: Kiến trúc thực thi không mã lệnh (Zero-Opcode Execution), mô phỏng không gian trạng thái Hilbert 2-bit và cổng lượng tử tam phân Qutrit.
-3. **Bộ Giáo Trình Học Thuật Toàn Diện (Tersun Master Curriculum)**:
-   - Toàn bộ 2 Đại giáo trình, 6 Tập (Volumes), 16 Phần và 58 Chương chuyên sâu trong thư mục `GT/`:
-     - *Giáo trình Hệ thống Tersun: Từ Nền tảng đến Kiến trúc Nâng cao* (Vol 1, 2, 3).
-     - *Giáo trình Lập trình Tersun: Từ Nguyên lý Thứ nhất* (Vol 1, 2, 3).
+   - **Máy ảo Lượng tử QVM (Quantum Virtual Machine)**: Kiến trúc thực thi không mã lệnh (Zero-Opcode Execution), mô phỏng không gian trạng thái Hilbert 2-bit, chuyển đổi đơn nhất trực tiếp không mảng đệm (In-Place Stride Transformation), mở rộng tới **$N=29$ Qubits ($536,870,912$ biên độ trạng thái)** trên RAM vật lý, tích hợp thuật toán Grover, QFT và xuất chuẩn OpenQASM 3.0.
+3. **Các Con Dấu Mật Mã & Bằng Chứng Bất Biến (Cryptographic Milestone Seals)**:
+   - Các mã băm SHA-256 niêm phong các mốc kiểm định `CP0_BASELINE`, `CP1_TREE_OPT`, `CP5_OSR_DEOPT`, `CP5_OSR_DEOPT_ADV`, `SEAL_BENCHMARK_CLASSICAL` và `SEAL_BENCHMARK_QUANTUM_LIMIT`.
+4. **Bộ Giáo Trình Học Thuật Toàn Diện (Tersun Master Curriculum)**:
+   - Toàn bộ 2 Đại giáo trình, 6 Tập (Volumes), 18 Phần và 62 Chương chuyên sâu trong thư mục `GT/`:
+     - *Giáo trình Hệ thống Tersun: Từ Nền tảng đến Kiến trúc Nâng cao* (Vol 1, 2, 3 - Chương 1 đến 24).
+     - *Giáo trình Lập trình Tersun: Từ Nguyên lý Thứ nhất* (Vol 1, 2, 3 - Chương 1 đến 38).
    - Toàn bộ hình ảnh, sơ đồ kiến trúc, văn bản giải thích sư phạm, giáo án thực hành, bài tập và đề án kết khóa.
 
 ---

@@ -14,12 +14,77 @@ IRModule IRBuilder::build_module(const Program& program) {
 
     mod.toplevel.name = "__toplevel__";
 
+    class_fields_.clear();
+    class_init_arity_.clear();
+
+    for (const auto* stmt : program.statements) {
+        if (!stmt) continue;
+        if (const auto* cd = std::get_if<ClassDeclStmt>(&stmt->data)) {
+            std::vector<std::string> fnames;
+            if (!cd->super_class.empty() && class_fields_.find(cd->super_class) != class_fields_.end()) {
+                fnames = class_fields_[cd->super_class];
+            }
+            for (const auto& f : cd->fields) fnames.push_back(f.name);
+            class_fields_[cd->name] = fnames;
+            int arity = -1;
+            for (const auto& m : cd->methods) {
+                if (m.name == "init") {
+                    arity = 0;
+                    for (const auto& p : m.params) {
+                        if (p.name != "self") ++arity;
+                    }
+                    break;
+                }
+            }
+            class_init_arity_[cd->name] = arity;
+        } else if (const auto* sd = std::get_if<StructDeclStmt>(&stmt->data)) {
+            std::vector<std::string> fnames;
+            for (const auto& f : sd->fields) fnames.push_back(f.name);
+            class_fields_[sd->name] = fnames;
+            int arity = -1;
+            for (const auto& m : sd->methods) {
+                if (m.name == "init") {
+                    arity = 0;
+                    for (const auto& p : m.params) {
+                        if (p.name != "self") ++arity;
+                    }
+                    break;
+                }
+            }
+            class_init_arity_[sd->name] = arity;
+        }
+    }
+
     for (const auto* stmt : program.statements) {
         if (!stmt) continue;
         if (const auto* fn_decl = std::get_if<FnDeclStmt>(&stmt->data)) {
             IRFunction fn;
             lower_function(*fn_decl, fn);
             mod.functions.push_back(std::move(fn));
+        } else if (const auto* cd = std::get_if<ClassDeclStmt>(&stmt->data)) {
+            for (const auto& m : cd->methods) {
+                if (!m.body) continue;
+                FnDeclStmt dummy_fn;
+                dummy_fn.name = cd->name + "_" + m.name;
+                dummy_fn.params = m.params;
+                dummy_fn.body = m.body;
+                dummy_fn.loc = cd->loc;
+                IRFunction fn;
+                lower_function(dummy_fn, fn);
+                mod.functions.push_back(std::move(fn));
+            }
+        } else if (const auto* sd = std::get_if<StructDeclStmt>(&stmt->data)) {
+            for (const auto& m : sd->methods) {
+                if (!m.body) continue;
+                FnDeclStmt dummy_fn;
+                dummy_fn.name = sd->name + "_" + m.name;
+                dummy_fn.params = m.params;
+                dummy_fn.body = m.body;
+                dummy_fn.loc = sd->loc;
+                IRFunction fn;
+                lower_function(dummy_fn, fn);
+                mod.functions.push_back(std::move(fn));
+            }
         } else {
             lower_stmt(const_cast<Stmt*>(stmt), mod.toplevel);
         }
@@ -255,6 +320,134 @@ void IRBuilder::lower_stmt(Stmt* stmt, IRFunction& out_fn) {
             break_labels_.pop_back();
             continue_labels_.pop_back();
         } else if constexpr (std::is_same_v<T, ForStmt>) {
+            if (s.is_for_in) {
+                const CallExpr* range_call = nullptr;
+                if (s.iterable && std::holds_alternative<CallExpr>(s.iterable->data)) {
+                    const auto& ce = std::get<CallExpr>(s.iterable->data);
+                    if (ce.callee == "range") range_call = &ce;
+                }
+
+                if (range_call) {
+                    IROperand start_op = IROperand::const_int(0);
+                    IROperand stop_op = IROperand::const_int(0);
+                    IROperand step_op = IROperand::const_int(1);
+
+                    if (range_call->args.size() == 1) {
+                        stop_op = lower_expr(range_call->args[0], out_fn);
+                    } else if (range_call->args.size() == 2) {
+                        start_op = lower_expr(range_call->args[0], out_fn);
+                        stop_op = lower_expr(range_call->args[1], out_fn);
+                    } else if (range_call->args.size() >= 3) {
+                        start_op = lower_expr(range_call->args[0], out_fn);
+                        stop_op = lower_expr(range_call->args[1], out_fn);
+                        step_op = lower_expr(range_call->args[2], out_fn);
+                    }
+
+                    size_t var_slot;
+                    auto it_var = local_slots_.find(s.loop_var);
+                    if (it_var == local_slots_.end()) {
+                        var_slot = local_slots_.size();
+                        local_slots_[s.loop_var] = var_slot;
+                    } else {
+                        var_slot = it_var->second;
+                    }
+
+                    // var = start
+                    IRInstruction init_inst;
+                    init_inst.op = IROp::STORE_LOCAL;
+                    init_inst.dst = IROperand::local(var_slot, s.loop_var);
+                    init_inst.src1 = start_op;
+                    init_inst.line = s.loc.line;
+                    out_fn.instructions.push_back(init_inst);
+
+                    std::string hdr_lbl = alloc_label("for_range_hdr");
+                    std::string body_lbl = alloc_label("for_range_body");
+                    std::string inc_lbl = alloc_label("for_range_inc");
+                    std::string end_lbl = alloc_label("for_range_end");
+
+                    break_labels_.push_back(end_lbl);
+                    continue_labels_.push_back(inc_lbl);
+
+                    IRInstruction l_hdr;
+                    l_hdr.op = IROp::LABEL;
+                    l_hdr.dst = IROperand::label(hdr_lbl);
+                    out_fn.instructions.push_back(l_hdr);
+
+                    IROperand cur_var = alloc_vreg();
+                    IRInstruction load_v;
+                    load_v.op = IROp::LOAD_LOCAL;
+                    load_v.dst = cur_var;
+                    load_v.src1 = IROperand::local(var_slot, s.loop_var);
+                    load_v.line = s.loc.line;
+                    out_fn.instructions.push_back(load_v);
+
+                    IROperand cond = alloc_vreg();
+                    IRInstruction cmp_inst;
+                    cmp_inst.op = IROp::CMP_LT;
+                    cmp_inst.dst = cond;
+                    cmp_inst.src1 = cur_var;
+                    cmp_inst.src2 = stop_op;
+                    cmp_inst.line = s.loc.line;
+                    out_fn.instructions.push_back(cmp_inst);
+
+                    IRInstruction br;
+                    br.op = IROp::BRANCH_IF_FALSE;
+                    br.src1 = cond;
+                    br.src2 = IROperand::label(end_lbl);
+                    out_fn.instructions.push_back(br);
+
+                    IRInstruction l_body;
+                    l_body.op = IROp::LABEL;
+                    l_body.dst = IROperand::label(body_lbl);
+                    out_fn.instructions.push_back(l_body);
+
+                    lower_stmt(s.body, out_fn);
+
+                    IRInstruction l_inc;
+                    l_inc.op = IROp::LABEL;
+                    l_inc.dst = IROperand::label(inc_lbl);
+                    out_fn.instructions.push_back(l_inc);
+
+                    IROperand v_before_inc = alloc_vreg();
+                    IRInstruction load_v2;
+                    load_v2.op = IROp::LOAD_LOCAL;
+                    load_v2.dst = v_before_inc;
+                    load_v2.src1 = IROperand::local(var_slot, s.loop_var);
+                    load_v2.line = s.loc.line;
+                    out_fn.instructions.push_back(load_v2);
+
+                    IROperand v_after_inc = alloc_vreg();
+                    IRInstruction add_inst;
+                    add_inst.op = IROp::ADD;
+                    add_inst.dst = v_after_inc;
+                    add_inst.src1 = v_before_inc;
+                    add_inst.src2 = step_op;
+                    add_inst.line = s.loc.line;
+                    out_fn.instructions.push_back(add_inst);
+
+                    IRInstruction store_v;
+                    store_v.op = IROp::STORE_LOCAL;
+                    store_v.dst = IROperand::local(var_slot, s.loop_var);
+                    store_v.src1 = v_after_inc;
+                    store_v.line = s.loc.line;
+                    out_fn.instructions.push_back(store_v);
+
+                    IRInstruction jmp;
+                    jmp.op = IROp::JUMP;
+                    jmp.src1 = IROperand::label(hdr_lbl);
+                    out_fn.instructions.push_back(jmp);
+
+                    IRInstruction l_end;
+                    l_end.op = IROp::LABEL;
+                    l_end.dst = IROperand::label(end_lbl);
+                    out_fn.instructions.push_back(l_end);
+
+                    break_labels_.pop_back();
+                    continue_labels_.pop_back();
+                    return;
+                }
+            }
+
             if (s.init) lower_stmt(s.init, out_fn);
 
             std::string hdr_lbl = alloc_label("for_hdr");
@@ -509,6 +702,54 @@ IROperand IRBuilder::lower_expr(Expr* expr, IRFunction& out_fn) {
             out_fn.instructions.push_back(inst);
             return dst;
         } else if constexpr (std::is_same_v<T, CallExpr>) {
+            auto it_cls = class_fields_.find(e.callee);
+            if (it_cls != class_fields_.end()) {
+                // Object / Struct instantiation
+                IROperand obj = alloc_vreg();
+                IRInstruction alloc_inst;
+                alloc_inst.op = IROp::ALLOC_OBJ;
+                alloc_inst.dst = obj;
+                alloc_inst.src1 = IROperand::const_str(e.callee);
+                alloc_inst.has_side_effect = true;
+                alloc_inst.line = e.loc.line;
+                out_fn.instructions.push_back(alloc_inst);
+
+                auto it_arity = class_init_arity_.find(e.callee);
+                int init_arity = (it_arity != class_init_arity_.end()) ? it_arity->second : -1;
+
+                if (init_arity >= 0) {
+                    std::vector<IROperand> init_args;
+                    for (auto* a : e.args) {
+                        init_args.push_back(lower_expr(a, out_fn));
+                    }
+                    IROperand init_res = alloc_vreg();
+                    IRInstruction init_inst;
+                    init_inst.op = IROp::INVOKE_METHOD;
+                    init_inst.dst = init_res;
+                    init_inst.src1 = obj;
+                    init_inst.src2 = IROperand::const_str("init");
+                    init_inst.args = std::move(init_args);
+                    init_inst.has_side_effect = true;
+                    init_inst.line = e.loc.line;
+                    out_fn.instructions.push_back(init_inst);
+                } else if (!e.args.empty()) {
+                    const auto& names = it_cls->second;
+                    size_t n = std::min(names.size(), e.args.size());
+                    for (size_t i = 0; i < n; ++i) {
+                        IROperand val = lower_expr(e.args[i], out_fn);
+                        IRInstruction sf;
+                        sf.op = IROp::STORE_FIELD;
+                        sf.dst = obj;
+                        sf.src1 = IROperand::const_str(names[i]);
+                        sf.src2 = val;
+                        sf.has_side_effect = true;
+                        sf.line = e.loc.line;
+                        out_fn.instructions.push_back(sf);
+                    }
+                }
+                return obj;
+            }
+
             std::vector<IROperand> arg_operands;
             for (auto* a : e.args) {
                 arg_operands.push_back(lower_expr(a, out_fn));
@@ -581,6 +822,23 @@ IROperand IRBuilder::lower_expr(Expr* expr, IRFunction& out_fn) {
             inst.src1 = a;
             inst.src2 = b;
             inst.args.push_back(s);
+            inst.line = e.loc.line;
+            out_fn.instructions.push_back(inst);
+            return dst;
+        } else if constexpr (std::is_same_v<T, MethodCallExpr>) {
+            IROperand obj = lower_expr(e.object, out_fn);
+            std::vector<IROperand> arg_ops;
+            for (auto* a : e.args) {
+                arg_ops.push_back(lower_expr(a, out_fn));
+            }
+            IROperand dst = alloc_vreg();
+            IRInstruction inst;
+            inst.op = IROp::INVOKE_METHOD;
+            inst.dst = dst;
+            inst.src1 = obj;
+            inst.src2 = IROperand::const_str(e.method);
+            inst.args = std::move(arg_ops);
+            inst.has_side_effect = true;
             inst.line = e.loc.line;
             out_fn.instructions.push_back(inst);
             return dst;

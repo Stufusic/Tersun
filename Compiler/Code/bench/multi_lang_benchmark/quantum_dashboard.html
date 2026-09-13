@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tersun QVM & Classical Benchmark Interactive Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0d14;
+            --bg-card: rgba(18, 24, 38, 0.85);
+            --border-card: rgba(0, 255, 204, 0.2);
+            --cyan: #00ffcc;
+            --orange: #ffaa00;
+            --pink: #ff3366;
+            --purple: #a855f7;
+            --red: #ef4444;
+            --text-main: #f3f4f6;
+            --text-dim: #9ca3af;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            padding: 24px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 28px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 20px;
+        }
+
+        .badge-bar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .badge {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            background: rgba(0, 255, 204, 0.1);
+            color: var(--cyan);
+            border: 1px solid rgba(0, 255, 204, 0.3);
+        }
+
+        .badge.sealed {
+            background: rgba(168, 85, 247, 0.1);
+            color: var(--purple);
+            border-color: rgba(168, 85, 247, 0.4);
+        }
+
+        .badge.danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--red);
+            border-color: rgba(239, 68, 68, 0.4);
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #00ffcc 0%, #3b82f6 50%, #a855f7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: var(--text-dim);
+            font-size: 14px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, var(--cyan), transparent);
+        }
+
+        .card-title {
+            font-size: 13px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+
+        .card-value {
+            font-size: 26px;
+            font-weight: 700;
+            color: var(--cyan);
+        }
+
+        .card-desc {
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+
+        .chart-section {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .chart-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 480px;
+            width: 100%;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-top: 12px;
+        }
+
+        th, td {
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-dim);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.05em;
+        }
+
+        tr:hover td {
+            background: rgba(0, 255, 204, 0.03);
+        }
+
+        .highlight {
+            color: var(--cyan);
+            font-weight: 600;
+        }
+
+        .hash-box {
+            font-family: monospace;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 11px;
+            color: #10b981;
+            word-break: break-all;
+            margin-top: 6px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="badge-bar">
+                <span class="badge">TERSUN QVM 1.0.3</span>
+                <span class="badge sealed">SHA-256 VERIFIED</span>
+                <span class="badge danger">PHYSICAL LIMIT AT N=30 (16 GB RAM)</span>
+                <span class="badge">HOST: INTEL I5-1245U 10C/12T</span>
+            </div>
+            <h1>BẢNG ĐIỀU KHIỂN ĐO TẢI LƯỢNG TỬ VÀ BENCHMARK TERSUN</h1>
+            <p class="subtitle">Đo tải thực nghiệm giới hạn không gian Hilbert tới trần dung lượng phần cứng Dell Latitude 5330 (16.0 GB RAM)</p>
+        </header>
+
+        <!-- KPI Cards -->
+        <div class="stats-grid">
+            <div class="card">
+                <div class="card-title">Đỉnh Tải Lượng Tử Thành Công</div>
+                <div class="card-value">N = 29 Qubits</div>
+                <div class="card-desc">536,870,912 biên độ | 8.59 GB RAM hoạt động liên tục</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Giới Hạn Trần Phần Cứng</div>
+                <div class="card-value" style="color: var(--red);">N = 30 (16.0 GB)</div>
+                <div class="card-desc">Chặn an toàn qua std::bad_alloc (Tránh sập HĐH)</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Tăng Tốc QVM vs NumPy (N=26)</div>
+                <div class="card-value">9.0x Nhanh Hơn</div>
+                <div class="card-desc">Tersun QVM: 5.23s vs NumPy: 47.11s (1.0 GB Statevector)</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Tăng Tốc AOT Cổ Điển vs Python</div>
+                <div class="card-value">72.4x Nhanh Hơn</div>
+                <div class="card-desc">Tersun AOT: 0.56ms vs Python: 40.63ms (W4 Objects)</div>
+            </div>
+        </div>
+
+        <!-- Main Chart: Quantum Scaling -->
+        <div class="chart-section">
+            <div class="chart-header">
+                <div>
+                    <div class="chart-title">1. Thang Đo Thời Gian Thực Thi Lượng Tử (Log Scale) & Giới Hạn RAM</div>
+                    <div class="card-desc">So sánh trực tiếp Tersun QVM (C++20 Native), Python NumPy (Tensor Contract) và Python Qiskit 2.5.2</div>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="quantumChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Classical Benchmark Comparison Chart -->
+        <div class="chart-section">
+            <div class="chart-header">
+                <div>
+                    <div class="chart-title">2. Benchmark Cổ Điển: 4 Bài Toán Tiêu Chuẩn (Thời Gian Thực Thi ms)</div>
+                    <div class="card-desc">So sánh C++, Rust, Tersun Native AOT, Java OpenJDK 25, Tersun VM và CPython 3.14.3</div>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="classicalChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Tables & Seals -->
+        <div class="chart-section">
+            <div class="chart-title">3. Chứng Thực Niêm Phong Bất Biến (Cryptographic SHA-256 Seals)</div>
+            <div style="margin-top: 12px;">
+                <div style="margin-bottom: 16px;">
+                    <strong>[SEAL 1] Classical Benchmark Manifest (C++, Rust, Tersun, Java, Python):</strong>
+                    <div class="hash-box">SHA-256: 730da54d26449ad674b96d99b30ed8eb400f6cd0b0f553458ed45de4cd713b1f</div>
+                </div>
+                <div>
+                    <strong>[SEAL 2] Quantum Hardware Limit Manifest (QVM vs NumPy vs Qiskit N=4..30):</strong>
+                    <div class="hash-box">SHA-256: 2a0b46585451a91d34ba1d7c0a7e27d2cb24c6cd6d3fa3179c5979c983190da3</div>
+                </div>
+            </div>
+
+            <table style="margin-top: 20px;">
+                <thead>
+                    <tr>
+                        <th>Số Qubit (N)</th>
+                        <th>Không Gian (2^N)</th>
+                        <th>RAM Yêu Cầu</th>
+                        <th>Tersun QVM (ms)</th>
+                        <th>Python NumPy (ms)</th>
+                        <th>Python Qiskit (ms)</th>
+                        <th>Tốc Độ Vượt Trội</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>10</td><td>1,024</td><td>0.02 MB</td><td class="highlight">0.72 ms</td><td>2.14 ms</td><td>4.95 ms</td><td>3.0x vs NumPy, 6.9x vs Qiskit</td></tr>
+                    <tr><td>14</td><td>16,384</td><td>0.25 MB</td><td class="highlight">0.50 ms</td><td>2.09 ms</td><td>101.35 ms</td><td>4.2x vs NumPy, 202.7x vs Qiskit</td></tr>
+                    <tr><td>18</td><td>262,144</td><td>4.00 MB</td><td class="highlight">10.41 ms</td><td>104.39 ms</td><td>1,955.57 ms</td><td>10.0x vs NumPy, 187.9x vs Qiskit</td></tr>
+                    <tr><td>20</td><td>1,048,576</td><td>16.00 MB</td><td class="highlight">53.04 ms</td><td>461.84 ms</td><td>Quá tải</td><td>8.7x vs NumPy</td></tr>
+                    <tr><td>22</td><td>4,194,304</td><td>64.00 MB</td><td class="highlight">251.69 ms</td><td>1,995.26 ms</td><td>—</td><td>7.9x vs NumPy</td></tr>
+                    <tr><td>24</td><td>16,777,216</td><td>256.00 MB</td><td class="highlight">1,225.36 ms (1.2s)</td><td>10,182.35 ms (10.2s)</td><td>—</td><td>8.3x vs NumPy</td></tr>
+                    <tr><td>25</td><td>33,554,432</td><td>512.00 MB</td><td class="highlight">2,532.94 ms (2.5s)</td><td>23,307.45 ms (23.3s)</td><td>—</td><td>9.2x vs NumPy</td></tr>
+                    <tr><td>26</td><td>67,108,864</td><td>1.00 GB</td><td class="highlight">5,232.74 ms (5.2s)</td><td>47,106.93 ms (47.1s)</td><td>—</td><td>9.0x vs NumPy</td></tr>
+                    <tr><td>27</td><td>134,217,728</td><td>2.00 GB</td><td class="highlight">10,881.77 ms (10.9s)</td><td style="color:#f87171;">Tràn Heap (Tensor copies)</td><td>—</td><td>Bất khả thi trên Python</td></tr>
+                    <tr><td>28</td><td>268,435,456</td><td>4.00 GB</td><td class="highlight">22,502.27 ms (22.5s)</td><td style="color:#f87171;">MemoryError</td><td>—</td><td>QVM chạy mượt mà</td></tr>
+                    <tr><td>29</td><td>536,870,912</td><td>8.00 GB</td><td class="highlight">70,982.81 ms (71.0s)</td><td style="color:#f87171;">MemoryError</td><td>—</td><td>ĐỈNH TẢI THỰC TẾ (8.59 GB RAM)</td></tr>
+                    <tr><td>30</td><td>1,073,741,824</td><td>16.00 GB</td><td style="color:#ef4444; font-weight: bold;">TRẦN PHẦN CỨNG (bad_alloc)</td><td style="color:#f87171;">MemoryError</td><td>—</td><td>Vượt tổng RAM máy (15.7 GB)</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. Quantum Chart ---
+        const qx = [10, 14, 18, 20, 22, 24, 25, 26, 27, 28, 29];
+        const qy_qvm = [0.72, 0.50, 10.41, 53.04, 251.69, 1225.36, 2532.94, 5232.74, 10881.77, 22502.27, 70982.81];
+        const qy_np  = [2.14, 2.09, 104.39, 461.84, 1995.26, 10182.35, 23307.45, 47106.93, null, null, null];
+        const qy_qk  = [4.95, 101.35, 1955.57, null, null, null, null, null, null, null, null];
+        const qy_mem = [0.02, 0.25, 4.0, 16.0, 64.0, 256.0, 512.0, 1024.0, 2048.0, 4096.0, 8192.0];
+
+        new Chart(document.getElementById('quantumChart'), {
+            type: 'line',
+            data: {
+                labels: qx.map(n => `N=${n}`),
+                datasets: [
+                    {
+                        label: 'Tersun QVM Native (ms)',
+                        data: qy_qvm,
+                        borderColor: '#00ffcc',
+                        backgroundColor: 'rgba(0, 255, 204, 0.15)',
+                        borderWidth: 3,
+                        pointRadius: 6,
+                        pointHoverRadius: 8,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Python NumPy (ms)',
+                        data: qy_np,
+                        borderColor: '#ffaa00',
+                        borderDash: [6, 4],
+                        borderWidth: 2,
+                        pointRadius: 5,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Python Qiskit 2.5.2 (ms)',
+                        data: qy_qk,
+                        borderColor: '#ff3366',
+                        borderDash: [2, 2],
+                        borderWidth: 2,
+                        pointRadius: 5,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Dung Lượng Bộ Nhớ Statevector (MB)',
+                        data: qy_mem,
+                        borderColor: '#a855f7',
+                        borderWidth: 1.5,
+                        pointRadius: 4,
+                        yAxisID: 'y1',
+                        borderDash: [8, 4]
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#9ca3af' }
+                    },
+                    y: {
+                        type: 'logarithmic',
+                        position: 'left',
+                        grid: { color: 'rgba(255, 255, 255, 0.08)' },
+                        ticks: { color: '#00ffcc' },
+                        title: { display: true, text: 'Thời Gian Thực Thi (ms) - Thang Đo Log', color: '#00ffcc' }
+                    },
+                    y1: {
+                        type: 'logarithmic',
+                        position: 'right',
+                        grid: { drawOnChartArea: false },
+                        ticks: { color: '#a855f7' },
+                        title: { display: true, text: 'Bộ Nhớ Statevector (MB) - Thang Đo Log', color: '#a855f7' }
+                    }
+                },
+                plugins: {
+                    legend: { labels: { color: '#f3f4f6' } }
+                }
+            }
+        });
+
+        // --- 2. Classical Chart ---
+        const classicalLabels = ['W1: Fibonacci (N=30)', 'W2: Sieve (N=100k)', 'W3: Matmul (100x100)', 'W4: Object Updates (200k)'];
+        new Chart(document.getElementById('classicalChart'), {
+            type: 'bar',
+            data: {
+                labels: classicalLabels,
+                datasets: [
+                    { label: 'C++ (-O3)', data: [1.18, 0.23, 0.37, 0.46], backgroundColor: '#3b82f6' },
+                    { label: 'Rust (-O)', data: [1.83, 0.26, 0.47, 0.51], backgroundColor: '#f97316' },
+                    { label: 'Tersun Native AOT', data: [2.74, 1.90, 3.31, 0.56], backgroundColor: '#00ffcc' },
+                    { label: 'Java 25 Server', data: [3.31, 1.30, 3.89, 4.07], backgroundColor: '#eab308' },
+                    { label: 'Python 3.14', data: [85.35, 7.08, 75.27, 40.63], backgroundColor: '#ec4899' },
+                    { label: 'Tersun VM (Bytecode)', data: [116.10, 29.98, 194.40, 105.20], backgroundColor: '#64748b' }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#9ca3af' } },
+                    y: {
+                        type: 'logarithmic',
+                        grid: { color: 'rgba(255, 255, 255, 0.08)' },
+                        ticks: { color: '#f3f4f6' },
+                        title: { display: true, text: 'Thời Gian (ms) - Thang Đo Log (Thấp Hơn Là Nhanh Hơn)', color: '#f3f4f6' }
+                    }
+                },
+                plugins: {
+                    legend: { labels: { color: '#f3f4f6' } }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

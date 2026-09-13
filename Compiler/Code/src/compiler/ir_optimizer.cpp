@@ -30,8 +30,8 @@ bool IROptimizer::optimize_function(IRFunction& fn) {
             if (bb->is_unreachable) continue;
             round_changed |= pass_local_cse(*bb);
             round_changed |= pass_copy_propagation(*bb);
-            round_changed |= pass_dead_code_elimination(*bb);
         }
+        round_changed |= pass_dead_code_elimination(*cfg);
 
         // 2. Control flow simplifications
         round_changed |= pass_branch_folding(*cfg);
@@ -75,7 +75,7 @@ bool IROptimizer::pass_local_cse(BasicBlock& bb) {
         }
 
         // Invalidate entire cache on calls or side effects
-        if (inst.has_side_effect || inst.op == IROp::CALL ||
+        if (inst.has_side_effect || inst.op == IROp::CALL || inst.op == IROp::INVOKE_METHOD ||
             inst.op == IROp::STORE_ELEM || inst.op == IROp::STORE_FIELD) {
             expr_cache.clear();
             continue;
@@ -167,6 +167,14 @@ bool IROptimizer::pass_copy_propagation(BasicBlock& bb) {
                 }
             }
         }
+        if ((inst.op == IROp::STORE_ELEM || inst.op == IROp::STORE_FIELD) && inst.dst.is_vreg()) {
+            auto it = copy_map.find(inst.dst.val_i);
+            if (it != copy_map.end()) {
+                inst.dst = it->second;
+                changed = true;
+                total_copies_propagated_++;
+            }
+        }
 
         // If this instruction is a MOVE v_dst = v_src or const, record mapping
         if (inst.op == IROp::MOVE && inst.dst.is_vreg()) {
@@ -188,6 +196,9 @@ bool IROptimizer::pass_dead_code_elimination(BasicBlock& bb) {
         for (const auto& arg : inst.args) {
             if (arg.is_vreg()) vreg_uses[arg.val_i]++;
         }
+        if ((inst.op == IROp::STORE_ELEM || inst.op == IROp::STORE_FIELD) && inst.dst.is_vreg()) {
+            vreg_uses[inst.dst.val_i]++;
+        }
     }
 
     bool changed = false;
@@ -195,7 +206,7 @@ bool IROptimizer::pass_dead_code_elimination(BasicBlock& bb) {
 
     for (const auto& inst : bb.instructions) {
         if (inst.dst.is_vreg() && !inst.has_side_effect && !inst.may_trap &&
-            inst.op != IROp::CALL && inst.op != IROp::RETURN &&
+            inst.op != IROp::CALL && inst.op != IROp::INVOKE_METHOD && inst.op != IROp::RETURN &&
             inst.op != IROp::STORE_LOCAL && inst.op != IROp::STORE_GLOBAL &&
             inst.op != IROp::STORE_ELEM && inst.op != IROp::STORE_FIELD) {
             if (vreg_uses[inst.dst.val_i] == 0) {
@@ -210,6 +221,49 @@ bool IROptimizer::pass_dead_code_elimination(BasicBlock& bb) {
 
     if (changed) {
         bb.instructions = std::move(living_instructions);
+    }
+    return changed;
+}
+
+bool IROptimizer::pass_dead_code_elimination(CFG& cfg) {
+    // Count uses of each virtual register across all reachable blocks in the CFG
+    std::unordered_map<int64_t, size_t> vreg_uses;
+    for (const auto& bb : cfg.blocks()) {
+        if (bb->is_unreachable) continue;
+        for (const auto& inst : bb->instructions) {
+            if (inst.src1.is_vreg()) vreg_uses[inst.src1.val_i]++;
+            if (inst.src2.is_vreg()) vreg_uses[inst.src2.val_i]++;
+            for (const auto& arg : inst.args) {
+                if (arg.is_vreg()) vreg_uses[arg.val_i]++;
+            }
+            if ((inst.op == IROp::STORE_ELEM || inst.op == IROp::STORE_FIELD) && inst.dst.is_vreg()) {
+                vreg_uses[inst.dst.val_i]++;
+            }
+        }
+    }
+
+    bool changed = false;
+    for (auto& bb : cfg.blocks()) {
+        if (bb->is_unreachable) continue;
+        std::vector<IRInstruction> living_instructions;
+        for (const auto& inst : bb->instructions) {
+            if (inst.dst.is_vreg() && !inst.has_side_effect && !inst.may_trap &&
+                inst.op != IROp::CALL && inst.op != IROp::INVOKE_METHOD && inst.op != IROp::RETURN &&
+                inst.op != IROp::STORE_LOCAL && inst.op != IROp::STORE_GLOBAL &&
+                inst.op != IROp::STORE_ELEM && inst.op != IROp::STORE_FIELD) {
+                if (vreg_uses[inst.dst.val_i] == 0) {
+                    // Dead temporary eliminated!
+                    changed = true;
+                    total_dce_eliminations_++;
+                    continue;
+                }
+            }
+            living_instructions.push_back(inst);
+        }
+        if (living_instructions.size() != bb->instructions.size()) {
+            bb->instructions = std::move(living_instructions);
+            changed = true;
+        }
     }
     return changed;
 }

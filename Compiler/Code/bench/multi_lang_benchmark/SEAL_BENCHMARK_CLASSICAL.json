@@ -1,0 +1,84 @@
+{
+  "seal_id": "SEAL-CLASSICAL-BENCH-20260913-STN",
+  "algorithm": "SHA-256",
+  "seal_hash": "730da54d26449ad674b96d99b30ed8eb400f6cd0b0f553458ed45de4cd713b1f",
+  "verified_at": "2026-09-13T15:35:00+07:00",
+  "record": {
+    "metadata": {
+      "suite": "Tersun Multi-Language Classical Benchmark (4 Canonical Methods)",
+      "timestamp_iso": "2026-09-13T15:24:40+07:00",
+      "host_cpu": "12th Gen Intel(R) Core(TM) i5-1245U (10 cores, 12 threads)",
+      "host_ram": "16 GB (15.7 GB usable)",
+      "host_os": "Windows 11 x64",
+      "compiler_cpp": "GCC 15.2.0 -O3 -std=c++20",
+      "compiler_rust": "rustc 1.98.1 -O",
+      "runtime_java": "OpenJDK 25 (build 25-ea+18-2041) Server VM",
+      "runtime_tersun_aot": "Tersun Native AOT (setunc compile --native -O3)",
+      "runtime_tersun_vm": "Tersun Bytecode VM (setunc run)",
+      "runtime_python": "CPython 3.14.3",
+      "reps": 5
+    },
+    "workloads": [
+      {
+        "id": "W1",
+        "name": "Recursive Fibonacci (N=30)",
+        "expected_checksum": 832040,
+        "results_ms": {
+          "cpp_gcc_o3": 1.18,
+          "rust_o": 1.83,
+          "tersun_native_aot": 2.74,
+          "java_openjdk25": 3.31,
+          "python_314": 85.35,
+          "tersun_vm_bytecode": 116.1
+        },
+        "speedup_aot_vs_vm": 42.4,
+        "speedup_aot_vs_python": 31.2
+      },
+      {
+        "id": "W2",
+        "name": "Prime Sieve of Eratosthenes (N=100k)",
+        "expected_checksum": 9592,
+        "results_ms": {
+          "cpp_gcc_o3": 0.23,
+          "rust_o": 0.26,
+          "java_openjdk25": 1.3,
+          "tersun_native_aot": 1.9,
+          "python_314": 7.08,
+          "tersun_vm_bytecode": 29.98
+        },
+        "speedup_aot_vs_vm": 15.8,
+        "speedup_aot_vs_python": 3.7
+      },
+      {
+        "id": "W3",
+        "name": "Matrix Multiplication (100x100 Flat 1D)",
+        "expected_checksum": 20250000,
+        "results_ms": {
+          "cpp_gcc_o3": 0.37,
+          "rust_o": 0.47,
+          "tersun_native_aot": 3.31,
+          "java_openjdk25": 3.89,
+          "python_314": 75.27,
+          "tersun_vm_bytecode": 194.4
+        },
+        "speedup_aot_vs_vm": 58.8,
+        "speedup_aot_vs_python": 22.8
+      },
+      {
+        "id": "W4",
+        "name": "Object / Struct Updates (200k iters)",
+        "expected_checksum": 541096364,
+        "results_ms": {
+          "cpp_gcc_o3": 0.46,
+          "rust_o": 0.51,
+          "tersun_native_aot": 0.56,
+          "java_openjdk25": 4.07,
+          "python_314": 40.63,
+          "tersun_vm_bytecode": 105.2
+        },
+        "speedup_aot_vs_vm": 187.5,
+        "speedup_aot_vs_python": 72.4
+      }
+    ]
+  }
+}

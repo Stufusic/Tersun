@@ -1,0 +1,306 @@
+{
+  "seal_id": "SEAL-QUANTUM-LIMIT-BENCH-20260913-QVM",
+  "algorithm": "SHA-256",
+  "seal_hash": "2a0b46585451a91d34ba1d7c0a7e27d2cb24c6cd6d3fa3179c5979c983190da3",
+  "verified_at": "2026-09-13T15:35:00+07:00",
+  "record": {
+    "metadata": {
+      "suite": "Tersun QVM vs Python Quantum Scaling & Hardware Limit Stress Test",
+      "timestamp_iso": "2026-09-13T15:34:00+07:00",
+      "host_cpu": "12th Gen Intel(R) Core(TM) i5-1245U (10 cores, 12 threads)",
+      "host_ram": "16 GB (15.7 GB usable)",
+      "hardware_limit_ceiling": "N = 30 Qubits (16.00 GB Statevector RAM)",
+      "max_successful_qubits": "N = 29 Qubits (536,870,912 amplitudes, 8.59 GB working set)"
+    },
+    "phase1_qft_scaling": [
+      {
+        "qubits": 4,
+        "dim": 16,
+        "mem_mb": 0.0,
+        "gates": 12,
+        "time_ms": 0.028,
+        "throughput_mops": 6.86
+      },
+      {
+        "qubits": 6,
+        "dim": 64,
+        "mem_mb": 0.0,
+        "gates": 24,
+        "time_ms": 0.025,
+        "throughput_mops": 61.44
+      },
+      {
+        "qubits": 8,
+        "dim": 256,
+        "mem_mb": 0.0,
+        "gates": 40,
+        "time_ms": 0.094,
+        "throughput_mops": 108.94
+      },
+      {
+        "qubits": 10,
+        "dim": 1024,
+        "mem_mb": 0.02,
+        "gates": 60,
+        "time_ms": 0.495,
+        "throughput_mops": 124.12
+      },
+      {
+        "qubits": 12,
+        "dim": 4096,
+        "mem_mb": 0.06,
+        "gates": 84,
+        "time_ms": 2.725,
+        "throughput_mops": 126.26
+      },
+      {
+        "qubits": 14,
+        "dim": 16384,
+        "mem_mb": 0.25,
+        "gates": 112,
+        "time_ms": 10.68,
+        "throughput_mops": 171.82
+      },
+      {
+        "qubits": 16,
+        "dim": 65536,
+        "mem_mb": 1.0,
+        "gates": 144,
+        "time_ms": 47.821,
+        "throughput_mops": 197.34
+      },
+      {
+        "qubits": 18,
+        "dim": 262144,
+        "mem_mb": 4.0,
+        "gates": 180,
+        "time_ms": 229.152,
+        "throughput_mops": 205.92
+      },
+      {
+        "qubits": 20,
+        "dim": 1048576,
+        "mem_mb": 16.0,
+        "gates": 220,
+        "time_ms": 1589.044,
+        "throughput_mops": 145.17
+      },
+      {
+        "qubits": 22,
+        "dim": 4194304,
+        "mem_mb": 64.0,
+        "gates": 264,
+        "time_ms": 6745.788,
+        "throughput_mops": 164.15
+      }
+    ],
+    "phase2_hardware_memory_limits": [
+      {
+        "qubits": 10,
+        "dim": 1024,
+        "mem_mb": 0.02,
+        "alloc_ms": 0.01,
+        "circuit_ms": 0.02,
+        "measure_ms": 0.69,
+        "total_ms": 0.72,
+        "status": "SUCCESS"
+      },
+      {
+        "qubits": 14,
+        "dim": 16384,
+        "mem_mb": 0.25,
+        "alloc_ms": 0.07,
+        "circuit_ms": 0.4,
+        "measure_ms": 0.03,
+        "total_ms": 0.5,
+        "status": "SUCCESS"
+      },
+      {
+        "qubits": 18,
+        "dim": 262144,
+        "mem_mb": 4.0,
+        "alloc_ms": 0.78,
+        "circuit_ms": 9.16,
+        "measure_ms": 0.47,
+        "total_ms": 10.41,
+        "status": "SUCCESS"
+      },
+      {
+        "qubits": 20,
+        "dim": 1048576,
+        "mem_mb": 16.0,
+        "alloc_ms": 3.08,
+        "circuit_ms": 46.96,
+        "measure_ms": 3.0,
+        "total_ms": 53.04,
+        "status": "SUCCESS"
+      },
+      {
+        "qubits": 22,
+        "dim": 4194304,
+        "mem_mb": 64.0,
+        "alloc_ms": 12.11,
+        "circuit_ms": 223.42,
+        "measure_ms": 16.16,
+        "total_ms": 251.69,
+        "status": "SUCCESS"
+      },
+      {
+        "qubits": 24,
+        "dim": 16777216,
+        "mem_mb": 256.0,
+        "alloc_ms": 56.04,
+        "circuit_ms": 1080.56,
+        "measure_ms": 88.76,
+        "total_ms": 1225.36,
+        "status": "SUCCESS"
+      },
+      {
+        "qubits": 25,
+        "dim": 33554432,
+        "mem_mb": 512.0,
+        "alloc_ms": 148.14,
+        "circuit_ms": 2248.34,
+        "measure_ms": 136.46,
+        "total_ms": 2532.94,
+        "status": "SUCCESS"
+      },
+      {
+        "qubits": 26,
+        "dim": 67108864,
+        "mem_mb": 1024.0,
+        "alloc_ms": 242.31,
+        "circuit_ms": 4724.58,
+        "measure_ms": 265.85,
+        "total_ms": 5232.74,
+        "status": "SUCCESS"
+      },
+      {
+        "qubits": 27,
+        "dim": 134217728,
+        "mem_mb": 2048.0,
+        "alloc_ms": 541.21,
+        "circuit_ms": 9747.42,
+        "measure_ms": 593.14,
+        "total_ms": 10881.77,
+        "status": "SUCCESS"
+      },
+      {
+        "qubits": 28,
+        "dim": 268435456,
+        "mem_mb": 4096.0,
+        "alloc_ms": 1299.49,
+        "circuit_ms": 20043.77,
+        "measure_ms": 1159.01,
+        "total_ms": 22502.27,
+        "status": "SUCCESS"
+      },
+      {
+        "qubits": 29,
+        "dim": 536870912,
+        "mem_mb": 8192.0,
+        "alloc_ms": 5002.47,
+        "circuit_ms": 63291.24,
+        "measure_ms": 2689.1,
+        "total_ms": 70982.81,
+        "status": "SUCCESS"
+      },
+      {
+        "qubits": 30,
+        "dim": 1073741824,
+        "mem_mb": 16384.0,
+        "alloc_ms": null,
+        "circuit_ms": null,
+        "measure_ms": null,
+        "total_ms": null,
+        "status": "OUT_OF_MEMORY (std::bad_alloc: Physical RAM Limit)"
+      }
+    ],
+    "python_comparisons": {
+      "numpy": [
+        {
+          "qubits": 10,
+          "mem_mb": 0.02,
+          "total_ms": 2.14
+        },
+        {
+          "qubits": 14,
+          "mem_mb": 0.25,
+          "total_ms": 2.09
+        },
+        {
+          "qubits": 18,
+          "mem_mb": 4.0,
+          "total_ms": 104.39
+        },
+        {
+          "qubits": 20,
+          "mem_mb": 16.0,
+          "total_ms": 461.84
+        },
+        {
+          "qubits": 22,
+          "mem_mb": 64.0,
+          "total_ms": 1995.26
+        },
+        {
+          "qubits": 24,
+          "mem_mb": 256.0,
+          "total_ms": 10182.35
+        },
+        {
+          "qubits": 25,
+          "mem_mb": 512.0,
+          "total_ms": 23307.45
+        },
+        {
+          "qubits": 26,
+          "mem_mb": 1024.0,
+          "total_ms": 47106.93
+        }
+      ],
+      "qiskit": [
+        {
+          "qubits": 4,
+          "mem_mb": 0.0,
+          "total_ms": 17.18
+        },
+        {
+          "qubits": 6,
+          "mem_mb": 0.0,
+          "total_ms": 1.04
+        },
+        {
+          "qubits": 8,
+          "mem_mb": 0.0,
+          "total_ms": 1.32
+        },
+        {
+          "qubits": 10,
+          "mem_mb": 0.02,
+          "total_ms": 4.95
+        },
+        {
+          "qubits": 12,
+          "mem_mb": 0.06,
+          "total_ms": 18.29
+        },
+        {
+          "qubits": 14,
+          "mem_mb": 0.25,
+          "total_ms": 101.35
+        },
+        {
+          "qubits": 16,
+          "mem_mb": 1.0,
+          "total_ms": 413.51
+        },
+        {
+          "qubits": 18,
+          "mem_mb": 4.0,
+          "total_ms": 1955.57
+        }
+      ]
+    }
+  }
+}

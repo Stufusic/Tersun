@@ -16,6 +16,7 @@ public:
     bool pass_local_cse(BasicBlock& bb);
     bool pass_copy_propagation(BasicBlock& bb);
     bool pass_dead_code_elimination(BasicBlock& bb);
+    bool pass_dead_code_elimination(CFG& cfg);
     bool pass_branch_folding(CFG& cfg);
     bool pass_block_merging(CFG& cfg);
     bool pass_loop_induction_tagging(CFG& cfg, IRFunction& fn);

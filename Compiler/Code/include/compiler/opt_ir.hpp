@@ -80,6 +80,7 @@ enum class IROp {
     ALLOC_OBJ,
     LOAD_FIELD,
     STORE_FIELD,
+    INVOKE_METHOD,
 
     // Traps / Runtime
     VM_FALLBACK
@@ -89,6 +90,7 @@ inline const char* ir_op_to_string(IROp op) {
     switch (op) {
         case IROp::NOP: return "NOP";
         case IROp::LABEL: return "LABEL";
+        case IROp::INVOKE_METHOD: return "INVOKE_METHOD";
         case IROp::CONST_INT: return "CONST_INT";
         case IROp::CONST_FLOAT: return "CONST_FLOAT";
         case IROp::CONST_BOOL: return "CONST_BOOL";
@@ -354,6 +356,8 @@ private:
     std::unordered_map<std::string, size_t> local_slots_;
     std::vector<std::string> break_labels_;
     std::vector<std::string> continue_labels_;
+    std::unordered_map<std::string, std::vector<std::string>> class_fields_;
+    std::unordered_map<std::string, int> class_init_arity_;
 };
 
 } // namespace setun

@@ -67,6 +67,16 @@ void run_tersun_101_llvm_tests();
 // Tersun 1.0.3 Core Semantics (.stn scripts + negative compile tests)
 void test_stn_semantics_suite();
 
+// Gate 5.6 Managed Heap & Tri-Color GC Stress Benchmarks
+void test_gc_tracing_stress();
+void test_gc_alloc_stress();
+
+// Gate 5.7 Baseline JIT Engine & Execution Contract
+void test_baseline_jit_suite();
+
+// Gate 5.8 On-Stack Replacement (OSR) & Deoptimization Architecture
+void test_osr_deopt_suite();
+
 } // namespace setun
 
 // Tersun 1.0.2 QVM Verification Suite
@@ -149,6 +159,16 @@ int run_all_tests() {
 
         std::cout << "\n[Tersun 1.0.3 Core Semantics] Testing .stn Scripts (ctor, strings, logic, modules, fs)...\n";
         setun::test_stn_semantics_suite();
+
+        std::cout << "\n[Gate 5.6 Evolution] Testing Managed Heap, Tri-Color GC & Memory Flatline...\n";
+        setun::test_gc_tracing_stress();
+        setun::test_gc_alloc_stress();
+
+        std::cout << "\n[Gate 5.7 Evolution] Testing Baseline JIT Engine & Execution Contract...\n";
+        setun::test_baseline_jit_suite();
+
+        std::cout << "\n[Gate 5.8 Evolution] Testing OSR & Speculative Deoptimization Engine...\n";
+        setun::test_osr_deopt_suite();
 
         std::cout << "\n==========================================================\n";
         std::cout << "  ALL TESTS PASSED SUCCESSFULLY! (100% Verification)      \n";

@@ -1,4 +1,6 @@
 #include "vm/vm.hpp"
+#include "vm/jit_frame.hpp"
+#include "vm/jit_manager.hpp"
 #include "vm/text.hpp"
 #include "graphics/setun2d_bridge.hpp"
 #include "compiler/types.hpp"
@@ -1133,6 +1135,75 @@ void VM::run_optimized(OptimizedChunk& chunk) {
 
     c_lbl_OP_JUMP: {
         int16_t offset = static_cast<int16_t>(ip[0] | (ip[1] << 8));
+        if (__builtin_expect(offset < 0, 0)) {
+            stack_.set_top(static_cast<size_t>(sp - stack_.data()));
+            gc_engine_.safepoint(*this);
+            sp = stack_.data() + stack_.size();
+
+            // Gate 5.8: OSR Transition Hook
+            if (jit_enabled_ && jit_manager_) {
+                size_t func_ip = call_stack_.empty() ? 0 : call_stack_.back().func_entry;
+                size_t loop_target = static_cast<size_t>(ip + 2 + offset - code_base);
+                jit_manager_->record_backedge(func_ip);
+                bool did_osr = false;
+                bool did_deopt = false;
+                uint32_t deopt_pc = 0;
+                int64_t raw_res = 0;
+
+                {
+                    auto code_obj = jit_manager_->get_or_create(func_ip);
+                    if (jit_manager_->policy().should_compile(*code_obj)) {
+                        jit_manager_->compile_function(chunk, func_ip, chunk.code.size());
+                    }
+                    if (code_obj->has_osr_entry(static_cast<uint32_t>(loop_target))) {
+                        JITFrame frame;
+                        frame.vm = this;
+                        frame.locals = locals_.data() + local_base;
+                        frame.num_locals = locals_.size() - local_base;
+                        frame.stack_base = stack_.data();
+                        frame.stack_depth = static_cast<size_t>(sp - stack_.data());
+                        frame.prev_call_frame = call_stack_.empty() ? nullptr : &call_stack_.back();
+                        frame.prev_jit_frame = active_jit_frame_;
+                        active_jit_frame_ = &frame;
+
+                        raw_res = jit_manager_->execute_osr(this, func_ip, static_cast<uint32_t>(loop_target), &frame);
+                        active_jit_frame_ = frame.prev_jit_frame;
+
+                        if (frame.deopt_code > 0) {
+                            did_deopt = true;
+                            deopt_pc = frame.deopt_code;
+                        } else {
+                            did_osr = true;
+                        }
+                    }
+                }
+
+                if (did_deopt) {
+                    ip = code_base + deopt_pc;
+                    sp = stack_.data() + stack_.size();
+                    DISPATCH_C();
+                } else if (did_osr) {
+                    if (call_stack_.empty()) {
+                        *sp++ = VMValue::from_raw(static_cast<uint64_t>(raw_res));
+                        running_ = false;
+                        goto c_lbl_exit;
+                    } else {
+                        CallFrame cframe = call_stack_.back();
+                        call_stack_.pop_back();
+                        if (opt_flags_.enable_fast_frames) {
+                            local_top_ = cframe.local_base;
+                        } else {
+                            locals_.resize(cframe.local_base);
+                        }
+                        sp = stack_.data() + cframe.stack_depth;
+                        *sp++ = VMValue::from_raw(static_cast<uint64_t>(raw_res));
+                        local_base = call_stack_.empty() ? 0 : call_stack_.back().local_base;
+                        ip = code_base + cframe.return_ip;
+                        DISPATCH_C();
+                    }
+                }
+            }
+        }
         ip += 2 + offset;
         DISPATCH_C();
     }
@@ -1219,7 +1290,10 @@ void VM::run_optimized(OptimizedChunk& chunk) {
             locals_[new_local_base + i] = *--sp;
         }
 
-        call_stack_.push_back(CallFrame{static_cast<size_t>(ip - code_base), new_local_base, static_cast<size_t>(sp - stack_.data()), callee_frame_size});
+        call_stack_.push_back(CallFrame{static_cast<size_t>(ip - code_base), new_local_base, static_cast<size_t>(sp - stack_.data()), callee_frame_size, fn_entry});
+        stack_.set_top(static_cast<size_t>(sp - stack_.data()));
+        gc_engine_.safepoint(*this);
+        sp = stack_.data() + stack_.size();
         local_base = new_local_base;
         ip = code_base + fn_entry;
         DISPATCH_C();
@@ -2125,6 +2199,58 @@ void VM::handle_tafpu_todbl(const Chunk&) {
 
 void VM::handle_jump(const Chunk& chunk) {
     int16_t offset = read_int16(chunk);
+    if (__builtin_expect(offset < 0, 0)) {
+        gc_engine_.safepoint(*this);
+
+        // Gate 5.8: OSR Transition Hook
+        if (jit_enabled_ && jit_manager_) {
+            size_t func_ip = call_stack_.empty() ? 0 : call_stack_.back().func_entry;
+            size_t loop_target = ip_ + offset;
+            jit_manager_->record_backedge(func_ip);
+            auto code_obj = jit_manager_->get_or_create(func_ip);
+            if (jit_manager_->policy().should_compile(*code_obj)) {
+                jit_manager_->compile_function(chunk, func_ip, chunk.code.size());
+            }
+            if (code_obj->has_osr_entry(static_cast<uint32_t>(loop_target))) {
+                size_t cur_local_base = call_stack_.empty() ? 0 : call_stack_.back().local_base;
+                JITFrame frame;
+                frame.vm = this;
+                frame.locals = locals_.data() + cur_local_base;
+                frame.num_locals = locals_.size() - cur_local_base;
+                frame.stack_base = stack_.data();
+                frame.stack_depth = stack_.size();
+                frame.prev_call_frame = call_stack_.empty() ? nullptr : &call_stack_.back();
+                frame.prev_jit_frame = active_jit_frame_;
+                active_jit_frame_ = &frame;
+
+                int64_t raw_res = jit_manager_->execute_osr(this, func_ip, static_cast<uint32_t>(loop_target), &frame);
+                active_jit_frame_ = frame.prev_jit_frame;
+
+                if (frame.deopt_code > 0) {
+                    ip_ = static_cast<size_t>(frame.deopt_code);
+                    return;
+                } else {
+                    if (call_stack_.empty()) {
+                        stack_.push(VMValue::from_raw(static_cast<uint64_t>(raw_res)));
+                        running_ = false;
+                        return;
+                    } else {
+                        CallFrame cframe = call_stack_.back();
+                        call_stack_.pop_back();
+                        if (opt_flags_.enable_fast_frames) {
+                            local_top_ = cframe.local_base;
+                        } else {
+                            locals_.resize(cframe.local_base);
+                        }
+                        stack_.resize(cframe.stack_depth);
+                        stack_.push(VMValue::from_raw(static_cast<uint64_t>(raw_res)));
+                        ip_ = cframe.return_ip;
+                        return;
+                    }
+                }
+            }
+        }
+    }
     ip_ += offset;
 }
 
@@ -2215,7 +2341,8 @@ void VM::handle_call(const Chunk& chunk) {
         locals_[new_local_base + i] = stack_.pop();
     }
 
-    call_stack_.push_back(CallFrame{ip_, new_local_base, stack_.size(), callee_frame_size});
+    call_stack_.push_back(CallFrame{ip_, new_local_base, stack_.size(), callee_frame_size, fn_entry});
+    gc_engine_.safepoint(*this);
     ip_ = fn_entry;
 }
 
@@ -3134,7 +3261,7 @@ void VM::handle_invoke_method(const Chunk& chunk) {
                     for (size_t i = 0; i < argc; ++i) {
                         locals_[new_local_base + 1 + i] = args[i];
                     }
-                    call_stack_.push_back(CallFrame{ip_, new_local_base, stack_.size(), callee_frame_size});
+                    call_stack_.push_back(CallFrame{ip_, new_local_base, stack_.size(), callee_frame_size, fn_entry});
                     ip_ = fn_entry;
                     return;
                 }
@@ -3262,7 +3389,7 @@ void VM::handle_call_indirect(const Chunk& chunk) {
     for (size_t j = 0; j < cap_count; ++j) {
         locals_[new_local_base + argc + j] = closure->captures[j];
     }
-    call_stack_.push_back(CallFrame{ip_, new_local_base, stack_.size(), callee_frame_size});
+    call_stack_.push_back(CallFrame{ip_, new_local_base, stack_.size(), callee_frame_size, closure->entry});
     ip_ = closure->entry;
 }
 

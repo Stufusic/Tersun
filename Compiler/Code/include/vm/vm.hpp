@@ -5,6 +5,7 @@
 #include "vm/stack.hpp"
 #include "compiler/emitter.hpp"
 #include "vm/opt_bytecode.hpp"
+#include "vm/gc_engine.hpp"
 #include "tafpu/exception.hpp"
 #include <vector>
 #include <array>
@@ -12,6 +13,9 @@
 #include <iostream>
 
 namespace setun {
+
+struct JITFrame;
+class JITManager;
 
 // ============================================================================
 // Gate 4: Scientific Telemetry & Hardware Counters
@@ -39,6 +43,7 @@ struct CallFrame {
     // the caller's expression evaluation.
     size_t stack_depth{0};
     size_t frame_size{32};
+    size_t func_entry{0};
 };
 
 // Active try block: where to land on exception + machine state to restore.
@@ -84,12 +89,27 @@ public:
 
     // Accessors for testing and inspection
     size_t ip() const { return ip_; }
+    void set_ip(size_t ip) { ip_ = ip; }
+    VMStack& stack() { return stack_; }
     const VMStack& stack() const { return stack_; }
     const std::vector<VMValue>& globals() const { return globals_; }
     std::vector<VMValue>& locals() { return locals_; }
     const std::vector<VMValue>& locals() const { return locals_; }
     const std::array<TafpuNum, 8>& tafpu_registers() const { return tafpu_regs_; }
     const std::array<int16_t, 8>& tryte_registers() const { return tryte_regs_; }
+
+    GCEngine& gc_engine() { return gc_engine_; }
+    const GCEngine& gc_engine() const { return gc_engine_; }
+
+    // Gate 5.7: JIT Execution and Active Frame Management
+    JITFrame* active_jit_frame() const { return active_jit_frame_; }
+    void set_active_jit_frame(JITFrame* frame) { active_jit_frame_ = frame; }
+
+    bool is_jit_enabled() const { return jit_enabled_; }
+    void set_jit_enabled(bool enabled) { jit_enabled_ = enabled; }
+
+    std::shared_ptr<JITManager> jit_manager() const { return jit_manager_; }
+    void set_jit_manager(std::shared_ptr<JITManager> mgr) { jit_manager_ = mgr; }
 
     // Last printed output buffer (for test capture)
     std::string last_output() const { return output_buffer_; }
@@ -231,6 +251,12 @@ private:
     OptFlags opt_flags_{OptFlags::all_enabled()};
     VMTelemetry telemetry_{};
     size_t local_top_{256};
+    GCEngine gc_engine_{};
+
+    // Gate 5.7: JIT Execution State
+    JITFrame* active_jit_frame_{nullptr};
+    bool jit_enabled_{false};
+    std::shared_ptr<JITManager> jit_manager_{nullptr};
 };
 
 } // namespace setun

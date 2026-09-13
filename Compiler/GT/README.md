@@ -16,7 +16,7 @@
      │  TRACK A: SYSTEM ARCHITECTURE│                 │ TRACK B: SOFTWARE & TERNARY │
      │   Giáo trình Hệ thống Tersun │                 │  Giáo trình Lập trình Tersun│
      │   (Compiler, VM, JIT, AOT)  │                 │ (From First-Principles)     │
-     │       [3 Volumes - 22 Ch.]   │                 │     [3 Volumes - 36 Ch.]    │
+     │       [3 Volumes - 24 Ch.]   │                 │     [3 Volumes - 38 Ch.]    │
      └──────────────┬──────────────┘                 └──────────────┬──────────────┘
                     │                                               │
                     └───────────────────────┬───────────────────────┘
@@ -60,7 +60,7 @@ Mọi kiến trúc tinh vi trong khoa học máy tính—từ Bảng băm (Hash 
    - **HYPOTHESIS (Giả thuyết kỹ thuật)**: Lời giải thích dự kiến cho hiện tượng quan sát được.
    - **INFERENCE (Suy luận logic)**: Lập luận hình thức kết nối giả thuyết với cơ chế phần cứng.
    - **CLAIM (Tuyên bố sau kiểm chứng)**: Kết luận khoa học chỉ được công nhận sau khi có đối chứng thực nghiệm.
-3. **No Optimization Without Measurement (Không tối ưu hóa vô căn cứ)**: Mọi kỹ thuật (Direct Threading, NaN-Boxing, Arena Allocators, Loop Quickening, SIMD) đều có chi phí đánh đổi (trade-offs). Mọi tối ưu hóa bắt buộc phải được định lượng bằng Benchmark Deterministic.
+3. **No Optimization Without Measurement (Không tối ưu hóa vô căn cứ)**: Mọi kỹ thuật (Direct Threading, NaN-Boxing, Arena Allocators, Loop Quickening, SIMD, JIT/OSR) đều có chi phí đánh đổi (trade-offs). Mọi tối ưu hóa bắt buộc phải được định lượng bằng Benchmark Deterministic.
 4. **Nghiêm ngặt về số học và tính chính xác đại số**: Phân biệt tuyệt đối giữa *Tính chính xác toán học lý thuyết*, *Tính chính xác của miền biểu diễn số học hữu hạn* và *Sai số làm tròn của số thực xấp xỉ IEEE 754*.
 5. **Debugging như một công cụ phẫu thuật kiến trúc**: Lỗi không phải là thứ để che giấu bằng các mẹo vặt (hacks), mà là bằng chứng sống về sự vi phạm bất biến hệ thống (Invariants) và ABI giữa các tầng trừu tượng.
 
@@ -75,7 +75,8 @@ Sau khi hoàn thành toàn bộ hệ thống giáo trình, người học đạt
 - **CLO-3 (Virtual Machine Engineering)**: Xây dựng máy ảo thực thi dạng ngăn xếp (Stack VM) và thanh ghi (Register VM), kỹ thuật đóng gói giá trị NaN-Boxing 64-bit, cơ chế phân phối lệnh kép (Direct Threading vs Switch-Dispatch), và hệ thống Inline Caching cho nạp thuộc tính động.
 - **CLO-4 (Memory Management & Runtime)**: Làm chủ cơ chế cấp phát vùng nhớ Arena Allocator O(1), bộ thu gom rác Tri-Color Mark-Sweep GC, quản lý Stack Frames và Exception Unwinding an toàn.
 - **CLO-5 (Balanced Ternary & Non-Von Neumann Architecture)**: Nắm vững hệ số tam phân cân bằng $\{-1, 0, 1\}$, giải thuật cộng BTVP không lan truyền sóng nhớ, số học đại số TAFPU trên trường số thực $\mathbb{Q}(\sqrt{3})$, phép nhân tích chập không cần nhân (Multiplication-Free GEMM) ứng dụng cho Ternary AI/BitNet.
-- **CLO-6 (Quantum Computation & Hilbert State Simulation)**: Hiểu và mô phỏng được trạng thái lượng tử đa Qubit/Qutrit, ma trận mật độ, cổng Hadamard tam phân, giải thuật tìm kiếm Grover và kiến trúc máy ảo lượng tử QVM không mã lệnh (Zero-Opcode Execution).
+- **CLO-6 (JIT Compilation & On-Stack Replacement)**: Nắm vững kiến trúc JIT Compiler, cơ chế phát hiện vòng lặp nóng `OP_LOOP_START`, thay thế khung ngăn xếp tại chỗ (On-Stack Replacement - OSR) và cơ chế giải tỏa suy đoán an toàn (Speculative Deoptimization / Bailout).
+- **CLO-7 (Quantum Computation & Hilbert State Simulation)**: Hiểu và mô phỏng được trạng thái lượng tử quy mô lớn đa Qubit/Qutrit, thuật toán Grover, biến đổi Fourier lượng tử (QFT), cơ chế biến đổi bước nhảy tại chỗ không cấp phát bộ nhớ phụ (In-place Strided Transformation) và chạm trần phần cực đại $N=29\text{ Qubits}$ ($536\text{M}$ amplitudes).
 
 ---
 
@@ -88,16 +89,16 @@ Tùy theo định hướng chuyên môn, người học có thể lựa chọn 1
 │                                LỘ TRÌNH 1: SYSTEM & COMPILER TRACK                     │
 │               (Dành cho Kỹ sư Hệ thống, Trình biên dịch & Máy ảo cấp thấp)             │
 │                                                                                        │
-│  Sys.Vol 1 (Ch.1-10)    ──►   Sys.Vol 2 (Ch.11-20)     ──►    Sys.Vol 3 (Ch.21-22)     │
-│  [Frontend & SSA IR]           [TVM, GC, AOT, LLVM]            [Telemetry & Profiling] │
+│  Sys.Vol 1 (Ch.1-10)    ──►   Sys.Vol 2 (Ch.11-20)     ──►    Sys.Vol 3 (Ch.21-24)     │
+│  [Frontend & SSA IR]           [TVM, GC, AOT, LLVM]            [Diagnostics, JIT, QVM] │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
 │                                LỘ TRÌNH 2: APPLICATION & TERNARY TRACK                 │
 │                 (Dành cho Lập trình viên Hệ thống, AI Tam phân & Lượng tử)             │
 │                                                                                        │
-│  Prog.Vol 1 (Ch.1-22)   ──►   Prog.Vol 2 (Ch.23-30)    ──►    Prog.Vol 3 (Ch.31-36)    │
-│  [Core Lang & OOP]             [TAFPU, BitNet, Async]          [LLVM AOT, QVM Quantum] │
+│  Prog.Vol 1 (Ch.1-22)   ──►   Prog.Vol 2 (Ch.23-30)    ──►    Prog.Vol 3 (Ch.31-38)    │
+│  [Core Lang & OOP]             [TAFPU, BitNet, Async]          [AOT, JIT/OSR, QVM N=29]│
 └────────────────────────────────────────────────────────────────────────────────────────┘
 
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
@@ -108,6 +109,8 @@ Tùy theo định hướng chuyên môn, người học có thể lựa chọn 1
 │          Ví dụ: Sys.Ch.5 (Parser C++) song hành Prog.Ch.5 (Lexing & Scanning)         │
 │                 Sys.Ch.12-14 (TVM & GC) song hành Prog.Ch.23-24 (Arena & Heap)         │
 │                 Sys.Ch.16-17 (LLVM AOT) song hành Prog.Ch.33 (LLVM Lowering)           │
+│                 Sys.Ch.23 (JIT & OSR) song hành Prog.Ch.37 (OSR Hot Loops & Flat)      │
+│                 Sys.Ch.24 (QVM Stride) song hành Prog.Ch.38 (QVM N=29 & Grover)       │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -120,7 +123,7 @@ Tùy theo định hướng chuyên môn, người học có thể lựa chọn 1
 ### TRACK A: BỘ GIÁO TRÌNH HỆ THỐNG TERSUN
 #### *(Tersun Computer Systems Engineering: From First-Principles to Architecture)*
 
-*Bao gồm 3 Tập, 16 Phần lý thuyết chuyên sâu và 22 Chương giải phẫu kiến trúc mã nguồn C++ compiler/VM.*
+*Bao gồm 3 Tập, 7 Phần lý thuyết chuyên sâu và 24 Chương giải phẫu kiến trúc mã nguồn C++ compiler/VM.*
 
 #### 📘 [TẬP 1: TỪ NGUYÊN LÝ ĐẾN DẠNG GÁN ĐƠN DUY NHẤT SSA (VOL 1)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20HỆ%20THỐNG%20TERSUN%20_TỪ%20NỀN%20TẢNG%20ĐẾN%20KIẾN%20TRÚC%20NÂNG%20CAO%20VOL%201.md)
 *Dung lượng: 442.5 KB | 7,082 dòng mã và phân tích học thuật.*
@@ -166,21 +169,24 @@ Tùy theo định hướng chuyên môn, người học có thể lựa chọn 1
 
 ---
 
-#### 📘 [TẬP 3: ĐO LƯỜNG VI KIẾN TRÚC, TOOLCHAIN VÀ TƯƠNG LAI ĐIỆN TOÁN TAM PHÂN (VOL 3)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20HỆ%20THỐNG%20TERSUN%20_TỪ%20NỀN%20TẢNG%20ĐẾN%20KIẾN%20TRÚC%20NÂNG%20CAO%20VOL%203.md)
-*Dung lượng: 96.0 KB | 1,480 dòng phân tích cao cấp và phụ lục tổng kết.*
+#### 📘 [TẬP 3: ĐO LƯỜNG VI KIẾN TRÚC, TOOLCHAIN, JIT/OSR VÀ CỖ MÁY LƯỢNG TỬ QVM (VOL 3)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20HỆ%20THỐNG%20TERSUN%20_TỪ%20NỀN%20TẢNG%20ĐẾN%20KIẾN%20TRÚC%20NÂNG%20CAO%20VOL%203.md)
+*Dung lượng: 154.2 KB | 2,340 dòng phân tích cao cấp và phụ lục tổng kết.*
 
 - **PHẦN VI: RUNTIME NÂNG CAO & CÔNG CỤ HỆ SINH THÁI (HOÀN TẤT)**:
   - [Chương 21: Hệ thống Phân tích Hiệu năng, Đo đạc Đoản mạch & Bộ Tự Chẩn đoán (Telemetry & Diagnostics)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20HỆ%20THỐNG%20TERSUN%20_TỪ%20NỀN%20TẢNG%20ĐẾN%20KIẾN%20TRÚC%20NÂNG%20CAO%20VOL%203.md#L5)
   - [Chương 22: Hệ sinh thái Công cụ, Trình Quản lý Gói & Tương lai Kiến trúc Tersun (TPM, LSP, Future)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20HỆ%20THỐNG%20TERSUN%20_TỪ%20NỀN%20TẢNG%20ĐẾN%20KIẾN%20TRÚC%20NÂNG%20CAO%20VOL%203.md#L704)
+- **PHẦN VII: TRÌNH BIÊN DỊCH JIT TỰ ĐỘNG, OSR RUNTIME & CỖ MÁY LƯỢNG TỬ ĐỘC LẬP QUY MÔ LỚN**:
+  - [Chương 23: Kiến trúc JIT Compiler, Thay thế khung giữa vòng lặp (OSR) & Giải tỏa suy đoán an toàn (Speculative Deoptimization)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20HỆ%20THỐNG%20TERSUN%20_TỪ%20NỀN%20TẢNG%20ĐẾN%20KIẾN%20TRÚC%20NÂNG%20CAO%20VOL%203.md#L1450)
+  - [Chương 24: Cỗ máy lượng tử QVM độc lập, Biến đổi bước nhảy không cấp phát & Giới hạn phần cứng thực tế ($N=4\dots30$)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20HỆ%20THỐNG%20TERSUN%20_TỪ%20NỀN%20TẢNG%20ĐẾN%20KIẾN%20TRÚC%20NÂNG%20CAO%20VOL%203.md#L1820)
 - **BẢNG QUY CHIẾU & ĐỐI SÁNH TỔNG HỢP**:
-  - [Tổng kết Hệ thống 6 Phần Kiến trúc Toàn cảnh](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20HỆ%20THỐNG%20TERSUN%20_TỪ%20NỀN%20TẢNG%20ĐẾN%20KIẾN%20TRÚC%20NÂNG%20CAO%20VOL%203.md#L1447)
+  - [Tổng kết Hệ thống 7 Phần Kiến trúc Toàn cảnh (24 Chương)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20HỆ%20THỐNG%20TERSUN%20_TỪ%20NỀN%20TẢNG%20ĐẾN%20KIẾN%20TRÚC%20NÂNG%20CAO%20VOL%203.md#L2290)
 
 ---
 
 ### TRACK B: BỘ GIÁO TRÌNH LẬP TRÌNH TERSUN
 #### *(First-Principles Tersun Programming: From Hardware Mechanics to Quantum Applications)*
 
-*Bao gồm 3 Tập, 9 Phần học thuật và 36 Chương triển khai mã nguồn thực chiến từ cơ bản đến đỉnh cao.*
+*Bao gồm 3 Tập, 10 Phần học thuật và 38 Chương triển khai mã nguồn thực chiến từ cơ bản đến đỉnh cao.*
 
 #### 📗 [TẬP 1: CƠ CHẾ BỘ NHỚ, CÚ PHÁP, HÀM, OOP VÀ GENERICS (VOL 1)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%201.md)
 *Dung lượng: 533.4 KB | 10,301 dòng mã và giải thích sư phạm.*
@@ -233,8 +239,8 @@ Tùy theo định hướng chuyên môn, người học có thể lựa chọn 1
 
 ---
 
-#### 📗 [TẬP 3: NATIVE THREADS, LLVM AOT, QVM VÀ ĐIỆN TOÁN LƯỢNG TỬ (VOL 3)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%203.md)
-*Dung lượng: 171.4 KB | 3,120 dòng phân tích điện toán lượng tử và AOT compiler.*
+#### 📗 [TẬP 3: NATIVE THREADS, LLVM AOT, JIT/OSR, QVM VÀ ĐIỆN TOÁN LƯỢNG TỬ (VOL 3)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%203.md)
+*Dung lượng: 215.8 KB | 3,950 dòng phân tích điện toán lượng tử, OSR và AOT compiler.*
 
 - **PHẦN VIII: LẬP TRÌNH BẤT ĐỒNG BỘ, ĐA LUỒNG & ĐỒNG BỘ HÓA (HOÀN TẤT)**:
   - [Chương 31: Đa Luồng Thật & Truyền Thông Điệp (Native Threads & Actor Channels)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%203.md#L6)
@@ -243,7 +249,12 @@ Tùy theo định hướng chuyên môn, người học có thể lựa chọn 1
   - [Chương 33: Hạ Tầng Mã Máy LLVM IR & Biên Dịch AOT Đa Nền Tảng (LLVM SSA & Triples)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%203.md#L851)
   - [Chương 34: Máy Ảo Lượng Tử QVM & Không Gian Hilbert 2-Bit (Zero-Opcode Execution)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%203.md#L1239)
   - [Chương 35: Cổng Lượng Tử Tam Phân Qutrit & Biến Đổi Hadamard Tam Phân (Qutrit Grover)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%203.md#L2350)
-  - [Chương 36: Tổng Kết Toàn Diện Giáo Trình & Tương Lai Điện Toán Tam Phân (Grand Finale)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%203.md#L3003)
+  - [Chương 36: Giao Thức FFI C-Bindgen & Hệ Sinh Thái Gói TPM (Foreign Function Interface & TPM)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%203.md#L2354)
+- **PHẦN X: HIỆU NĂNG TỐI THƯỢNG VỚI JIT, OSR & MÔ PHỎNG LƯỢNG TỬ ĐẠI QUY MÔ**:
+  - [Chương 37: Kỹ Thuật Lập Trình Hiệu Năng Cao: On-Stack Replacement (OSR), Flat Structs & Native AOT Hot Loops](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%203.md#L3008)
+  - [Chương 38: Lập Trình Mô Phỏng Lượng Tử Quy Mô Lớn: Grover, QFT & Chạm Trần Phần Cứng N=29 Qubits](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%203.md#L3212)
+- **TỔNG KẾT TOÀN DIỆN**:
+  - [Tổng Kết Toàn Diện Giáo Trình Lập Trình Tersun (38 Chương - 10 Phần)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%203.md#L3435)
 
 ---
 
@@ -263,7 +274,8 @@ Mỗi chương trong giáo trình đều được liên kết trực tiếp vớ
 | **Arena & Memory Manager** | [arena.hpp](file:///d:/New%20PJ/Ternary/Compiler/Code/include/compiler/arena.hpp) | Sys.Vol 2: Ch.14 | Prog.Vol 2: Ch.23 |
 | **Balanced Ternary ALU (TAFPU)**| [tafpu.hpp](file:///d:/New%20PJ/Ternary/Compiler/Code/include/tafpu/tafpu.hpp), `trit.cpp` | Sys.Vol 2: Ch.12 | Prog.Vol 2: Ch.25-28 |
 | **Native LLVM AOT Compiler**| [llvm_emitter.hpp](file:///d:/New%20PJ/Ternary/Compiler/Code/include/compiler/llvm_emitter.hpp) | Sys.Vol 2: Ch.16-18 | Prog.Vol 3: Ch.33 |
-| **Quantum Virtual Machine** | [qvm.hpp](file:///d:/New%20PJ/Ternary/Compiler/Code/include/qvm/qvm.hpp), `qcircuit.cpp` | Sys.Vol 1: Ch.11-13 | Prog.Vol 3: Ch.34, 35 |
+| **JIT Compiler & OSR Engine** | `jit_compiler.cpp`, `deopt.cpp` | Sys.Vol 3: Ch.23 | Prog.Vol 3: Ch.37 |
+| **Scaled QVM Quantum Engine** | [qvm.hpp](file:///d:/New%20PJ/Ternary/Compiler/Code/include/qvm/qvm.hpp), `qcircuit.cpp` | Sys.Vol 3: Ch.24 | Prog.Vol 3: Ch.34, 35, 38 |
 | **Telemetry & Diagnostics** | [vm_telemetry.hpp](file:///d:/New%20PJ/Ternary/Compiler/Code/include/vm/vm_telemetry.hpp) | Sys.Vol 3: Ch.21 | Prog.Vol 3: Ch.36 |
 
 ---
@@ -288,13 +300,23 @@ Mỗi chương trong giáo trình đều được liên kết trực tiếp vớ
    .\setunc.exe run ..\quantum_demo.stn
    ```
 
-4. **Biên dịch Mã máy Bản địa AOT (Native C++ / LLVM Pipeline)**:
+4. **Kích Hoạt On-Stack Replacement (OSR) Trong Vòng Lặp Nóng**:
+   ```bash
+   .\setunc.exe run --jit-osr ..\hot_loop_test.stn
+   ```
+
+5. **Biên dịch Mã máy Bản địa AOT Tối Ưu (Native C++ / LLVM Pipeline -O3)**:
    ```bash
    .\setunc.exe aot ..\scientific_lab.stn -o scientific_native.exe -O3
    .\scientific_native.exe
    ```
 
-5. **Chạy Bộ Kiểm định 2.13 Triệu Bất Biến Toán học & Lượng tử (Exhaustive Verification)**:
+6. **Chạy Kiểm Định Giới Hạn Phần Cứng Lượng Tử Đến $N=29$ Qubits (Zero-Copy Strided)**:
+   ```bash
+   .\test_quantum_limit.exe
+   ```
+
+7. **Chạy Bộ Kiểm định 2.13 Triệu Bất Biến Toán học & Lượng tử (Exhaustive Verification)**:
    ```bash
    python bench/bench_gate5_harness.py CP1_TREE_OPT
    ```
@@ -304,3 +326,4 @@ Mỗi chương trong giáo trình đều được liên kết trực tiếp vớ
 > **Bản quyền & Giữ nguyên Nội dung**:  
 > Toàn bộ nội dung chi tiết trong 6 tập giáo trình gốc được bảo toàn 100% nguyên trạng, chuẩn hóa cấu trúc định hướng học thuật và liên kết điều hướng thông suốt qua tài liệu này.  
 > *Đại học Công nghệ & Hệ thống Tính toán Tersun (Tersun Computing Systems Group).*
+

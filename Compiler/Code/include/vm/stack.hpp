@@ -39,6 +39,9 @@ public:
         return stack_[top_ - 1 - depth];
     }
 
+    VMValue& top() { return peek(0); }
+    const VMValue& top() const { return peek(0); }
+
     size_t size() const { return top_; }
     bool empty() const { return top_ == 0; }
     void clear() { top_ = 0; }

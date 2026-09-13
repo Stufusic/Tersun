@@ -4,6 +4,8 @@
 int run_all_tests();
 
 int main() {
+    std::cout << std::unitbuf;
+    std::cerr << std::unitbuf;
     std::cout << "[setunc_test] Running Tersun self-test suite...\n\n";
     int rc = run_all_tests();
     std::cout << "\n[setunc_test] Exit code: " << rc << "\n";

@@ -46,9 +46,23 @@ void QubitRegister::promote_to_statevector() {
     if (statevector_active_) return;
 
     size_t dim = 1ULL << num_qubits_;
-    state_vector_.assign(dim, QComplex(0.0, 0.0));
 
-    // Initialize statevector as tensor product of the discrete states
+    // Fast-path: Ground state |0...0> (standard for newly allocated registers)
+    bool all_zero = true;
+    for (const auto& w : packed_words_) {
+        if (w.raw != 0) {
+            all_zero = false;
+            break;
+        }
+    }
+    if (all_zero) {
+        state_vector_.assign(dim, QComplex(0.0, 0.0));
+        state_vector_[0] = QComplex(1.0, 0.0);
+        statevector_active_ = true;
+        return;
+    }
+
+    // General path for arbitrary initial discrete tensor state
     // Start with 1-qubit base: q0
     std::vector<QComplex> current = {QComplex(1.0, 0.0)}; // |> scalar
 
