@@ -25,6 +25,9 @@
 #include "compiler/q_emitter.hpp"
 #include "compiler/tree_canonicalize.hpp"
 #include "compiler/tree_optimizer.hpp"
+#include "compiler/opt_ir.hpp"
+#include "compiler/cfg.hpp"
+#include "compiler/ir_optimizer.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -131,6 +134,12 @@ int cmd_run(const std::string& path, DispatchMode mode = DispatchMode::REGISTER_
             TreeOptimizer tree_opt(arena);
             tree_opt.optimize_program(program);
 
+            // Gate 5 Intermediate Pipeline: Modules 5.3 & 5.4 (Linear IR & CFG Optimization)
+            IRBuilder ir_builder;
+            IRModule ir_mod = ir_builder.build_module(program);
+            IROptimizer ir_opt;
+            ir_opt.optimize_module(ir_mod);
+
             BytecodeEmitter emitter;
             chunk = emitter.compile(program);
         }
@@ -193,6 +202,12 @@ int cmd_compile(const std::string& source_path, const std::string& out_path) {
         TreeOptimizer tree_opt(arena);
         tree_opt.optimize_program(program);
 
+        // Gate 5 Intermediate Pipeline: Modules 5.3 & 5.4 (Linear IR & CFG Optimization)
+        IRBuilder ir_builder;
+        IRModule ir_mod = ir_builder.build_module(program);
+        IROptimizer ir_opt;
+        ir_opt.optimize_module(ir_mod);
+
         BytecodeEmitter emitter;
         Chunk chunk = emitter.compile(program);
 
@@ -207,6 +222,50 @@ int cmd_compile(const std::string& source_path, const std::string& out_path) {
         return 0;
     } catch (const std::exception& e) {
         std::cerr << "[Compilation Error]: " << e.what() << "\n";
+        return 1;
+    }
+}
+
+int cmd_emit_ir(const std::string& source_path) {
+    try {
+        std::string source = read_file(source_path);
+        ArenaAllocator arena;
+        Lexer lexer(source, source_path);
+        auto tokens = lexer.tokenize();
+
+        Parser parser(tokens, arena);
+        Program program = parser.parse_program();
+
+        ModuleResolver resolver(arena);
+        if (!resolver.resolve_program(program, source_path)) {
+            for (const auto& diag : resolver.get_diagnostics()) {
+                std::cerr << "[Module Error]: " << diag << "\n";
+            }
+            return 1;
+        }
+
+        TypeChecker checker;
+        if (!checker.check_program(program)) {
+            std::cerr << checker.format_diagnostics(source);
+            return 1;
+        }
+
+        Monomorphizer monomorphizer;
+        monomorphizer.process_program(program);
+
+        TreeCanonicalizer::canonicalize_program(program, arena);
+        TreeOptimizer tree_opt(arena);
+        tree_opt.optimize_program(program);
+
+        IRBuilder ir_builder;
+        IRModule mod = ir_builder.build_module(program);
+        IROptimizer ir_opt;
+        ir_opt.optimize_module(mod);
+
+        std::cout << mod.dump();
+        return 0;
+    } catch (const std::exception& e) {
+        std::cerr << "[IR Generation Error]: " << e.what() << "\n";
         return 1;
     }
 }
@@ -795,6 +854,11 @@ int main(int argc, char* argv[]) {
             std::cerr << "[Error]: " << e.what() << "\n";
             return 1;
         }
+    }
+
+    // 3.4 Emit Linear Optimization IR (Gate 5.3 & 5.4): setunc emit-ir <file.stn>
+    if ((cmd == "emit-ir" || cmd == "--emit-ir") && argc >= 3) {
+        return cmd_emit_ir(argv[2]);
     }
 
     if (argc >= 4 && std::string(argv[2]) == "-o") {

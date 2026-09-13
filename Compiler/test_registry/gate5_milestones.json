@@ -226,5 +226,119 @@
         "reps": 5
       }
     ]
+  },
+  "CP2_IR_OPT": {
+    "timestamp": "2026-09-13 07:57:19",
+    "stage": "CP2_IR_OPT",
+    "hash_seal": "1c998669c58e45a28c1a5b39e365fb7563404e0a693f737d50a40358c9671004",
+    "system": "Windows-11-10.0.26200-SP0",
+    "invariants_passed": 2135241,
+    "invariants_total": 2135241,
+    "workloads": [
+      {
+        "id": "H1_sieve",
+        "name": "H1 Prime Sieve (100k)",
+        "checksum": 9592,
+        "expected": 9592,
+        "valid": true,
+        "median_ms": 22.57,
+        "mean_ms": 23.48,
+        "min_ms": 22.27,
+        "max_ms": 27.15,
+        "stddev_ms": 2.064,
+        "reps": 5
+      },
+      {
+        "id": "H2_matmul",
+        "name": "H2 Matmul (100x100)",
+        "checksum": 20250000,
+        "expected": 20250000,
+        "valid": true,
+        "median_ms": 138.52,
+        "mean_ms": 140.31,
+        "min_ms": 136.82,
+        "max_ms": 147.95,
+        "stddev_ms": 4.447,
+        "reps": 5
+      },
+      {
+        "id": "H3_fibonacci",
+        "name": "H3 Fibonacci (N=28)",
+        "checksum": 317811,
+        "expected": 317811,
+        "valid": true,
+        "median_ms": 17.61,
+        "mean_ms": 17.76,
+        "min_ms": 17.28,
+        "max_ms": 18.36,
+        "stddev_ms": 0.482,
+        "reps": 5
+      },
+      {
+        "id": "H4_mandelbrot",
+        "name": "H4 Mandelbrot (200x200)",
+        "checksum": 842053,
+        "expected": 842053,
+        "valid": true,
+        "median_ms": 91.9,
+        "mean_ms": 92.7,
+        "min_ms": 91.16,
+        "max_ms": 96.41,
+        "stddev_ms": 2.179,
+        "reps": 5
+      },
+      {
+        "id": "H5_numeric_loop",
+        "name": "H5 Numeric Loop (5M)",
+        "checksum": 5000000,
+        "expected": 5000000,
+        "valid": true,
+        "median_ms": 319.86,
+        "mean_ms": 319.19,
+        "min_ms": 316.61,
+        "max_ms": 321.58,
+        "stddev_ms": 1.951,
+        "reps": 5
+      },
+      {
+        "id": "H6_call_heavy",
+        "name": "H6 Call Heavy (750k)",
+        "checksum": 125875000,
+        "expected": 125875000,
+        "valid": true,
+        "median_ms": 27.77,
+        "mean_ms": 28.2,
+        "min_ms": 25.86,
+        "max_ms": 31.05,
+        "stddev_ms": 2.18,
+        "reps": 5
+      },
+      {
+        "id": "H7_alloc_heavy",
+        "name": "H7 Alloc Heavy (10k)",
+        "checksum": 5900000,
+        "expected": 5900000,
+        "valid": true,
+        "median_ms": 36.38,
+        "mean_ms": 39.21,
+        "min_ms": 35.81,
+        "max_ms": 50.84,
+        "stddev_ms": 6.51,
+        "reps": 5
+      },
+      {
+        "id": "H8_object_heavy",
+        "name": "H8 Object Heavy (200k)",
+        "checksum": 541096364,
+        "expected": 541096364,
+        "valid": true,
+        "median_ms": 81.91,
+        "mean_ms": 81.31,
+        "min_ms": 77.21,
+        "max_ms": 83.02,
+        "stddev_ms": 2.351,
+        "reps": 5
+      }
+    ]
   }
 }

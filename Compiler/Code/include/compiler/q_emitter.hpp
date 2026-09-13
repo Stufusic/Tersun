@@ -30,7 +30,7 @@ public:
     std::string emit_qasm(const Program& program, const std::string& circuit_name = "tersun_native_qasm");
 
 private:
-    static constexpr size_t kMaxQubits = 24;
+    static constexpr size_t kMaxQubits = 16;
     static constexpr int kMaxUnrollTrips = 256;
 
     qvm::QuantumCircuit circuit_{kMaxQubits};
