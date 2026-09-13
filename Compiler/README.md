@@ -159,4 +159,5 @@ Dự án được bảo hộ toàn diện theo giấy phép độc quyền:
 - **Được phép**: Tự do sử dụng cho mục đích học tập, đào tạo, giảng dạy và nghiên cứu khoa học phi thương mại có trích dẫn nguồn.
 - **Nghiêm cấm**: Nghiêm cấm mọi hành vi khai thác thương mại, bán lại phần mềm hoặc giáo trình, đóng gói dịch vụ đám mây sinh lời, hoặc đạo văn trích đoạt nội dung giáo trình dưới mọi hình thức khi chưa có sự chấp thuận bằng văn bản của tác giả.
 
-*Bản quyền © 2024–2026 Nhóm Nghiên Cứu Kiến Trúc Điện Toán Tersun (Tersun Computing Systems Group). Bảo lưu mọi quyền.*
+*Bản quyền © 2024–2026 Tác giả Tersun. Bảo lưu mọi quyền.*
+

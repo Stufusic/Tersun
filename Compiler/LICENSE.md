@@ -1,6 +1,7 @@
 # TERSUN INTELLECTUAL PROPERTY & ACADEMIC RESEARCH LICENSE (TIPARL)
 ### Phiên bản: 1.0.3 — Bản Quyền Sở Hữu Trí Tuệ & Giấy Phép Nghiên Cứu Khoa Học
-**Bản quyền © 2024–2026 Nhóm Nghiên Cứu Kiến Trúc Điện Toán Tersun (Tersun Computing Systems Group). Bảo lưu mọi quyền (All Rights Reserved).**
+**Bản quyền © 2024–2026 Tác giả Tersun. Bảo lưu mọi quyền (All Rights Reserved).**
+
 
 ---
 
