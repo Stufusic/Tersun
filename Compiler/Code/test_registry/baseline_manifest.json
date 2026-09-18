@@ -1,0 +1,11 @@
+{
+  "gate": "Gate 6.0 - Phase 0 Baseline Freeze",
+  "timestamp_utc": "2026-09-15T14:55:57Z",
+  "commit": "92fd93f33311e3f3b41b0610dffa0d268b5e7de8",
+  "cpu": "12th Gen Intel(R) Core(TM) i5-1245U",
+  "os": "Windows 11 (AMD64)",
+  "compiler": "g++ (GCC) 15.2.0",
+  "compiler_flags": "-std=c++20 -O3",
+  "reps_per_workload": 20,
+  "mode": "Tier-0 (Interpreter Baseline)"
+}

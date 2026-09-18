@@ -10,7 +10,10 @@ fn main() {
     let t0 = time_now_us();
     let r1 = fib(24);
     let t1 = time_now_us();
-    println(f"B1 fib(24)       checksum={r1} time_us={t1 - t0}");
+    print("B1 fib(24) checksum=");
+    print(r1);
+    print(" time_us=");
+    println(t1 - t0);
 
     let acc = 0;
     let t2 = time_now_us();
@@ -22,7 +25,10 @@ fn main() {
         }
     }
     let t3 = time_now_us();
-    println(f"B2 branchy 2M    checksum={acc} time_us={t3 - t2}");
+    print("B2 branchy 2M checksum=");
+    print(acc);
+    print(" time_us=");
+    println(t3 - t2);
 
     let s = 0;
     let t4 = time_now_us();
@@ -33,5 +39,8 @@ fn main() {
         }
     }
     let t5 = time_now_us();
-    println(f"B3 sum 5M        checksum={s} time_us={t5 - t4}");
+    print("B3 sum 5M checksum=");
+    print(s);
+    print(" time_us=");
+    println(t5 - t4);
 }

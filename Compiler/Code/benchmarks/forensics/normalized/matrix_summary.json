@@ -1,0 +1,5446 @@
+{
+  "W1": {
+    "M0": {
+      "workload_id": "W1",
+      "mode_id": "M0",
+      "mode_name": "Interpreter (Switch Dispatch)",
+      "reps": 20,
+      "warmup": 5,
+      "cold": {
+        "wall_clock_total_ms": 416.748,
+        "internal_time_ms": 401.764,
+        "checksum": "832040",
+        "telemetry_file": "D:\\New PJ\\Ternary\\Compiler\\Code\\benchmarks\\forensics\\raw\\W1_M0_cold_dump.json"
+      },
+      "stats": {
+        "count": 20,
+        "median_ms": 398.704,
+        "mean_ms": 400.7618,
+        "stddev_ms": 10.4056,
+        "p95_ms": 420.273,
+        "min_ms": 387.625,
+        "max_ms": 428.246,
+        "cv_pct": 2.6,
+        "ci95_low_ms": 395.8918,
+        "ci95_high_ms": 405.6317
+      },
+      "raw_runs": [
+        {
+          "run_id": 0,
+          "wall_clock_ms": 408.3139,
+          "internal_time_ms": 393.457,
+          "checksum": "832040",
+          "startup_ms": 0.45,
+          "program_ms": 393.614,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 1,
+          "wall_clock_ms": 411.935,
+          "internal_time_ms": 398.109,
+          "checksum": "832040",
+          "startup_ms": 0.472,
+          "program_ms": 398.263,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 2,
+          "wall_clock_ms": 401.0465,
+          "internal_time_ms": 387.625,
+          "checksum": "832040",
+          "startup_ms": 0.442,
+          "program_ms": 387.782,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 3,
+          "wall_clock_ms": 407.9993,
+          "internal_time_ms": 392.261,
+          "checksum": "832040",
+          "startup_ms": 0.596,
+          "program_ms": 392.414,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 4,
+          "wall_clock_ms": 412.2019,
+          "internal_time_ms": 392.356,
+          "checksum": "832040",
+          "startup_ms": 0.452,
+          "program_ms": 392.51,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 5,
+          "wall_clock_ms": 420.9669,
+          "internal_time_ms": 401.74,
+          "checksum": "832040",
+          "startup_ms": 0.471,
+          "program_ms": 401.921,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 6,
+          "wall_clock_ms": 426.4235,
+          "internal_time_ms": 404.856,
+          "checksum": "832040",
+          "startup_ms": 0.666,
+          "program_ms": 405.058,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 7,
+          "wall_clock_ms": 429.8052,
+          "internal_time_ms": 413.148,
+          "checksum": "832040",
+          "startup_ms": 0.442,
+          "program_ms": 413.295,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 8,
+          "wall_clock_ms": 408.7586,
+          "internal_time_ms": 387.958,
+          "checksum": "832040",
+          "startup_ms": 0.456,
+          "program_ms": 388.111,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 9,
+          "wall_clock_ms": 415.3961,
+          "internal_time_ms": 399.122,
+          "checksum": "832040",
+          "startup_ms": 0.451,
+          "program_ms": 399.261,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 10,
+          "wall_clock_ms": 410.8259,
+          "internal_time_ms": 391.731,
+          "checksum": "832040",
+          "startup_ms": 0.476,
+          "program_ms": 391.913,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 11,
+          "wall_clock_ms": 415.8174,
+          "internal_time_ms": 400.664,
+          "checksum": "832040",
+          "startup_ms": 0.464,
+          "program_ms": 400.816,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 12,
+          "wall_clock_ms": 423.3863,
+          "internal_time_ms": 406.982,
+          "checksum": "832040",
+          "startup_ms": 0.47,
+          "program_ms": 407.13,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 13,
+          "wall_clock_ms": 413.3881,
+          "internal_time_ms": 398.286,
+          "checksum": "832040",
+          "startup_ms": 0.814,
+          "program_ms": 398.491,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 14,
+          "wall_clock_ms": 411.4315,
+          "internal_time_ms": 396.868,
+          "checksum": "832040",
+          "startup_ms": 0.718,
+          "program_ms": 397.031,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 15,
+          "wall_clock_ms": 409.9277,
+          "internal_time_ms": 395.185,
+          "checksum": "832040",
+          "startup_ms": 0.447,
+          "program_ms": 395.333,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 16,
+          "wall_clock_ms": 448.9827,
+          "internal_time_ms": 428.246,
+          "checksum": "832040",
+          "startup_ms": 0.587,
+          "program_ms": 428.471,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 17,
+          "wall_clock_ms": 416.5359,
+          "internal_time_ms": 399.782,
+          "checksum": "832040",
+          "startup_ms": 0.455,
+          "program_ms": 399.94,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 18,
+          "wall_clock_ms": 441.9109,
+          "internal_time_ms": 420.273,
+          "checksum": "832040",
+          "startup_ms": 0.439,
+          "program_ms": 420.421,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 19,
+          "wall_clock_ms": 422.9432,
+          "internal_time_ms": 406.586,
+          "checksum": "832040",
+          "startup_ms": 0.455,
+          "program_ms": 406.733,
+          "jit_compile_ms": 0
+        }
+      ],
+      "last_telemetry": {
+        "profiling_mode": "FULL",
+        "wall_clock": {
+          "total_time_ns": 407189000,
+          "startup_time_ns": 455000,
+          "program_time_ns": 406733000,
+          "shutdown_time_ns": 1000,
+          "startup_time_ms": 0.455,
+          "program_time_ms": 406.733,
+          "total_time_ms": 407.189
+        },
+        "tier_jit": {
+          "invocation_count": 0,
+          "backedge_count": 0,
+          "jit_compile_count": 0,
+          "jit_compile_time_ns": 0,
+          "jit_compile_time_ms": 0,
+          "baseline_compile_count": 0,
+          "baseline_compile_time_ns": 0,
+          "optimizing_compile_count": 0,
+          "optimizing_compile_time_ns": 0,
+          "osr_count": 0,
+          "osr_compile_count": 0,
+          "osr_compile_time_ns": 0,
+          "deopt_count": 0,
+          "deopt_time_ns": 0,
+          "tier0_execution_ns": 0,
+          "tier1_execution_ns": 0,
+          "tier2_execution_ns": 0,
+          "compile_requested": 0,
+          "compile_completed": 0,
+          "code_entered": 0,
+          "code_executed": 0
+        },
+        "dispatch": {
+          "total_opcode_dispatch": 0,
+          "dispatch_loop_iterations": 0,
+          "indirect_dispatch_count": 0,
+          "direct_dispatch_count": 0,
+          "superinstruction_count": 0,
+          "branch_count": 0,
+          "load_count": 0,
+          "store_count": 0,
+          "opcode_counts": {}
+        },
+        "stack_execution_state": {
+          "push_count": 0,
+          "pop_count": 0,
+          "dup_count": 0,
+          "swap_count": 0,
+          "tos0_hits": 0,
+          "tos1_hits": 0,
+          "tos_hit": 0,
+          "tos_miss": 0,
+          "tos_hit_rate": 0,
+          "flush_count": 0,
+          "materialize_count": 0,
+          "stack_spill_count": 0,
+          "stack_reload_count": 0,
+          "execution_state_loads": 0,
+          "execution_state_stores": 0,
+          "state_transition_count": 0,
+          "state_sync_count": 0,
+          "state_sync_bytes": 0
+        },
+        "call_frame": {
+          "call_count": 0,
+          "return_count": 0,
+          "function_frame_create": 0,
+          "function_frame_destroy": 0,
+          "recursive_call_count": 0,
+          "native_call_count": 0,
+          "managed_call_count": 0,
+          "frame_alloc_count": 0,
+          "frame_reuse_count": 0,
+          "monomorphic_call": 0,
+          "polymorphic_call": 0,
+          "megamorphic_call": 0
+        },
+        "array": {
+          "generic_array_load": 0,
+          "generic_array_store": 0,
+          "generic_accesses": 0,
+          "typed_i32_load": 0,
+          "typed_i32_store": 0,
+          "typed_i64_load": 0,
+          "typed_i64_store": 0,
+          "typed_f64_load": 0,
+          "typed_f64_store": 0,
+          "i64_accesses": 0,
+          "u8_accesses": 0,
+          "f64_accesses": 0,
+          "tafpu_accesses": 0,
+          "bounds_check_count": 0,
+          "bounds_check_elided": 0,
+          "boxing_count": 0,
+          "unboxing_count": 0,
+          "array_representation_transition": 0,
+          "typed_access_ratio": 0,
+          "flat_access_ratio": 0
+        },
+        "fusion": {
+          "candidate_patterns": 0,
+          "fused_count": 0,
+          "rejected_count": 0,
+          "semantic_barrier_rejections": 0,
+          "jump_target_rejections": 0,
+          "fused_opcode_execution_count": 0,
+          "normal_load_count": 0,
+          "normal_store_count": 0,
+          "normal_add_count": 0,
+          "normal_mul_count": 0,
+          "normal_branch_count": 0
+        },
+        "object_ic_gc": {
+          "object_alloc_count": 0,
+          "field_load_count": 0,
+          "field_store_count": 0,
+          "field_ic_hit": 2692534,
+          "field_ic_miss": 4,
+          "ic_hit_rate": 0.999999,
+          "shape_transition_count": 0,
+          "monomorphic_ic": 0,
+          "polymorphic_ic": 0,
+          "megamorphic_ic": 0,
+          "generic_property_lookup": 0,
+          "specialized_property_lookup": 0,
+          "property_guard_fail": 0,
+          "shape_guard_fail": 0,
+          "alloc_count": 0,
+          "allocated_bytes": 0,
+          "minor_gc_count": 0,
+          "minor_gc_time_ns": 0,
+          "major_gc_count": 0,
+          "major_gc_time_ns": 0,
+          "gc_pause_total_ns": 0,
+          "promoted_bytes": 0,
+          "survived_bytes": 0,
+          "heap_peak_bytes": 0,
+          "heap_end_bytes": 0,
+          "gc_fraction": 0
+        }
+      }
+    },
+    "M1": {
+      "workload_id": "W1",
+      "mode_id": "M1",
+      "mode_name": "Optimized Interpreter (Cached Dispatch + TOS + Fusion)",
+      "reps": 20,
+      "warmup": 5,
+      "cold": {
+        "wall_clock_total_ms": 326.7191,
+        "internal_time_ms": 307.291,
+        "checksum": "832040",
+        "telemetry_file": "D:\\New PJ\\Ternary\\Compiler\\Code\\benchmarks\\forensics\\raw\\W1_M1_cold_dump.json"
+      },
+      "stats": {
+        "count": 20,
+        "median_ms": 251.7685,
+        "mean_ms": 254.0799,
+        "stddev_ms": 11.6889,
+        "p95_ms": 276.413,
+        "min_ms": 239.021,
+        "max_ms": 278.675,
+        "cv_pct": 4.6,
+        "ci95_low_ms": 248.6094,
+        "ci95_high_ms": 259.5504
+      },
+      "raw_runs": [
+        {
+          "run_id": 0,
+          "wall_clock_ms": 262.0254,
+          "internal_time_ms": 247.013,
+          "checksum": "832040",
+          "startup_ms": 0.64,
+          "program_ms": 247.098,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 1,
+          "wall_clock_ms": 268.2657,
+          "internal_time_ms": 253.839,
+          "checksum": "832040",
+          "startup_ms": 0.439,
+          "program_ms": 253.925,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 2,
+          "wall_clock_ms": 265.4859,
+          "internal_time_ms": 249.372,
+          "checksum": "832040",
+          "startup_ms": 0.586,
+          "program_ms": 249.455,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 3,
+          "wall_clock_ms": 257.7592,
+          "internal_time_ms": 242.901,
+          "checksum": "832040",
+          "startup_ms": 0.494,
+          "program_ms": 242.997,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 4,
+          "wall_clock_ms": 280.147,
+          "internal_time_ms": 263.079,
+          "checksum": "832040",
+          "startup_ms": 0.442,
+          "program_ms": 263.163,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 5,
+          "wall_clock_ms": 275.077,
+          "internal_time_ms": 256.307,
+          "checksum": "832040",
+          "startup_ms": 0.452,
+          "program_ms": 256.39,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 6,
+          "wall_clock_ms": 255.0857,
+          "internal_time_ms": 240.755,
+          "checksum": "832040",
+          "startup_ms": 0.445,
+          "program_ms": 240.849,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 7,
+          "wall_clock_ms": 253.4463,
+          "internal_time_ms": 239.021,
+          "checksum": "832040",
+          "startup_ms": 0.581,
+          "program_ms": 239.108,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 8,
+          "wall_clock_ms": 286.5985,
+          "internal_time_ms": 270.196,
+          "checksum": "832040",
+          "startup_ms": 0.461,
+          "program_ms": 270.274,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 9,
+          "wall_clock_ms": 267.2928,
+          "internal_time_ms": 252.368,
+          "checksum": "832040",
+          "startup_ms": 0.468,
+          "program_ms": 252.458,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 10,
+          "wall_clock_ms": 261.364,
+          "internal_time_ms": 247.347,
+          "checksum": "832040",
+          "startup_ms": 0.443,
+          "program_ms": 247.427,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 11,
+          "wall_clock_ms": 291.7334,
+          "internal_time_ms": 276.413,
+          "checksum": "832040",
+          "startup_ms": 0.443,
+          "program_ms": 276.497,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 12,
+          "wall_clock_ms": 298.0004,
+          "internal_time_ms": 278.675,
+          "checksum": "832040",
+          "startup_ms": 0.462,
+          "program_ms": 278.764,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 13,
+          "wall_clock_ms": 266.3405,
+          "internal_time_ms": 251.169,
+          "checksum": "832040",
+          "startup_ms": 0.757,
+          "program_ms": 251.258,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 14,
+          "wall_clock_ms": 263.7544,
+          "internal_time_ms": 247.169,
+          "checksum": "832040",
+          "startup_ms": 0.487,
+          "program_ms": 247.257,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 15,
+          "wall_clock_ms": 260.251,
+          "internal_time_ms": 243.744,
+          "checksum": "832040",
+          "startup_ms": 0.476,
+          "program_ms": 243.835,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 16,
+          "wall_clock_ms": 272.0552,
+          "internal_time_ms": 257.716,
+          "checksum": "832040",
+          "startup_ms": 0.464,
+          "program_ms": 257.801,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 17,
+          "wall_clock_ms": 256.233,
+          "internal_time_ms": 240.771,
+          "checksum": "832040",
+          "startup_ms": 0.607,
+          "program_ms": 240.873,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 18,
+          "wall_clock_ms": 280.287,
+          "internal_time_ms": 265.195,
+          "checksum": "832040",
+          "startup_ms": 0.458,
+          "program_ms": 265.277,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 19,
+          "wall_clock_ms": 274.6954,
+          "internal_time_ms": 258.548,
+          "checksum": "832040",
+          "startup_ms": 0.472,
+          "program_ms": 258.633,
+          "jit_compile_ms": 0
+        }
+      ],
+      "last_telemetry": {
+        "profiling_mode": "FULL",
+        "wall_clock": {
+          "total_time_ns": 259106000,
+          "startup_time_ns": 472000,
+          "program_time_ns": 258633000,
+          "shutdown_time_ns": 1000,
+          "startup_time_ms": 0.472,
+          "program_time_ms": 258.633,
+          "total_time_ms": 259.106
+        },
+        "tier_jit": {
+          "invocation_count": 0,
+          "backedge_count": 0,
+          "jit_compile_count": 0,
+          "jit_compile_time_ns": 0,
+          "jit_compile_time_ms": 0,
+          "baseline_compile_count": 0,
+          "baseline_compile_time_ns": 0,
+          "optimizing_compile_count": 0,
+          "optimizing_compile_time_ns": 0,
+          "osr_count": 0,
+          "osr_compile_count": 0,
+          "osr_compile_time_ns": 0,
+          "deopt_count": 0,
+          "deopt_time_ns": 0,
+          "tier0_execution_ns": 0,
+          "tier1_execution_ns": 0,
+          "tier2_execution_ns": 0,
+          "compile_requested": 0,
+          "compile_completed": 0,
+          "code_entered": 0,
+          "code_executed": 0
+        },
+        "dispatch": {
+          "total_opcode_dispatch": 60582122,
+          "dispatch_loop_iterations": 0,
+          "indirect_dispatch_count": 0,
+          "direct_dispatch_count": 0,
+          "superinstruction_count": 26925383,
+          "branch_count": 0,
+          "load_count": 0,
+          "store_count": 0,
+          "opcode_counts": {
+            "0x01": 5385079,
+            "0x05": 2,
+            "0x07": 1,
+            "0x10": 5385080,
+            "0x21": 17,
+            "0x32": 8,
+            "0x51": 2692537,
+            "0x60": 2692538,
+            "0x61": 2692538,
+            "0x70": 3,
+            "0x71": 1,
+            "0x9c": 2,
+            "0xb0": 6731343,
+            "0xb1": 1,
+            "0xb2": 1,
+            "0xb3": 2692538,
+            "0xbd": 2692520,
+            "0xbf": 2692529,
+            "0xc4": 12116426,
+            "0xc5": 1,
+            "0xc6": 2692538,
+            "0xc7": 2692538,
+            "0xc8": 2692538,
+            "0xc9": 5385074,
+            "0xca": 1346268,
+            "0xff": 1
+          }
+        },
+        "stack_execution_state": {
+          "push_count": 2692541,
+          "pop_count": 4,
+          "dup_count": 0,
+          "swap_count": 0,
+          "tos0_hits": 0,
+          "tos1_hits": 0,
+          "tos_hit": 0,
+          "tos_miss": 0,
+          "tos_hit_rate": 0,
+          "flush_count": 0,
+          "materialize_count": 0,
+          "stack_spill_count": 0,
+          "stack_reload_count": 0,
+          "execution_state_loads": 0,
+          "execution_state_stores": 0,
+          "state_transition_count": 0,
+          "state_sync_count": 0,
+          "state_sync_bytes": 0
+        },
+        "call_frame": {
+          "call_count": 2692538,
+          "return_count": 2692538,
+          "function_frame_create": 0,
+          "function_frame_destroy": 0,
+          "recursive_call_count": 0,
+          "native_call_count": 0,
+          "managed_call_count": 0,
+          "frame_alloc_count": 0,
+          "frame_reuse_count": 0,
+          "monomorphic_call": 0,
+          "polymorphic_call": 0,
+          "megamorphic_call": 0
+        },
+        "array": {
+          "generic_array_load": 0,
+          "generic_array_store": 0,
+          "generic_accesses": 0,
+          "typed_i32_load": 0,
+          "typed_i32_store": 0,
+          "typed_i64_load": 0,
+          "typed_i64_store": 0,
+          "typed_f64_load": 0,
+          "typed_f64_store": 0,
+          "i64_accesses": 0,
+          "u8_accesses": 0,
+          "f64_accesses": 0,
+          "tafpu_accesses": 0,
+          "bounds_check_count": 0,
+          "bounds_check_elided": 0,
+          "boxing_count": 0,
+          "unboxing_count": 0,
+          "array_representation_transition": 0,
+          "typed_access_ratio": 0,
+          "flat_access_ratio": 0
+        },
+        "fusion": {
+          "candidate_patterns": 0,
+          "fused_count": 0,
+          "rejected_count": 0,
+          "semantic_barrier_rejections": 0,
+          "jump_target_rejections": 0,
+          "fused_opcode_execution_count": 26925383,
+          "normal_load_count": 0,
+          "normal_store_count": 0,
+          "normal_add_count": 0,
+          "normal_mul_count": 0,
+          "normal_branch_count": 0
+        },
+        "object_ic_gc": {
+          "object_alloc_count": 0,
+          "field_load_count": 0,
+          "field_store_count": 0,
+          "field_ic_hit": 0,
+          "field_ic_miss": 0,
+          "ic_hit_rate": 0,
+          "shape_transition_count": 0,
+          "monomorphic_ic": 0,
+          "polymorphic_ic": 0,
+          "megamorphic_ic": 0,
+          "generic_property_lookup": 0,
+          "specialized_property_lookup": 0,
+          "property_guard_fail": 0,
+          "shape_guard_fail": 0,
+          "alloc_count": 0,
+          "allocated_bytes": 0,
+          "minor_gc_count": 0,
+          "minor_gc_time_ns": 0,
+          "major_gc_count": 0,
+          "major_gc_time_ns": 0,
+          "gc_pause_total_ns": 0,
+          "promoted_bytes": 0,
+          "survived_bytes": 0,
+          "heap_peak_bytes": 0,
+          "heap_end_bytes": 0,
+          "gc_fraction": 0
+        }
+      }
+    },
+    "M2": {
+      "workload_id": "W1",
+      "mode_id": "M2",
+      "mode_name": "Baseline JIT (Tier 1 Baseline JIT)",
+      "reps": 20,
+      "warmup": 5,
+      "cold": {
+        "wall_clock_total_ms": 15.5093,
+        "internal_time_ms": 15.5093,
+        "checksum": "none",
+        "telemetry_file": null
+      },
+      "stats": {
+        "count": 20,
+        "median_ms": 14.0674,
+        "mean_ms": 14.704,
+        "stddev_ms": 1.6052,
+        "p95_ms": 17.0917,
+        "min_ms": 11.3954,
+        "max_ms": 17.642,
+        "cv_pct": 10.92,
+        "ci95_low_ms": 13.9528,
+        "ci95_high_ms": 15.4553
+      },
+      "raw_runs": [
+        {
+          "run_id": 0,
+          "wall_clock_ms": 17.642,
+          "internal_time_ms": 17.642,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 1,
+          "wall_clock_ms": 12.158,
+          "internal_time_ms": 12.158,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 2,
+          "wall_clock_ms": 13.9681,
+          "internal_time_ms": 13.9681,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 3,
+          "wall_clock_ms": 15.6973,
+          "internal_time_ms": 15.6973,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 4,
+          "wall_clock_ms": 11.3954,
+          "internal_time_ms": 11.3954,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 5,
+          "wall_clock_ms": 16.3789,
+          "internal_time_ms": 16.3789,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 6,
+          "wall_clock_ms": 16.5734,
+          "internal_time_ms": 16.5734,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 7,
+          "wall_clock_ms": 17.0917,
+          "internal_time_ms": 17.0917,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 8,
+          "wall_clock_ms": 13.8465,
+          "internal_time_ms": 13.8465,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 9,
+          "wall_clock_ms": 13.9623,
+          "internal_time_ms": 13.9623,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 10,
+          "wall_clock_ms": 14.0672,
+          "internal_time_ms": 14.0672,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 11,
+          "wall_clock_ms": 14.0676,
+          "internal_time_ms": 14.0676,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 12,
+          "wall_clock_ms": 14.9383,
+          "internal_time_ms": 14.9383,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 13,
+          "wall_clock_ms": 13.689,
+          "internal_time_ms": 13.689,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 14,
+          "wall_clock_ms": 16.2153,
+          "internal_time_ms": 16.2153,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 15,
+          "wall_clock_ms": 15.5758,
+          "internal_time_ms": 15.5758,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 16,
+          "wall_clock_ms": 13.7292,
+          "internal_time_ms": 13.7292,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 17,
+          "wall_clock_ms": 15.4486,
+          "internal_time_ms": 15.4486,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 18,
+          "wall_clock_ms": 13.6319,
+          "internal_time_ms": 13.6319,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 19,
+          "wall_clock_ms": 14.0042,
+          "internal_time_ms": 14.0042,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        }
+      ],
+      "last_telemetry": {}
+    },
+    "M3": {
+      "workload_id": "W1",
+      "mode_id": "M3",
+      "mode_name": "Auto-Tier JIT (Tier 0/1/2 OSR Adaptive)",
+      "reps": 20,
+      "warmup": 5,
+      "cold": {
+        "wall_clock_total_ms": 15.1815,
+        "internal_time_ms": 15.1815,
+        "checksum": "none",
+        "telemetry_file": null
+      },
+      "stats": {
+        "count": 20,
+        "median_ms": 14.902,
+        "mean_ms": 14.6299,
+        "stddev_ms": 1.7069,
+        "p95_ms": 17.2098,
+        "min_ms": 11.1369,
+        "max_ms": 17.2376,
+        "cv_pct": 11.67,
+        "ci95_low_ms": 13.8311,
+        "ci95_high_ms": 15.4288
+      },
+      "raw_runs": [
+        {
+          "run_id": 0,
+          "wall_clock_ms": 14.8694,
+          "internal_time_ms": 14.8694,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 1,
+          "wall_clock_ms": 12.3253,
+          "internal_time_ms": 12.3253,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 2,
+          "wall_clock_ms": 16.2146,
+          "internal_time_ms": 16.2146,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 3,
+          "wall_clock_ms": 14.2503,
+          "internal_time_ms": 14.2503,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 4,
+          "wall_clock_ms": 14.0151,
+          "internal_time_ms": 14.0151,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 5,
+          "wall_clock_ms": 15.466,
+          "internal_time_ms": 15.466,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 6,
+          "wall_clock_ms": 13.9745,
+          "internal_time_ms": 13.9745,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 7,
+          "wall_clock_ms": 15.2149,
+          "internal_time_ms": 15.2149,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 8,
+          "wall_clock_ms": 17.2098,
+          "internal_time_ms": 17.2098,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 9,
+          "wall_clock_ms": 11.8755,
+          "internal_time_ms": 11.8755,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 10,
+          "wall_clock_ms": 15.2765,
+          "internal_time_ms": 15.2765,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 11,
+          "wall_clock_ms": 15.6376,
+          "internal_time_ms": 15.6376,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 12,
+          "wall_clock_ms": 11.1369,
+          "internal_time_ms": 11.1369,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 13,
+          "wall_clock_ms": 15.0326,
+          "internal_time_ms": 15.0326,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 14,
+          "wall_clock_ms": 12.2072,
+          "internal_time_ms": 12.2072,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 15,
+          "wall_clock_ms": 14.213,
+          "internal_time_ms": 14.213,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 16,
+          "wall_clock_ms": 16.749,
+          "internal_time_ms": 16.749,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 17,
+          "wall_clock_ms": 17.2376,
+          "internal_time_ms": 17.2376,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 18,
+          "wall_clock_ms": 14.7581,
+          "internal_time_ms": 14.7581,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 19,
+          "wall_clock_ms": 14.9347,
+          "internal_time_ms": 14.9347,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        }
+      ],
+      "last_telemetry": {}
+    },
+    "M4": {
+      "workload_id": "W1",
+      "mode_id": "M4",
+      "mode_name": "Native AOT (LLVM / Native -O3)",
+      "reps": 20,
+      "warmup": 5,
+      "cold": {
+        "wall_clock_total_ms": 1593.0641,
+        "internal_time_ms": 4.188,
+        "checksum": "832040",
+        "telemetry_file": null
+      },
+      "stats": {
+        "count": 20,
+        "median_ms": 2.543,
+        "mean_ms": 3.0844,
+        "stddev_ms": 1.5533,
+        "p95_ms": 6.417,
+        "min_ms": 2.486,
+        "max_ms": 8.579,
+        "cv_pct": 50.36,
+        "ci95_low_ms": 2.3575,
+        "ci95_high_ms": 3.8114
+      },
+      "raw_runs": [
+        {
+          "run_id": 0,
+          "wall_clock_ms": 7.5938,
+          "internal_time_ms": 2.5,
+          "checksum": "832040",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 1,
+          "wall_clock_ms": 8.1566,
+          "internal_time_ms": 2.528,
+          "checksum": "832040",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 2,
+          "wall_clock_ms": 8.0858,
+          "internal_time_ms": 2.486,
+          "checksum": "832040",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 3,
+          "wall_clock_ms": 7.8757,
+          "internal_time_ms": 2.489,
+          "checksum": "832040",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 4,
+          "wall_clock_ms": 7.3138,
+          "internal_time_ms": 2.512,
+          "checksum": "832040",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 5,
+          "wall_clock_ms": 7.7001,
+          "internal_time_ms": 2.697,
+          "checksum": "832040",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 6,
+          "wall_clock_ms": 15.2184,
+          "internal_time_ms": 8.579,
+          "checksum": "832040",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 7,
+          "wall_clock_ms": 8.8562,
+          "internal_time_ms": 2.747,
+          "checksum": "832040",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 8,
+          "wall_clock_ms": 17.3515,
+          "internal_time_ms": 6.417,
+          "checksum": "832040",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 9,
+          "wall_clock_ms": 7.7143,
+          "internal_time_ms": 2.76,
+          "checksum": "832040",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 10,
+          "wall_clock_ms": 7.3906,
+          "internal_time_ms": 2.506,
+          "checksum": "832040",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 11,
+          "wall_clock_ms": 7.5138,
+          "internal_time_ms": 2.639,
+          "checksum": "832040",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 12,
+          "wall_clock_ms": 7.7409,
+          "internal_time_ms": 2.823,
+          "checksum": "832040",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 13,
+          "wall_clock_ms": 7.3726,
+          "internal_time_ms": 2.631,
+          "checksum": "832040",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 14,
+          "wall_clock_ms": 8.0126,
+          "internal_time_ms": 2.508,
+          "checksum": "832040",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 15,
+          "wall_clock_ms": 7.3743,
+          "internal_time_ms": 2.502,
+          "checksum": "832040",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 16,
+          "wall_clock_ms": 8.7304,
+          "internal_time_ms": 2.746,
+          "checksum": "832040",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 17,
+          "wall_clock_ms": 7.5476,
+          "internal_time_ms": 2.533,
+          "checksum": "832040",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 18,
+          "wall_clock_ms": 8.4076,
+          "internal_time_ms": 2.549,
+          "checksum": "832040",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 19,
+          "wall_clock_ms": 7.5577,
+          "internal_time_ms": 2.537,
+          "checksum": "832040",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        }
+      ],
+      "last_telemetry": {}
+    }
+  },
+  "W2": {
+    "M0": {
+      "workload_id": "W2",
+      "mode_id": "M0",
+      "mode_name": "Interpreter (Switch Dispatch)",
+      "reps": 20,
+      "warmup": 5,
+      "cold": {
+        "wall_clock_total_ms": 86.1592,
+        "internal_time_ms": 71.394,
+        "checksum": "9592",
+        "telemetry_file": "D:\\New PJ\\Ternary\\Compiler\\Code\\benchmarks\\forensics\\raw\\W2_M0_cold_dump.json"
+      },
+      "stats": {
+        "count": 20,
+        "median_ms": 72.175,
+        "mean_ms": 73.0435,
+        "stddev_ms": 4.9643,
+        "p95_ms": 81.883,
+        "min_ms": 66.557,
+        "max_ms": 82.858,
+        "cv_pct": 6.8,
+        "ci95_low_ms": 70.7201,
+        "ci95_high_ms": 75.3668
+      },
+      "raw_runs": [
+        {
+          "run_id": 0,
+          "wall_clock_ms": 85.7868,
+          "internal_time_ms": 69.763,
+          "checksum": "9592",
+          "startup_ms": 0.484,
+          "program_ms": 69.898,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 1,
+          "wall_clock_ms": 87.5175,
+          "internal_time_ms": 67.891,
+          "checksum": "9592",
+          "startup_ms": 0.445,
+          "program_ms": 68.051,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 2,
+          "wall_clock_ms": 84.2881,
+          "internal_time_ms": 69.422,
+          "checksum": "9592",
+          "startup_ms": 0.591,
+          "program_ms": 69.581,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 3,
+          "wall_clock_ms": 90.2995,
+          "internal_time_ms": 66.557,
+          "checksum": "9592",
+          "startup_ms": 0.437,
+          "program_ms": 66.701,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 4,
+          "wall_clock_ms": 83.8853,
+          "internal_time_ms": 68.323,
+          "checksum": "9592",
+          "startup_ms": 0.627,
+          "program_ms": 68.571,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 5,
+          "wall_clock_ms": 88.9876,
+          "internal_time_ms": 67.44,
+          "checksum": "9592",
+          "startup_ms": 0.448,
+          "program_ms": 67.586,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 6,
+          "wall_clock_ms": 97.6532,
+          "internal_time_ms": 79.465,
+          "checksum": "9592",
+          "startup_ms": 0.454,
+          "program_ms": 79.635,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 7,
+          "wall_clock_ms": 98.5969,
+          "internal_time_ms": 76.091,
+          "checksum": "9592",
+          "startup_ms": 0.488,
+          "program_ms": 76.258,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 8,
+          "wall_clock_ms": 102.138,
+          "internal_time_ms": 82.858,
+          "checksum": "9592",
+          "startup_ms": 0.53,
+          "program_ms": 83.041,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 9,
+          "wall_clock_ms": 98.3348,
+          "internal_time_ms": 78.294,
+          "checksum": "9592",
+          "startup_ms": 0.554,
+          "program_ms": 78.461,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 10,
+          "wall_clock_ms": 103.2465,
+          "internal_time_ms": 74.641,
+          "checksum": "9592",
+          "startup_ms": 0.8,
+          "program_ms": 74.829,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 11,
+          "wall_clock_ms": 91.4852,
+          "internal_time_ms": 71.772,
+          "checksum": "9592",
+          "startup_ms": 0.522,
+          "program_ms": 71.939,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 12,
+          "wall_clock_ms": 103.1866,
+          "internal_time_ms": 81.883,
+          "checksum": "9592",
+          "startup_ms": 0.454,
+          "program_ms": 82.042,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 13,
+          "wall_clock_ms": 104.0185,
+          "internal_time_ms": 77.431,
+          "checksum": "9592",
+          "startup_ms": 0.453,
+          "program_ms": 77.599,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 14,
+          "wall_clock_ms": 100.3799,
+          "internal_time_ms": 72.906,
+          "checksum": "9592",
+          "startup_ms": 0.455,
+          "program_ms": 73.06,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 15,
+          "wall_clock_ms": 86.975,
+          "internal_time_ms": 68.718,
+          "checksum": "9592",
+          "startup_ms": 0.463,
+          "program_ms": 68.869,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 16,
+          "wall_clock_ms": 90.2171,
+          "internal_time_ms": 72.558,
+          "checksum": "9592",
+          "startup_ms": 0.535,
+          "program_ms": 72.798,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 17,
+          "wall_clock_ms": 88.7606,
+          "internal_time_ms": 71.792,
+          "checksum": "9592",
+          "startup_ms": 0.464,
+          "program_ms": 71.955,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 18,
+          "wall_clock_ms": 89.2965,
+          "internal_time_ms": 74.771,
+          "checksum": "9592",
+          "startup_ms": 0.46,
+          "program_ms": 74.928,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 19,
+          "wall_clock_ms": 83.9381,
+          "internal_time_ms": 68.293,
+          "checksum": "9592",
+          "startup_ms": 0.457,
+          "program_ms": 68.445,
+          "jit_compile_ms": 0
+        }
+      ],
+      "last_telemetry": {
+        "profiling_mode": "FULL",
+        "wall_clock": {
+          "total_time_ns": 68902000,
+          "startup_time_ns": 457000,
+          "program_time_ns": 68445000,
+          "shutdown_time_ns": 0,
+          "startup_time_ms": 0.457,
+          "program_time_ms": 68.445,
+          "total_time_ms": 68.902
+        },
+        "tier_jit": {
+          "invocation_count": 0,
+          "backedge_count": 0,
+          "jit_compile_count": 0,
+          "jit_compile_time_ns": 0,
+          "jit_compile_time_ms": 0,
+          "baseline_compile_count": 0,
+          "baseline_compile_time_ns": 0,
+          "optimizing_compile_count": 0,
+          "optimizing_compile_time_ns": 0,
+          "osr_count": 0,
+          "osr_compile_count": 0,
+          "osr_compile_time_ns": 0,
+          "deopt_count": 0,
+          "deopt_time_ns": 0,
+          "tier0_execution_ns": 0,
+          "tier1_execution_ns": 0,
+          "tier2_execution_ns": 0,
+          "compile_requested": 0,
+          "compile_completed": 0,
+          "code_entered": 0,
+          "code_executed": 0
+        },
+        "dispatch": {
+          "total_opcode_dispatch": 0,
+          "dispatch_loop_iterations": 0,
+          "indirect_dispatch_count": 0,
+          "direct_dispatch_count": 0,
+          "superinstruction_count": 0,
+          "branch_count": 0,
+          "load_count": 0,
+          "store_count": 0,
+          "opcode_counts": {}
+        },
+        "stack_execution_state": {
+          "push_count": 0,
+          "pop_count": 0,
+          "dup_count": 0,
+          "swap_count": 0,
+          "tos0_hits": 0,
+          "tos1_hits": 0,
+          "tos_hit": 0,
+          "tos_miss": 0,
+          "tos_hit_rate": 0,
+          "flush_count": 0,
+          "materialize_count": 0,
+          "stack_spill_count": 0,
+          "stack_reload_count": 0,
+          "execution_state_loads": 0,
+          "execution_state_stores": 0,
+          "state_transition_count": 0,
+          "state_sync_count": 0,
+          "state_sync_bytes": 0
+        },
+        "call_frame": {
+          "call_count": 0,
+          "return_count": 0,
+          "function_frame_create": 0,
+          "function_frame_destroy": 0,
+          "recursive_call_count": 0,
+          "native_call_count": 0,
+          "managed_call_count": 0,
+          "frame_alloc_count": 0,
+          "frame_reuse_count": 0,
+          "monomorphic_call": 0,
+          "polymorphic_call": 0,
+          "megamorphic_call": 0
+        },
+        "array": {
+          "generic_array_load": 0,
+          "generic_array_store": 0,
+          "generic_accesses": 0,
+          "typed_i32_load": 0,
+          "typed_i32_store": 0,
+          "typed_i64_load": 0,
+          "typed_i64_store": 0,
+          "typed_f64_load": 0,
+          "typed_f64_store": 0,
+          "i64_accesses": 0,
+          "u8_accesses": 0,
+          "f64_accesses": 0,
+          "tafpu_accesses": 0,
+          "bounds_check_count": 0,
+          "bounds_check_elided": 0,
+          "boxing_count": 0,
+          "unboxing_count": 0,
+          "array_representation_transition": 0,
+          "typed_access_ratio": 0,
+          "flat_access_ratio": 0
+        },
+        "fusion": {
+          "candidate_patterns": 0,
+          "fused_count": 0,
+          "rejected_count": 0,
+          "semantic_barrier_rejections": 0,
+          "jump_target_rejections": 0,
+          "fused_opcode_execution_count": 0,
+          "normal_load_count": 0,
+          "normal_store_count": 0,
+          "normal_add_count": 0,
+          "normal_mul_count": 0,
+          "normal_branch_count": 0
+        },
+        "object_ic_gc": {
+          "object_alloc_count": 0,
+          "field_load_count": 0,
+          "field_store_count": 0,
+          "field_ic_hit": 0,
+          "field_ic_miss": 1,
+          "ic_hit_rate": 0,
+          "shape_transition_count": 0,
+          "monomorphic_ic": 0,
+          "polymorphic_ic": 0,
+          "megamorphic_ic": 0,
+          "generic_property_lookup": 0,
+          "specialized_property_lookup": 0,
+          "property_guard_fail": 0,
+          "shape_guard_fail": 0,
+          "alloc_count": 0,
+          "allocated_bytes": 0,
+          "minor_gc_count": 0,
+          "minor_gc_time_ns": 0,
+          "major_gc_count": 0,
+          "major_gc_time_ns": 0,
+          "gc_pause_total_ns": 0,
+          "promoted_bytes": 0,
+          "survived_bytes": 0,
+          "heap_peak_bytes": 0,
+          "heap_end_bytes": 0,
+          "gc_fraction": 0
+        }
+      }
+    },
+    "M1": {
+      "workload_id": "W2",
+      "mode_id": "M1",
+      "mode_name": "Optimized Interpreter (Cached Dispatch + TOS + Fusion)",
+      "reps": 20,
+      "warmup": 5,
+      "cold": {
+        "wall_clock_total_ms": 69.6897,
+        "internal_time_ms": 50.203,
+        "checksum": "9592",
+        "telemetry_file": "D:\\New PJ\\Ternary\\Compiler\\Code\\benchmarks\\forensics\\raw\\W2_M1_cold_dump.json"
+      },
+      "stats": {
+        "count": 20,
+        "median_ms": 52.316,
+        "mean_ms": 53.8725,
+        "stddev_ms": 4.208,
+        "p95_ms": 61.518,
+        "min_ms": 48.242,
+        "max_ms": 66.621,
+        "cv_pct": 7.81,
+        "ci95_low_ms": 51.9032,
+        "ci95_high_ms": 55.8419
+      },
+      "raw_runs": [
+        {
+          "run_id": 0,
+          "wall_clock_ms": 71.6503,
+          "internal_time_ms": 52.308,
+          "checksum": "9592",
+          "startup_ms": 0.438,
+          "program_ms": 52.422,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 1,
+          "wall_clock_ms": 68.8545,
+          "internal_time_ms": 49.864,
+          "checksum": "9592",
+          "startup_ms": 0.467,
+          "program_ms": 49.962,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 2,
+          "wall_clock_ms": 88.4258,
+          "internal_time_ms": 66.621,
+          "checksum": "9592",
+          "startup_ms": 0.561,
+          "program_ms": 66.73,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 3,
+          "wall_clock_ms": 85.6869,
+          "internal_time_ms": 59.183,
+          "checksum": "9592",
+          "startup_ms": 0.684,
+          "program_ms": 59.294,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 4,
+          "wall_clock_ms": 69.7778,
+          "internal_time_ms": 51.62,
+          "checksum": "9592",
+          "startup_ms": 0.436,
+          "program_ms": 51.711,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 5,
+          "wall_clock_ms": 71.1421,
+          "internal_time_ms": 48.242,
+          "checksum": "9592",
+          "startup_ms": 0.449,
+          "program_ms": 48.332,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 6,
+          "wall_clock_ms": 68.465,
+          "internal_time_ms": 51.688,
+          "checksum": "9592",
+          "startup_ms": 0.44,
+          "program_ms": 51.788,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 7,
+          "wall_clock_ms": 66.5725,
+          "internal_time_ms": 50.936,
+          "checksum": "9592",
+          "startup_ms": 0.445,
+          "program_ms": 51.042,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 8,
+          "wall_clock_ms": 83.0281,
+          "internal_time_ms": 52.324,
+          "checksum": "9592",
+          "startup_ms": 0.527,
+          "program_ms": 52.42,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 9,
+          "wall_clock_ms": 75.1063,
+          "internal_time_ms": 54.83,
+          "checksum": "9592",
+          "startup_ms": 0.438,
+          "program_ms": 54.931,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 10,
+          "wall_clock_ms": 82.3982,
+          "internal_time_ms": 61.518,
+          "checksum": "9592",
+          "startup_ms": 0.814,
+          "program_ms": 61.645,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 11,
+          "wall_clock_ms": 67.3199,
+          "internal_time_ms": 52.204,
+          "checksum": "9592",
+          "startup_ms": 0.528,
+          "program_ms": 52.309,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 12,
+          "wall_clock_ms": 67.9332,
+          "internal_time_ms": 51.724,
+          "checksum": "9592",
+          "startup_ms": 0.461,
+          "program_ms": 51.828,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 13,
+          "wall_clock_ms": 68.2165,
+          "internal_time_ms": 51.886,
+          "checksum": "9592",
+          "startup_ms": 0.46,
+          "program_ms": 51.986,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 14,
+          "wall_clock_ms": 69.3961,
+          "internal_time_ms": 52.295,
+          "checksum": "9592",
+          "startup_ms": 0.46,
+          "program_ms": 52.394,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 15,
+          "wall_clock_ms": 73.1438,
+          "internal_time_ms": 54.022,
+          "checksum": "9592",
+          "startup_ms": 0.516,
+          "program_ms": 54.116,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 16,
+          "wall_clock_ms": 69.4975,
+          "internal_time_ms": 53.96,
+          "checksum": "9592",
+          "startup_ms": 0.472,
+          "program_ms": 54.057,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 17,
+          "wall_clock_ms": 75.1895,
+          "internal_time_ms": 54.943,
+          "checksum": "9592",
+          "startup_ms": 0.534,
+          "program_ms": 55.049,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 18,
+          "wall_clock_ms": 71.1582,
+          "internal_time_ms": 53.903,
+          "checksum": "9592",
+          "startup_ms": 0.828,
+          "program_ms": 54.006,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 19,
+          "wall_clock_ms": 69.7837,
+          "internal_time_ms": 53.38,
+          "checksum": "9592",
+          "startup_ms": 0.495,
+          "program_ms": 53.471,
+          "jit_compile_ms": 0
+        }
+      ],
+      "last_telemetry": {
+        "profiling_mode": "FULL",
+        "wall_clock": {
+          "total_time_ns": 53967000,
+          "startup_time_ns": 495000,
+          "program_time_ns": 53471000,
+          "shutdown_time_ns": 1000,
+          "startup_time_ms": 0.495,
+          "program_time_ms": 53.471,
+          "total_time_ms": 53.967
+        },
+        "tier_jit": {
+          "invocation_count": 0,
+          "backedge_count": 0,
+          "jit_compile_count": 0,
+          "jit_compile_time_ns": 0,
+          "jit_compile_time_ms": 0,
+          "baseline_compile_count": 0,
+          "baseline_compile_time_ns": 0,
+          "optimizing_compile_count": 0,
+          "optimizing_compile_time_ns": 0,
+          "osr_count": 0,
+          "osr_compile_count": 0,
+          "osr_compile_time_ns": 0,
+          "deopt_count": 0,
+          "deopt_time_ns": 0,
+          "tier0_execution_ns": 0,
+          "tier1_execution_ns": 0,
+          "tier2_execution_ns": 0,
+          "compile_requested": 0,
+          "compile_completed": 0,
+          "code_entered": 0,
+          "code_executed": 0
+        },
+        "dispatch": {
+          "total_opcode_dispatch": 9197860,
+          "dispatch_loop_iterations": 0,
+          "indirect_dispatch_count": 0,
+          "direct_dispatch_count": 0,
+          "superinstruction_count": 4209997,
+          "branch_count": 0,
+          "load_count": 0,
+          "store_count": 0,
+          "opcode_counts": {
+            "0x01": 528329,
+            "0x05": 2,
+            "0x07": 1,
+            "0x10": 1848241,
+            "0x20": 24,
+            "0x21": 1,
+            "0x22": 8,
+            "0x30": 16,
+            "0x32": 24,
+            "0x33": 8,
+            "0x50": 318395,
+            "0x51": 418781,
+            "0x60": 1,
+            "0x61": 1,
+            "0x70": 3,
+            "0x71": 1,
+            "0x9c": 2,
+            "0xa2": 100317,
+            "0xa4": 100000,
+            "0xa5": 193082,
+            "0xa6": 1,
+            "0xb0": 1,
+            "0xb1": 193145,
+            "0xb2": 393395,
+            "0xb3": 349999,
+            "0xbc": 125293,
+            "0xbe": 58,
+            "0xbf": 125296,
+            "0xc0": 193136,
+            "0xc1": 100301,
+            "0xc4": 3070079,
+            "0xc5": 1,
+            "0xc6": 1,
+            "0xc7": 1,
+            "0xc8": 125001,
+            "0xc9": 812243,
+            "0xca": 202671,
+            "0xff": 1
+          }
+        },
+        "stack_execution_state": {
+          "push_count": 393090,
+          "pop_count": 293086,
+          "dup_count": 0,
+          "swap_count": 0,
+          "tos0_hits": 0,
+          "tos1_hits": 0,
+          "tos_hit": 0,
+          "tos_miss": 0,
+          "tos_hit_rate": 0,
+          "flush_count": 0,
+          "materialize_count": 0,
+          "stack_spill_count": 0,
+          "stack_reload_count": 0,
+          "execution_state_loads": 0,
+          "execution_state_stores": 0,
+          "state_transition_count": 0,
+          "state_sync_count": 0,
+          "state_sync_bytes": 0
+        },
+        "call_frame": {
+          "call_count": 1,
+          "return_count": 1,
+          "function_frame_create": 0,
+          "function_frame_destroy": 0,
+          "recursive_call_count": 0,
+          "native_call_count": 0,
+          "managed_call_count": 0,
+          "frame_alloc_count": 0,
+          "frame_reuse_count": 0,
+          "monomorphic_call": 0,
+          "polymorphic_call": 0,
+          "megamorphic_call": 0
+        },
+        "array": {
+          "generic_array_load": 0,
+          "generic_array_store": 0,
+          "generic_accesses": 0,
+          "typed_i32_load": 0,
+          "typed_i32_store": 0,
+          "typed_i64_load": 0,
+          "typed_i64_store": 0,
+          "typed_f64_load": 0,
+          "typed_f64_store": 0,
+          "i64_accesses": 0,
+          "u8_accesses": 0,
+          "f64_accesses": 0,
+          "tafpu_accesses": 0,
+          "bounds_check_count": 0,
+          "bounds_check_elided": 0,
+          "boxing_count": 0,
+          "unboxing_count": 0,
+          "array_representation_transition": 0,
+          "typed_access_ratio": 0,
+          "flat_access_ratio": 0
+        },
+        "fusion": {
+          "candidate_patterns": 0,
+          "fused_count": 0,
+          "rejected_count": 0,
+          "semantic_barrier_rejections": 0,
+          "jump_target_rejections": 0,
+          "fused_opcode_execution_count": 4209997,
+          "normal_load_count": 0,
+          "normal_store_count": 0,
+          "normal_add_count": 0,
+          "normal_mul_count": 0,
+          "normal_branch_count": 0
+        },
+        "object_ic_gc": {
+          "object_alloc_count": 0,
+          "field_load_count": 0,
+          "field_store_count": 0,
+          "field_ic_hit": 0,
+          "field_ic_miss": 0,
+          "ic_hit_rate": 0,
+          "shape_transition_count": 0,
+          "monomorphic_ic": 0,
+          "polymorphic_ic": 0,
+          "megamorphic_ic": 0,
+          "generic_property_lookup": 0,
+          "specialized_property_lookup": 0,
+          "property_guard_fail": 0,
+          "shape_guard_fail": 0,
+          "alloc_count": 0,
+          "allocated_bytes": 0,
+          "minor_gc_count": 0,
+          "minor_gc_time_ns": 0,
+          "major_gc_count": 0,
+          "major_gc_time_ns": 0,
+          "gc_pause_total_ns": 0,
+          "promoted_bytes": 0,
+          "survived_bytes": 0,
+          "heap_peak_bytes": 0,
+          "heap_end_bytes": 0,
+          "gc_fraction": 0
+        }
+      }
+    },
+    "M2": {
+      "workload_id": "W2",
+      "mode_id": "M2",
+      "mode_name": "Baseline JIT (Tier 1 Baseline JIT)",
+      "reps": 20,
+      "warmup": 5,
+      "cold": {
+        "wall_clock_total_ms": 15.439,
+        "internal_time_ms": 15.439,
+        "checksum": "none",
+        "telemetry_file": null
+      },
+      "stats": {
+        "count": 20,
+        "median_ms": 15.3978,
+        "mean_ms": 15.8378,
+        "stddev_ms": 2.7379,
+        "p95_ms": 21.7538,
+        "min_ms": 12.2194,
+        "max_ms": 22.7338,
+        "cv_pct": 17.29,
+        "ci95_low_ms": 14.5564,
+        "ci95_high_ms": 17.1191
+      },
+      "raw_runs": [
+        {
+          "run_id": 0,
+          "wall_clock_ms": 13.7601,
+          "internal_time_ms": 13.7601,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 1,
+          "wall_clock_ms": 14.436,
+          "internal_time_ms": 14.436,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 2,
+          "wall_clock_ms": 15.301,
+          "internal_time_ms": 15.301,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 3,
+          "wall_clock_ms": 16.1133,
+          "internal_time_ms": 16.1133,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 4,
+          "wall_clock_ms": 15.3062,
+          "internal_time_ms": 15.3062,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 5,
+          "wall_clock_ms": 13.3089,
+          "internal_time_ms": 13.3089,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 6,
+          "wall_clock_ms": 12.6232,
+          "internal_time_ms": 12.6232,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 7,
+          "wall_clock_ms": 15.8925,
+          "internal_time_ms": 15.8925,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 8,
+          "wall_clock_ms": 14.4205,
+          "internal_time_ms": 14.4205,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 9,
+          "wall_clock_ms": 14.3689,
+          "internal_time_ms": 14.3689,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 10,
+          "wall_clock_ms": 15.5133,
+          "internal_time_ms": 15.5133,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 11,
+          "wall_clock_ms": 17.2085,
+          "internal_time_ms": 17.2085,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 12,
+          "wall_clock_ms": 17.6114,
+          "internal_time_ms": 17.6114,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 13,
+          "wall_clock_ms": 16.6993,
+          "internal_time_ms": 16.6993,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 14,
+          "wall_clock_ms": 18.5385,
+          "internal_time_ms": 18.5385,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 15,
+          "wall_clock_ms": 13.4572,
+          "internal_time_ms": 13.4572,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 16,
+          "wall_clock_ms": 15.4893,
+          "internal_time_ms": 15.4893,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 17,
+          "wall_clock_ms": 12.2194,
+          "internal_time_ms": 12.2194,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 18,
+          "wall_clock_ms": 21.7538,
+          "internal_time_ms": 21.7538,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 19,
+          "wall_clock_ms": 22.7338,
+          "internal_time_ms": 22.7338,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        }
+      ],
+      "last_telemetry": {}
+    },
+    "M3": {
+      "workload_id": "W2",
+      "mode_id": "M3",
+      "mode_name": "Auto-Tier JIT (Tier 0/1/2 OSR Adaptive)",
+      "reps": 20,
+      "warmup": 5,
+      "cold": {
+        "wall_clock_total_ms": 19.1651,
+        "internal_time_ms": 19.1651,
+        "checksum": "none",
+        "telemetry_file": null
+      },
+      "stats": {
+        "count": 20,
+        "median_ms": 14.9271,
+        "mean_ms": 14.7395,
+        "stddev_ms": 2.7204,
+        "p95_ms": 18.5402,
+        "min_ms": 11.2034,
+        "max_ms": 20.2669,
+        "cv_pct": 18.46,
+        "ci95_low_ms": 13.4663,
+        "ci95_high_ms": 16.0126
+      },
+      "raw_runs": [
+        {
+          "run_id": 0,
+          "wall_clock_ms": 20.2669,
+          "internal_time_ms": 20.2669,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 1,
+          "wall_clock_ms": 14.6908,
+          "internal_time_ms": 14.6908,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 2,
+          "wall_clock_ms": 15.3775,
+          "internal_time_ms": 15.3775,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 3,
+          "wall_clock_ms": 18.5402,
+          "internal_time_ms": 18.5402,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 4,
+          "wall_clock_ms": 15.1667,
+          "internal_time_ms": 15.1667,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 5,
+          "wall_clock_ms": 18.3061,
+          "internal_time_ms": 18.3061,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 6,
+          "wall_clock_ms": 15.8075,
+          "internal_time_ms": 15.8075,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 7,
+          "wall_clock_ms": 17.3761,
+          "internal_time_ms": 17.3761,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 8,
+          "wall_clock_ms": 15.6967,
+          "internal_time_ms": 15.6967,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 9,
+          "wall_clock_ms": 11.9182,
+          "internal_time_ms": 11.9182,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 10,
+          "wall_clock_ms": 17.9876,
+          "internal_time_ms": 17.9876,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 11,
+          "wall_clock_ms": 12.0039,
+          "internal_time_ms": 12.0039,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 12,
+          "wall_clock_ms": 14.9234,
+          "internal_time_ms": 14.9234,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 13,
+          "wall_clock_ms": 11.8609,
+          "internal_time_ms": 11.8609,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 14,
+          "wall_clock_ms": 12.1413,
+          "internal_time_ms": 12.1413,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 15,
+          "wall_clock_ms": 11.8647,
+          "internal_time_ms": 11.8647,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 16,
+          "wall_clock_ms": 11.2034,
+          "internal_time_ms": 11.2034,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 17,
+          "wall_clock_ms": 12.6223,
+          "internal_time_ms": 12.6223,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 18,
+          "wall_clock_ms": 12.1041,
+          "internal_time_ms": 12.1041,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 19,
+          "wall_clock_ms": 14.9308,
+          "internal_time_ms": 14.9308,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        }
+      ],
+      "last_telemetry": {}
+    },
+    "M4": {
+      "workload_id": "W2",
+      "mode_id": "M4",
+      "mode_name": "Native AOT (LLVM / Native -O3)",
+      "reps": 20,
+      "warmup": 5,
+      "cold": {
+        "wall_clock_total_ms": 726.748,
+        "internal_time_ms": 2.117,
+        "checksum": "9592",
+        "telemetry_file": null
+      },
+      "stats": {
+        "count": 20,
+        "median_ms": 2.0605,
+        "mean_ms": 2.3886,
+        "stddev_ms": 1.0707,
+        "p95_ms": 3.049,
+        "min_ms": 1.908,
+        "max_ms": 6.752,
+        "cv_pct": 44.83,
+        "ci95_low_ms": 1.8875,
+        "ci95_high_ms": 2.8897
+      },
+      "raw_runs": [
+        {
+          "run_id": 0,
+          "wall_clock_ms": 8.8011,
+          "internal_time_ms": 2.687,
+          "checksum": "9592",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 1,
+          "wall_clock_ms": 7.9837,
+          "internal_time_ms": 1.908,
+          "checksum": "9592",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 2,
+          "wall_clock_ms": 10.2176,
+          "internal_time_ms": 2.111,
+          "checksum": "9592",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 3,
+          "wall_clock_ms": 7.7281,
+          "internal_time_ms": 1.918,
+          "checksum": "9592",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 4,
+          "wall_clock_ms": 8.4694,
+          "internal_time_ms": 2.222,
+          "checksum": "9592",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 5,
+          "wall_clock_ms": 7.4135,
+          "internal_time_ms": 1.92,
+          "checksum": "9592",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 6,
+          "wall_clock_ms": 9.6818,
+          "internal_time_ms": 2.457,
+          "checksum": "9592",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 7,
+          "wall_clock_ms": 7.7875,
+          "internal_time_ms": 2.027,
+          "checksum": "9592",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 8,
+          "wall_clock_ms": 8.7467,
+          "internal_time_ms": 2.192,
+          "checksum": "9592",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 9,
+          "wall_clock_ms": 18.7716,
+          "internal_time_ms": 6.752,
+          "checksum": "9592",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 10,
+          "wall_clock_ms": 14.7301,
+          "internal_time_ms": 2.541,
+          "checksum": "9592",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 11,
+          "wall_clock_ms": 9.5241,
+          "internal_time_ms": 1.928,
+          "checksum": "9592",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 12,
+          "wall_clock_ms": 8.9821,
+          "internal_time_ms": 1.97,
+          "checksum": "9592",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 13,
+          "wall_clock_ms": 7.4087,
+          "internal_time_ms": 1.941,
+          "checksum": "9592",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 14,
+          "wall_clock_ms": 8.7009,
+          "internal_time_ms": 2.068,
+          "checksum": "9592",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 15,
+          "wall_clock_ms": 8.1666,
+          "internal_time_ms": 1.939,
+          "checksum": "9592",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 16,
+          "wall_clock_ms": 9.3464,
+          "internal_time_ms": 2.059,
+          "checksum": "9592",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 17,
+          "wall_clock_ms": 8.2216,
+          "internal_time_ms": 2.062,
+          "checksum": "9592",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 18,
+          "wall_clock_ms": 9.365,
+          "internal_time_ms": 2.021,
+          "checksum": "9592",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 19,
+          "wall_clock_ms": 9.0028,
+          "internal_time_ms": 3.049,
+          "checksum": "9592",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        }
+      ],
+      "last_telemetry": {}
+    }
+  },
+  "W3": {
+    "M0": {
+      "workload_id": "W3",
+      "mode_id": "M0",
+      "mode_name": "Interpreter (Switch Dispatch)",
+      "reps": 20,
+      "warmup": 5,
+      "cold": {
+        "wall_clock_total_ms": 546.8093,
+        "internal_time_ms": 529.085,
+        "checksum": "20250000",
+        "telemetry_file": "D:\\New PJ\\Ternary\\Compiler\\Code\\benchmarks\\forensics\\raw\\W3_M0_cold_dump.json"
+      },
+      "stats": {
+        "count": 20,
+        "median_ms": 610.223,
+        "mean_ms": 621.95,
+        "stddev_ms": 72.9954,
+        "p95_ms": 738.938,
+        "min_ms": 509.642,
+        "max_ms": 783.314,
+        "cv_pct": 11.74,
+        "ci95_low_ms": 587.7875,
+        "ci95_high_ms": 656.1125
+      },
+      "raw_runs": [
+        {
+          "run_id": 0,
+          "wall_clock_ms": 560.1588,
+          "internal_time_ms": 542.903,
+          "checksum": "20250000",
+          "startup_ms": 0.499,
+          "program_ms": 543.056,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 1,
+          "wall_clock_ms": 580.6163,
+          "internal_time_ms": 560.729,
+          "checksum": "20250000",
+          "startup_ms": 0.473,
+          "program_ms": 560.882,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 2,
+          "wall_clock_ms": 558.3167,
+          "internal_time_ms": 539.582,
+          "checksum": "20250000",
+          "startup_ms": 0.495,
+          "program_ms": 539.741,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 3,
+          "wall_clock_ms": 527.9506,
+          "internal_time_ms": 509.642,
+          "checksum": "20250000",
+          "startup_ms": 0.482,
+          "program_ms": 509.788,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 4,
+          "wall_clock_ms": 630.9779,
+          "internal_time_ms": 608.117,
+          "checksum": "20250000",
+          "startup_ms": 0.88,
+          "program_ms": 608.312,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 5,
+          "wall_clock_ms": 651.6506,
+          "internal_time_ms": 632.446,
+          "checksum": "20250000",
+          "startup_ms": 0.533,
+          "program_ms": 632.636,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 6,
+          "wall_clock_ms": 631.9159,
+          "internal_time_ms": 608.104,
+          "checksum": "20250000",
+          "startup_ms": 0.623,
+          "program_ms": 608.287,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 7,
+          "wall_clock_ms": 606.4931,
+          "internal_time_ms": 582.512,
+          "checksum": "20250000",
+          "startup_ms": 0.648,
+          "program_ms": 582.722,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 8,
+          "wall_clock_ms": 646.8799,
+          "internal_time_ms": 621.061,
+          "checksum": "20250000",
+          "startup_ms": 0.762,
+          "program_ms": 621.348,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 9,
+          "wall_clock_ms": 685.5483,
+          "internal_time_ms": 659.953,
+          "checksum": "20250000",
+          "startup_ms": 0.781,
+          "program_ms": 660.169,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 10,
+          "wall_clock_ms": 807.3473,
+          "internal_time_ms": 783.314,
+          "checksum": "20250000",
+          "startup_ms": 0.675,
+          "program_ms": 783.524,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 11,
+          "wall_clock_ms": 734.0712,
+          "internal_time_ms": 708.106,
+          "checksum": "20250000",
+          "startup_ms": 0.67,
+          "program_ms": 708.304,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 12,
+          "wall_clock_ms": 641.757,
+          "internal_time_ms": 619.207,
+          "checksum": "20250000",
+          "startup_ms": 0.617,
+          "program_ms": 619.398,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 13,
+          "wall_clock_ms": 762.5419,
+          "internal_time_ms": 738.938,
+          "checksum": "20250000",
+          "startup_ms": 0.858,
+          "program_ms": 739.169,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 14,
+          "wall_clock_ms": 546.15,
+          "internal_time_ms": 524.657,
+          "checksum": "20250000",
+          "startup_ms": 0.587,
+          "program_ms": 524.847,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 15,
+          "wall_clock_ms": 745.3535,
+          "internal_time_ms": 722.901,
+          "checksum": "20250000",
+          "startup_ms": 0.504,
+          "program_ms": 723.066,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 16,
+          "wall_clock_ms": 624.3866,
+          "internal_time_ms": 606.37,
+          "checksum": "20250000",
+          "startup_ms": 0.601,
+          "program_ms": 606.556,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 17,
+          "wall_clock_ms": 633.8457,
+          "internal_time_ms": 605.589,
+          "checksum": "20250000",
+          "startup_ms": 0.738,
+          "program_ms": 605.779,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 18,
+          "wall_clock_ms": 641.47,
+          "internal_time_ms": 612.329,
+          "checksum": "20250000",
+          "startup_ms": 0.592,
+          "program_ms": 612.508,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 19,
+          "wall_clock_ms": 674.0877,
+          "internal_time_ms": 652.54,
+          "checksum": "20250000",
+          "startup_ms": 0.594,
+          "program_ms": 652.721,
+          "jit_compile_ms": 0
+        }
+      ],
+      "last_telemetry": {
+        "profiling_mode": "FULL",
+        "wall_clock": {
+          "total_time_ns": 653315000,
+          "startup_time_ns": 594000,
+          "program_time_ns": 652721000,
+          "shutdown_time_ns": 0,
+          "startup_time_ms": 0.594,
+          "program_time_ms": 652.721,
+          "total_time_ms": 653.315
+        },
+        "tier_jit": {
+          "invocation_count": 0,
+          "backedge_count": 0,
+          "jit_compile_count": 0,
+          "jit_compile_time_ns": 0,
+          "jit_compile_time_ms": 0,
+          "baseline_compile_count": 0,
+          "baseline_compile_time_ns": 0,
+          "optimizing_compile_count": 0,
+          "optimizing_compile_time_ns": 0,
+          "osr_count": 0,
+          "osr_compile_count": 0,
+          "osr_compile_time_ns": 0,
+          "deopt_count": 0,
+          "deopt_time_ns": 0,
+          "tier0_execution_ns": 0,
+          "tier1_execution_ns": 0,
+          "tier2_execution_ns": 0,
+          "compile_requested": 0,
+          "compile_completed": 0,
+          "code_entered": 0,
+          "code_executed": 0
+        },
+        "dispatch": {
+          "total_opcode_dispatch": 0,
+          "dispatch_loop_iterations": 0,
+          "indirect_dispatch_count": 0,
+          "direct_dispatch_count": 0,
+          "superinstruction_count": 0,
+          "branch_count": 0,
+          "load_count": 0,
+          "store_count": 0,
+          "opcode_counts": {}
+        },
+        "stack_execution_state": {
+          "push_count": 0,
+          "pop_count": 0,
+          "dup_count": 0,
+          "swap_count": 0,
+          "tos0_hits": 0,
+          "tos1_hits": 0,
+          "tos_hit": 0,
+          "tos_miss": 0,
+          "tos_hit_rate": 0,
+          "flush_count": 0,
+          "materialize_count": 0,
+          "stack_spill_count": 0,
+          "stack_reload_count": 0,
+          "execution_state_loads": 0,
+          "execution_state_stores": 0,
+          "state_transition_count": 0,
+          "state_sync_count": 0,
+          "state_sync_bytes": 0
+        },
+        "call_frame": {
+          "call_count": 0,
+          "return_count": 0,
+          "function_frame_create": 0,
+          "function_frame_destroy": 0,
+          "recursive_call_count": 0,
+          "native_call_count": 0,
+          "managed_call_count": 0,
+          "frame_alloc_count": 0,
+          "frame_reuse_count": 0,
+          "monomorphic_call": 0,
+          "polymorphic_call": 0,
+          "megamorphic_call": 0
+        },
+        "array": {
+          "generic_array_load": 0,
+          "generic_array_store": 0,
+          "generic_accesses": 0,
+          "typed_i32_load": 0,
+          "typed_i32_store": 0,
+          "typed_i64_load": 0,
+          "typed_i64_store": 0,
+          "typed_f64_load": 0,
+          "typed_f64_store": 0,
+          "i64_accesses": 0,
+          "u8_accesses": 0,
+          "f64_accesses": 0,
+          "tafpu_accesses": 0,
+          "bounds_check_count": 0,
+          "bounds_check_elided": 0,
+          "boxing_count": 0,
+          "unboxing_count": 0,
+          "array_representation_transition": 0,
+          "typed_access_ratio": 0,
+          "flat_access_ratio": 0
+        },
+        "fusion": {
+          "candidate_patterns": 0,
+          "fused_count": 0,
+          "rejected_count": 0,
+          "semantic_barrier_rejections": 0,
+          "jump_target_rejections": 0,
+          "fused_opcode_execution_count": 0,
+          "normal_load_count": 0,
+          "normal_store_count": 0,
+          "normal_add_count": 0,
+          "normal_mul_count": 0,
+          "normal_branch_count": 0
+        },
+        "object_ic_gc": {
+          "object_alloc_count": 0,
+          "field_load_count": 0,
+          "field_store_count": 0,
+          "field_ic_hit": 0,
+          "field_ic_miss": 1,
+          "ic_hit_rate": 0,
+          "shape_transition_count": 0,
+          "monomorphic_ic": 0,
+          "polymorphic_ic": 0,
+          "megamorphic_ic": 0,
+          "generic_property_lookup": 0,
+          "specialized_property_lookup": 0,
+          "property_guard_fail": 0,
+          "shape_guard_fail": 0,
+          "alloc_count": 0,
+          "allocated_bytes": 0,
+          "minor_gc_count": 0,
+          "minor_gc_time_ns": 0,
+          "major_gc_count": 0,
+          "major_gc_time_ns": 0,
+          "gc_pause_total_ns": 0,
+          "promoted_bytes": 0,
+          "survived_bytes": 0,
+          "heap_peak_bytes": 0,
+          "heap_end_bytes": 0,
+          "gc_fraction": 0
+        }
+      }
+    },
+    "M1": {
+      "workload_id": "W3",
+      "mode_id": "M1",
+      "mode_name": "Optimized Interpreter (Cached Dispatch + TOS + Fusion)",
+      "reps": 20,
+      "warmup": 5,
+      "cold": {
+        "wall_clock_total_ms": 460.7219,
+        "internal_time_ms": 439.302,
+        "checksum": "20250000",
+        "telemetry_file": "D:\\New PJ\\Ternary\\Compiler\\Code\\benchmarks\\forensics\\raw\\W3_M1_cold_dump.json"
+      },
+      "stats": {
+        "count": 20,
+        "median_ms": 365.7395,
+        "mean_ms": 398.0474,
+        "stddev_ms": 75.4129,
+        "p95_ms": 563.285,
+        "min_ms": 337.845,
+        "max_ms": 582.401,
+        "cv_pct": 18.95,
+        "ci95_low_ms": 362.7535,
+        "ci95_high_ms": 433.3414
+      },
+      "raw_runs": [
+        {
+          "run_id": 0,
+          "wall_clock_ms": 591.2896,
+          "internal_time_ms": 563.285,
+          "checksum": "20250000",
+          "startup_ms": 0.78,
+          "program_ms": 563.481,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 1,
+          "wall_clock_ms": 613.7985,
+          "internal_time_ms": 582.401,
+          "checksum": "20250000",
+          "startup_ms": 0.815,
+          "program_ms": 582.612,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 2,
+          "wall_clock_ms": 475.8234,
+          "internal_time_ms": 451.164,
+          "checksum": "20250000",
+          "startup_ms": 0.748,
+          "program_ms": 451.332,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 3,
+          "wall_clock_ms": 408.7902,
+          "internal_time_ms": 385.848,
+          "checksum": "20250000",
+          "startup_ms": 0.57,
+          "program_ms": 385.98,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 4,
+          "wall_clock_ms": 414.8466,
+          "internal_time_ms": 386.159,
+          "checksum": "20250000",
+          "startup_ms": 0.507,
+          "program_ms": 386.317,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 5,
+          "wall_clock_ms": 479.1631,
+          "internal_time_ms": 451.33,
+          "checksum": "20250000",
+          "startup_ms": 0.792,
+          "program_ms": 451.515,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 6,
+          "wall_clock_ms": 389.3479,
+          "internal_time_ms": 370.81,
+          "checksum": "20250000",
+          "startup_ms": 0.518,
+          "program_ms": 370.93,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 7,
+          "wall_clock_ms": 359.2415,
+          "internal_time_ms": 337.845,
+          "checksum": "20250000",
+          "startup_ms": 0.526,
+          "program_ms": 337.963,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 8,
+          "wall_clock_ms": 364.2879,
+          "internal_time_ms": 341.714,
+          "checksum": "20250000",
+          "startup_ms": 0.461,
+          "program_ms": 341.832,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 9,
+          "wall_clock_ms": 373.0487,
+          "internal_time_ms": 352.374,
+          "checksum": "20250000",
+          "startup_ms": 0.478,
+          "program_ms": 352.501,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 10,
+          "wall_clock_ms": 361.6435,
+          "internal_time_ms": 339.54,
+          "checksum": "20250000",
+          "startup_ms": 0.471,
+          "program_ms": 339.661,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 11,
+          "wall_clock_ms": 369.7574,
+          "internal_time_ms": 348.825,
+          "checksum": "20250000",
+          "startup_ms": 0.619,
+          "program_ms": 348.956,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 12,
+          "wall_clock_ms": 366.1738,
+          "internal_time_ms": 338.371,
+          "checksum": "20250000",
+          "startup_ms": 0.475,
+          "program_ms": 338.496,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 13,
+          "wall_clock_ms": 378.5699,
+          "internal_time_ms": 360.669,
+          "checksum": "20250000",
+          "startup_ms": 0.489,
+          "program_ms": 360.787,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 14,
+          "wall_clock_ms": 362.6669,
+          "internal_time_ms": 345.637,
+          "checksum": "20250000",
+          "startup_ms": 0.485,
+          "program_ms": 345.758,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 15,
+          "wall_clock_ms": 360.2717,
+          "internal_time_ms": 340.412,
+          "checksum": "20250000",
+          "startup_ms": 0.514,
+          "program_ms": 340.541,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 16,
+          "wall_clock_ms": 374.1087,
+          "internal_time_ms": 351.413,
+          "checksum": "20250000",
+          "startup_ms": 0.484,
+          "program_ms": 351.534,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 17,
+          "wall_clock_ms": 409.2245,
+          "internal_time_ms": 372.349,
+          "checksum": "20250000",
+          "startup_ms": 0.763,
+          "program_ms": 372.573,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 18,
+          "wall_clock_ms": 518.3461,
+          "internal_time_ms": 492.881,
+          "checksum": "20250000",
+          "startup_ms": 0.862,
+          "program_ms": 493.069,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 19,
+          "wall_clock_ms": 476.1913,
+          "internal_time_ms": 447.922,
+          "checksum": "20250000",
+          "startup_ms": 0.924,
+          "program_ms": 448.08,
+          "jit_compile_ms": 0
+        }
+      ],
+      "last_telemetry": {
+        "profiling_mode": "FULL",
+        "wall_clock": {
+          "total_time_ns": 449005000,
+          "startup_time_ns": 924000,
+          "program_time_ns": 448080000,
+          "shutdown_time_ns": 1000,
+          "startup_time_ms": 0.924,
+          "program_time_ms": 448.08,
+          "total_time_ms": 449.005
+        },
+        "tier_jit": {
+          "invocation_count": 0,
+          "backedge_count": 0,
+          "jit_compile_count": 0,
+          "jit_compile_time_ns": 0,
+          "jit_compile_time_ms": 0,
+          "baseline_compile_count": 0,
+          "baseline_compile_time_ns": 0,
+          "optimizing_compile_count": 0,
+          "optimizing_compile_time_ns": 0,
+          "osr_count": 0,
+          "osr_compile_count": 0,
+          "osr_compile_time_ns": 0,
+          "deopt_count": 0,
+          "deopt_time_ns": 0,
+          "tier0_execution_ns": 0,
+          "tier1_execution_ns": 0,
+          "tier2_execution_ns": 0,
+          "compile_requested": 0,
+          "compile_completed": 0,
+          "code_entered": 0,
+          "code_executed": 0
+        },
+        "dispatch": {
+          "total_opcode_dispatch": 60695597,
+          "dispatch_loop_iterations": 0,
+          "indirect_dispatch_count": 0,
+          "direct_dispatch_count": 0,
+          "superinstruction_count": 31837261,
+          "branch_count": 0,
+          "load_count": 0,
+          "store_count": 0,
+          "opcode_counts": {
+            "0x01": 1112948,
+            "0x05": 2,
+            "0x07": 1,
+            "0x10": 16403946,
+            "0x20": 56,
+            "0x21": 1,
+            "0x22": 49,
+            "0x29": 20000,
+            "0x32": 56,
+            "0x34": 10000,
+            "0x50": 1032700,
+            "0x51": 1052904,
+            "0x60": 1,
+            "0x61": 1,
+            "0x70": 3,
+            "0x71": 1,
+            "0x9c": 2,
+            "0xa2": 2020000,
+            "0xa4": 30000,
+            "0xa5": 1020012,
+            "0xa6": 3,
+            "0xb0": 1,
+            "0xb1": 1020203,
+            "0xb2": 1,
+            "0xb3": 30000,
+            "0xbc": 1032644,
+            "0xbe": 3029952,
+            "0xbf": 1042848,
+            "0xc4": 21614351,
+            "0xc5": 1,
+            "0xc6": 1,
+            "0xc7": 1,
+            "0xc8": 1,
+            "0xc9": 7172906,
+            "0xca": 3050000,
+            "0xff": 1
+          }
+        },
+        "stack_execution_state": {
+          "push_count": 1080028,
+          "pop_count": 1050016,
+          "dup_count": 0,
+          "swap_count": 0,
+          "tos0_hits": 0,
+          "tos1_hits": 0,
+          "tos_hit": 0,
+          "tos_miss": 0,
+          "tos_hit_rate": 0,
+          "flush_count": 0,
+          "materialize_count": 0,
+          "stack_spill_count": 0,
+          "stack_reload_count": 0,
+          "execution_state_loads": 0,
+          "execution_state_stores": 0,
+          "state_transition_count": 0,
+          "state_sync_count": 0,
+          "state_sync_bytes": 0
+        },
+        "call_frame": {
+          "call_count": 1,
+          "return_count": 1,
+          "function_frame_create": 0,
+          "function_frame_destroy": 0,
+          "recursive_call_count": 0,
+          "native_call_count": 0,
+          "managed_call_count": 0,
+          "frame_alloc_count": 0,
+          "frame_reuse_count": 0,
+          "monomorphic_call": 0,
+          "polymorphic_call": 0,
+          "megamorphic_call": 0
+        },
+        "array": {
+          "generic_array_load": 0,
+          "generic_array_store": 0,
+          "generic_accesses": 0,
+          "typed_i32_load": 0,
+          "typed_i32_store": 0,
+          "typed_i64_load": 0,
+          "typed_i64_store": 0,
+          "typed_f64_load": 0,
+          "typed_f64_store": 0,
+          "i64_accesses": 0,
+          "u8_accesses": 0,
+          "f64_accesses": 0,
+          "tafpu_accesses": 0,
+          "bounds_check_count": 0,
+          "bounds_check_elided": 0,
+          "boxing_count": 0,
+          "unboxing_count": 0,
+          "array_representation_transition": 0,
+          "typed_access_ratio": 0,
+          "flat_access_ratio": 0
+        },
+        "fusion": {
+          "candidate_patterns": 0,
+          "fused_count": 0,
+          "rejected_count": 0,
+          "semantic_barrier_rejections": 0,
+          "jump_target_rejections": 0,
+          "fused_opcode_execution_count": 31837261,
+          "normal_load_count": 0,
+          "normal_store_count": 0,
+          "normal_add_count": 0,
+          "normal_mul_count": 0,
+          "normal_branch_count": 0
+        },
+        "object_ic_gc": {
+          "object_alloc_count": 0,
+          "field_load_count": 0,
+          "field_store_count": 0,
+          "field_ic_hit": 0,
+          "field_ic_miss": 0,
+          "ic_hit_rate": 0,
+          "shape_transition_count": 0,
+          "monomorphic_ic": 0,
+          "polymorphic_ic": 0,
+          "megamorphic_ic": 0,
+          "generic_property_lookup": 0,
+          "specialized_property_lookup": 0,
+          "property_guard_fail": 0,
+          "shape_guard_fail": 0,
+          "alloc_count": 0,
+          "allocated_bytes": 0,
+          "minor_gc_count": 0,
+          "minor_gc_time_ns": 0,
+          "major_gc_count": 0,
+          "major_gc_time_ns": 0,
+          "gc_pause_total_ns": 0,
+          "promoted_bytes": 0,
+          "survived_bytes": 0,
+          "heap_peak_bytes": 0,
+          "heap_end_bytes": 0,
+          "gc_fraction": 0
+        }
+      }
+    },
+    "M2": {
+      "workload_id": "W3",
+      "mode_id": "M2",
+      "mode_name": "Baseline JIT (Tier 1 Baseline JIT)",
+      "reps": 20,
+      "warmup": 5,
+      "cold": {
+        "wall_clock_total_ms": 16.6523,
+        "internal_time_ms": 16.6523,
+        "checksum": "none",
+        "telemetry_file": null
+      },
+      "stats": {
+        "count": 20,
+        "median_ms": 16.2184,
+        "mean_ms": 16.9538,
+        "stddev_ms": 3.5638,
+        "p95_ms": 21.9994,
+        "min_ms": 13.9913,
+        "max_ms": 29.4901,
+        "cv_pct": 21.02,
+        "ci95_low_ms": 15.2859,
+        "ci95_high_ms": 18.6217
+      },
+      "raw_runs": [
+        {
+          "run_id": 0,
+          "wall_clock_ms": 17.4466,
+          "internal_time_ms": 17.4466,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 1,
+          "wall_clock_ms": 29.4901,
+          "internal_time_ms": 29.4901,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 2,
+          "wall_clock_ms": 17.7364,
+          "internal_time_ms": 17.7364,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 3,
+          "wall_clock_ms": 16.2122,
+          "internal_time_ms": 16.2122,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 4,
+          "wall_clock_ms": 16.1757,
+          "internal_time_ms": 16.1757,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 5,
+          "wall_clock_ms": 15.9285,
+          "internal_time_ms": 15.9285,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 6,
+          "wall_clock_ms": 16.2247,
+          "internal_time_ms": 16.2247,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 7,
+          "wall_clock_ms": 16.2795,
+          "internal_time_ms": 16.2795,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 8,
+          "wall_clock_ms": 21.9994,
+          "internal_time_ms": 21.9994,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 9,
+          "wall_clock_ms": 19.0141,
+          "internal_time_ms": 19.0141,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 10,
+          "wall_clock_ms": 14.1292,
+          "internal_time_ms": 14.1292,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 11,
+          "wall_clock_ms": 18.0688,
+          "internal_time_ms": 18.0688,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 12,
+          "wall_clock_ms": 14.299,
+          "internal_time_ms": 14.299,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 13,
+          "wall_clock_ms": 14.3097,
+          "internal_time_ms": 14.3097,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 14,
+          "wall_clock_ms": 14.8247,
+          "internal_time_ms": 14.8247,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 15,
+          "wall_clock_ms": 16.7443,
+          "internal_time_ms": 16.7443,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 16,
+          "wall_clock_ms": 17.4737,
+          "internal_time_ms": 17.4737,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 17,
+          "wall_clock_ms": 13.9913,
+          "internal_time_ms": 13.9913,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 18,
+          "wall_clock_ms": 14.1391,
+          "internal_time_ms": 14.1391,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 19,
+          "wall_clock_ms": 14.5886,
+          "internal_time_ms": 14.5886,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        }
+      ],
+      "last_telemetry": {}
+    },
+    "M3": {
+      "workload_id": "W3",
+      "mode_id": "M3",
+      "mode_name": "Auto-Tier JIT (Tier 0/1/2 OSR Adaptive)",
+      "reps": 20,
+      "warmup": 5,
+      "cold": {
+        "wall_clock_total_ms": 15.3627,
+        "internal_time_ms": 15.3627,
+        "checksum": "none",
+        "telemetry_file": null
+      },
+      "stats": {
+        "count": 20,
+        "median_ms": 16.8852,
+        "mean_ms": 17.2528,
+        "stddev_ms": 1.6198,
+        "p95_ms": 20.3496,
+        "min_ms": 15.2534,
+        "max_ms": 20.4651,
+        "cv_pct": 9.39,
+        "ci95_low_ms": 16.4947,
+        "ci95_high_ms": 18.0109
+      },
+      "raw_runs": [
+        {
+          "run_id": 0,
+          "wall_clock_ms": 20.3496,
+          "internal_time_ms": 20.3496,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 1,
+          "wall_clock_ms": 16.3933,
+          "internal_time_ms": 16.3933,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 2,
+          "wall_clock_ms": 15.2534,
+          "internal_time_ms": 15.2534,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 3,
+          "wall_clock_ms": 16.1728,
+          "internal_time_ms": 16.1728,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 4,
+          "wall_clock_ms": 15.4323,
+          "internal_time_ms": 15.4323,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 5,
+          "wall_clock_ms": 18.0846,
+          "internal_time_ms": 18.0846,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 6,
+          "wall_clock_ms": 19.6906,
+          "internal_time_ms": 19.6906,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 7,
+          "wall_clock_ms": 15.8039,
+          "internal_time_ms": 15.8039,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 8,
+          "wall_clock_ms": 17.8648,
+          "internal_time_ms": 17.8648,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 9,
+          "wall_clock_ms": 16.7134,
+          "internal_time_ms": 16.7134,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 10,
+          "wall_clock_ms": 18.5819,
+          "internal_time_ms": 18.5819,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 11,
+          "wall_clock_ms": 18.3813,
+          "internal_time_ms": 18.3813,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 12,
+          "wall_clock_ms": 17.246,
+          "internal_time_ms": 17.246,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 13,
+          "wall_clock_ms": 15.5485,
+          "internal_time_ms": 15.5485,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 14,
+          "wall_clock_ms": 16.4547,
+          "internal_time_ms": 16.4547,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 15,
+          "wall_clock_ms": 17.8607,
+          "internal_time_ms": 17.8607,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 16,
+          "wall_clock_ms": 17.0571,
+          "internal_time_ms": 17.0571,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 17,
+          "wall_clock_ms": 20.4651,
+          "internal_time_ms": 20.4651,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 18,
+          "wall_clock_ms": 15.4001,
+          "internal_time_ms": 15.4001,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 19,
+          "wall_clock_ms": 16.3019,
+          "internal_time_ms": 16.3019,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        }
+      ],
+      "last_telemetry": {}
+    },
+    "M4": {
+      "workload_id": "W3",
+      "mode_id": "M4",
+      "mode_name": "Native AOT (LLVM / Native -O3)",
+      "reps": 20,
+      "warmup": 5,
+      "cold": {
+        "wall_clock_total_ms": 926.5483,
+        "internal_time_ms": 3.87,
+        "checksum": "2.025e+07",
+        "telemetry_file": null
+      },
+      "stats": {
+        "count": 20,
+        "median_ms": 4.4275,
+        "mean_ms": 4.9771,
+        "stddev_ms": 0.8503,
+        "p95_ms": 6.537,
+        "min_ms": 4.061,
+        "max_ms": 6.826,
+        "cv_pct": 17.08,
+        "ci95_low_ms": 4.5791,
+        "ci95_high_ms": 5.375
+      },
+      "raw_runs": [
+        {
+          "run_id": 0,
+          "wall_clock_ms": 18.9574,
+          "internal_time_ms": 6.826,
+          "checksum": "2.025e+07",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 1,
+          "wall_clock_ms": 16.0894,
+          "internal_time_ms": 5.541,
+          "checksum": "2.025e+07",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 2,
+          "wall_clock_ms": 15.7427,
+          "internal_time_ms": 5.374,
+          "checksum": "2.025e+07",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 3,
+          "wall_clock_ms": 18.026,
+          "internal_time_ms": 6.537,
+          "checksum": "2.025e+07",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 4,
+          "wall_clock_ms": 38.5677,
+          "internal_time_ms": 5.162,
+          "checksum": "2.025e+07",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 5,
+          "wall_clock_ms": 16.4127,
+          "internal_time_ms": 5.228,
+          "checksum": "2.025e+07",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 6,
+          "wall_clock_ms": 13.6044,
+          "internal_time_ms": 4.061,
+          "checksum": "2.025e+07",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 7,
+          "wall_clock_ms": 16.9597,
+          "internal_time_ms": 6.43,
+          "checksum": "2.025e+07",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 8,
+          "wall_clock_ms": 16.2509,
+          "internal_time_ms": 5.476,
+          "checksum": "2.025e+07",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 9,
+          "wall_clock_ms": 11.4208,
+          "internal_time_ms": 4.285,
+          "checksum": "2.025e+07",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 10,
+          "wall_clock_ms": 11.4619,
+          "internal_time_ms": 4.361,
+          "checksum": "2.025e+07",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 11,
+          "wall_clock_ms": 11.0276,
+          "internal_time_ms": 4.335,
+          "checksum": "2.025e+07",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 12,
+          "wall_clock_ms": 10.3903,
+          "internal_time_ms": 4.329,
+          "checksum": "2.025e+07",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 13,
+          "wall_clock_ms": 10.4506,
+          "internal_time_ms": 4.326,
+          "checksum": "2.025e+07",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 14,
+          "wall_clock_ms": 11.6782,
+          "internal_time_ms": 5.394,
+          "checksum": "2.025e+07",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 15,
+          "wall_clock_ms": 11.0319,
+          "internal_time_ms": 4.324,
+          "checksum": "2.025e+07",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 16,
+          "wall_clock_ms": 11.1529,
+          "internal_time_ms": 4.343,
+          "checksum": "2.025e+07",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 17,
+          "wall_clock_ms": 11.5153,
+          "internal_time_ms": 4.471,
+          "checksum": "2.025e+07",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 18,
+          "wall_clock_ms": 10.8088,
+          "internal_time_ms": 4.384,
+          "checksum": "2.025e+07",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 19,
+          "wall_clock_ms": 11.0088,
+          "internal_time_ms": 4.354,
+          "checksum": "2.025e+07",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        }
+      ],
+      "last_telemetry": {}
+    }
+  },
+  "W4": {
+    "M0": {
+      "workload_id": "W4",
+      "mode_id": "M0",
+      "mode_name": "Interpreter (Switch Dispatch)",
+      "reps": 20,
+      "warmup": 5,
+      "cold": {
+        "wall_clock_total_ms": 303.0435,
+        "internal_time_ms": 281.93,
+        "checksum": "541096364",
+        "telemetry_file": "D:\\New PJ\\Ternary\\Compiler\\Code\\benchmarks\\forensics\\raw\\W4_M0_cold_dump.json"
+      },
+      "stats": {
+        "count": 20,
+        "median_ms": 276.6195,
+        "mean_ms": 300.0776,
+        "stddev_ms": 55.6906,
+        "p95_ms": 395.221,
+        "min_ms": 250.732,
+        "max_ms": 446.076,
+        "cv_pct": 18.56,
+        "ci95_low_ms": 274.0139,
+        "ci95_high_ms": 326.1413
+      },
+      "raw_runs": [
+        {
+          "run_id": 0,
+          "wall_clock_ms": 275.1129,
+          "internal_time_ms": 257.017,
+          "checksum": "541096364",
+          "startup_ms": 0.499,
+          "program_ms": 257.199,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 1,
+          "wall_clock_ms": 284.7308,
+          "internal_time_ms": 267.214,
+          "checksum": "541096364",
+          "startup_ms": 0.513,
+          "program_ms": 267.393,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 2,
+          "wall_clock_ms": 268.2473,
+          "internal_time_ms": 252.282,
+          "checksum": "541096364",
+          "startup_ms": 0.54,
+          "program_ms": 252.449,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 3,
+          "wall_clock_ms": 298.252,
+          "internal_time_ms": 278.5,
+          "checksum": "541096364",
+          "startup_ms": 0.517,
+          "program_ms": 278.737,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 4,
+          "wall_clock_ms": 333.9732,
+          "internal_time_ms": 310.909,
+          "checksum": "541096364",
+          "startup_ms": 0.708,
+          "program_ms": 311.141,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 5,
+          "wall_clock_ms": 417.4365,
+          "internal_time_ms": 395.221,
+          "checksum": "541096364",
+          "startup_ms": 0.592,
+          "program_ms": 395.435,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 6,
+          "wall_clock_ms": 375.1881,
+          "internal_time_ms": 349.51,
+          "checksum": "541096364",
+          "startup_ms": 0.965,
+          "program_ms": 349.866,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 7,
+          "wall_clock_ms": 393.7192,
+          "internal_time_ms": 371.268,
+          "checksum": "541096364",
+          "startup_ms": 0.667,
+          "program_ms": 371.483,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 8,
+          "wall_clock_ms": 470.7578,
+          "internal_time_ms": 446.076,
+          "checksum": "541096364",
+          "startup_ms": 0.673,
+          "program_ms": 446.307,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 9,
+          "wall_clock_ms": 394.5179,
+          "internal_time_ms": 368.487,
+          "checksum": "541096364",
+          "startup_ms": 0.966,
+          "program_ms": 368.752,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 10,
+          "wall_clock_ms": 306.6717,
+          "internal_time_ms": 271.97,
+          "checksum": "541096364",
+          "startup_ms": 0.511,
+          "program_ms": 272.156,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 11,
+          "wall_clock_ms": 285.6188,
+          "internal_time_ms": 262.593,
+          "checksum": "541096364",
+          "startup_ms": 0.503,
+          "program_ms": 262.769,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 12,
+          "wall_clock_ms": 274.4039,
+          "internal_time_ms": 257.769,
+          "checksum": "541096364",
+          "startup_ms": 0.457,
+          "program_ms": 257.929,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 13,
+          "wall_clock_ms": 286.8247,
+          "internal_time_ms": 270.273,
+          "checksum": "541096364",
+          "startup_ms": 0.884,
+          "program_ms": 270.518,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 14,
+          "wall_clock_ms": 274.7168,
+          "internal_time_ms": 257.205,
+          "checksum": "541096364",
+          "startup_ms": 0.483,
+          "program_ms": 257.38,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 15,
+          "wall_clock_ms": 295.8137,
+          "internal_time_ms": 274.739,
+          "checksum": "541096364",
+          "startup_ms": 0.499,
+          "program_ms": 274.913,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 16,
+          "wall_clock_ms": 302.7275,
+          "internal_time_ms": 278.983,
+          "checksum": "541096364",
+          "startup_ms": 0.537,
+          "program_ms": 279.15,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 17,
+          "wall_clock_ms": 300.3418,
+          "internal_time_ms": 281.866,
+          "checksum": "541096364",
+          "startup_ms": 0.669,
+          "program_ms": 282.075,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 18,
+          "wall_clock_ms": 278.8496,
+          "internal_time_ms": 250.732,
+          "checksum": "541096364",
+          "startup_ms": 0.474,
+          "program_ms": 250.889,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 19,
+          "wall_clock_ms": 325.59,
+          "internal_time_ms": 298.938,
+          "checksum": "541096364",
+          "startup_ms": 0.564,
+          "program_ms": 299.113,
+          "jit_compile_ms": 0
+        }
+      ],
+      "last_telemetry": {
+        "profiling_mode": "FULL",
+        "wall_clock": {
+          "total_time_ns": 299678000,
+          "startup_time_ns": 564000,
+          "program_time_ns": 299113000,
+          "shutdown_time_ns": 1000,
+          "startup_time_ms": 0.564,
+          "program_time_ms": 299.113,
+          "total_time_ms": 299.678
+        },
+        "tier_jit": {
+          "invocation_count": 0,
+          "backedge_count": 0,
+          "jit_compile_count": 0,
+          "jit_compile_time_ns": 0,
+          "jit_compile_time_ms": 0,
+          "baseline_compile_count": 0,
+          "baseline_compile_time_ns": 0,
+          "optimizing_compile_count": 0,
+          "optimizing_compile_time_ns": 0,
+          "osr_count": 0,
+          "osr_compile_count": 0,
+          "osr_compile_time_ns": 0,
+          "deopt_count": 0,
+          "deopt_time_ns": 0,
+          "tier0_execution_ns": 0,
+          "tier1_execution_ns": 0,
+          "tier2_execution_ns": 0,
+          "compile_requested": 0,
+          "compile_completed": 0,
+          "code_entered": 0,
+          "code_executed": 0
+        },
+        "dispatch": {
+          "total_opcode_dispatch": 0,
+          "dispatch_loop_iterations": 0,
+          "indirect_dispatch_count": 0,
+          "direct_dispatch_count": 0,
+          "superinstruction_count": 0,
+          "branch_count": 0,
+          "load_count": 0,
+          "store_count": 0,
+          "opcode_counts": {}
+        },
+        "stack_execution_state": {
+          "push_count": 0,
+          "pop_count": 0,
+          "dup_count": 0,
+          "swap_count": 0,
+          "tos0_hits": 0,
+          "tos1_hits": 0,
+          "tos_hit": 0,
+          "tos_miss": 0,
+          "tos_hit_rate": 0,
+          "flush_count": 0,
+          "materialize_count": 0,
+          "stack_spill_count": 0,
+          "stack_reload_count": 0,
+          "execution_state_loads": 0,
+          "execution_state_stores": 0,
+          "state_transition_count": 0,
+          "state_sync_count": 0,
+          "state_sync_bytes": 0
+        },
+        "call_frame": {
+          "call_count": 0,
+          "return_count": 0,
+          "function_frame_create": 0,
+          "function_frame_destroy": 0,
+          "recursive_call_count": 0,
+          "native_call_count": 0,
+          "managed_call_count": 0,
+          "frame_alloc_count": 0,
+          "frame_reuse_count": 0,
+          "monomorphic_call": 0,
+          "polymorphic_call": 0,
+          "megamorphic_call": 0
+        },
+        "array": {
+          "generic_array_load": 0,
+          "generic_array_store": 0,
+          "generic_accesses": 0,
+          "typed_i32_load": 0,
+          "typed_i32_store": 0,
+          "typed_i64_load": 0,
+          "typed_i64_store": 0,
+          "typed_f64_load": 0,
+          "typed_f64_store": 0,
+          "i64_accesses": 0,
+          "u8_accesses": 0,
+          "f64_accesses": 0,
+          "tafpu_accesses": 0,
+          "bounds_check_count": 0,
+          "bounds_check_elided": 0,
+          "boxing_count": 0,
+          "unboxing_count": 0,
+          "array_representation_transition": 0,
+          "typed_access_ratio": 0,
+          "flat_access_ratio": 0
+        },
+        "fusion": {
+          "candidate_patterns": 0,
+          "fused_count": 0,
+          "rejected_count": 0,
+          "semantic_barrier_rejections": 0,
+          "jump_target_rejections": 0,
+          "fused_opcode_execution_count": 0,
+          "normal_load_count": 0,
+          "normal_store_count": 0,
+          "normal_add_count": 0,
+          "normal_mul_count": 0,
+          "normal_branch_count": 0
+        },
+        "object_ic_gc": {
+          "object_alloc_count": 0,
+          "field_load_count": 0,
+          "field_store_count": 0,
+          "field_ic_hit": 399998,
+          "field_ic_miss": 4,
+          "ic_hit_rate": 0.99999,
+          "shape_transition_count": 0,
+          "monomorphic_ic": 0,
+          "polymorphic_ic": 0,
+          "megamorphic_ic": 0,
+          "generic_property_lookup": 0,
+          "specialized_property_lookup": 0,
+          "property_guard_fail": 0,
+          "shape_guard_fail": 0,
+          "alloc_count": 0,
+          "allocated_bytes": 0,
+          "minor_gc_count": 0,
+          "minor_gc_time_ns": 0,
+          "major_gc_count": 0,
+          "major_gc_time_ns": 0,
+          "gc_pause_total_ns": 0,
+          "promoted_bytes": 0,
+          "survived_bytes": 0,
+          "heap_peak_bytes": 0,
+          "heap_end_bytes": 0,
+          "gc_fraction": 0
+        }
+      }
+    },
+    "M1": {
+      "workload_id": "W4",
+      "mode_id": "M1",
+      "mode_name": "Optimized Interpreter (Cached Dispatch + TOS + Fusion)",
+      "reps": 20,
+      "warmup": 5,
+      "cold": {
+        "wall_clock_total_ms": 184.8428,
+        "internal_time_ms": 168.854,
+        "checksum": "541096364",
+        "telemetry_file": "D:\\New PJ\\Ternary\\Compiler\\Code\\benchmarks\\forensics\\raw\\W4_M1_cold_dump.json"
+      },
+      "stats": {
+        "count": 20,
+        "median_ms": 160.237,
+        "mean_ms": 163.879,
+        "stddev_ms": 7.3875,
+        "p95_ms": 176.556,
+        "min_ms": 155.313,
+        "max_ms": 178.038,
+        "cv_pct": 4.51,
+        "ci95_low_ms": 160.4216,
+        "ci95_high_ms": 167.3364
+      },
+      "raw_runs": [
+        {
+          "run_id": 0,
+          "wall_clock_ms": 193.979,
+          "internal_time_ms": 174.678,
+          "checksum": "541096364",
+          "startup_ms": 0.502,
+          "program_ms": 174.782,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 1,
+          "wall_clock_ms": 195.1355,
+          "internal_time_ms": 178.038,
+          "checksum": "541096364",
+          "startup_ms": 0.624,
+          "program_ms": 178.149,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 2,
+          "wall_clock_ms": 170.6292,
+          "internal_time_ms": 155.313,
+          "checksum": "541096364",
+          "startup_ms": 0.482,
+          "program_ms": 155.412,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 3,
+          "wall_clock_ms": 176.9385,
+          "internal_time_ms": 159.299,
+          "checksum": "541096364",
+          "startup_ms": 0.548,
+          "program_ms": 159.397,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 4,
+          "wall_clock_ms": 192.4302,
+          "internal_time_ms": 172.853,
+          "checksum": "541096364",
+          "startup_ms": 0.526,
+          "program_ms": 172.956,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 5,
+          "wall_clock_ms": 178.8165,
+          "internal_time_ms": 160.893,
+          "checksum": "541096364",
+          "startup_ms": 0.488,
+          "program_ms": 160.99,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 6,
+          "wall_clock_ms": 174.2551,
+          "internal_time_ms": 157.906,
+          "checksum": "541096364",
+          "startup_ms": 0.483,
+          "program_ms": 158.011,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 7,
+          "wall_clock_ms": 181.5317,
+          "internal_time_ms": 165.494,
+          "checksum": "541096364",
+          "startup_ms": 0.469,
+          "program_ms": 165.6,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 8,
+          "wall_clock_ms": 183.9907,
+          "internal_time_ms": 167.24,
+          "checksum": "541096364",
+          "startup_ms": 0.491,
+          "program_ms": 167.344,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 9,
+          "wall_clock_ms": 185.478,
+          "internal_time_ms": 155.963,
+          "checksum": "541096364",
+          "startup_ms": 0.488,
+          "program_ms": 156.081,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 10,
+          "wall_clock_ms": 185.8085,
+          "internal_time_ms": 167.126,
+          "checksum": "541096364",
+          "startup_ms": 0.472,
+          "program_ms": 167.228,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 11,
+          "wall_clock_ms": 176.4985,
+          "internal_time_ms": 158.933,
+          "checksum": "541096364",
+          "startup_ms": 0.487,
+          "program_ms": 159.015,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 12,
+          "wall_clock_ms": 174.9371,
+          "internal_time_ms": 156.917,
+          "checksum": "541096364",
+          "startup_ms": 0.478,
+          "program_ms": 157.019,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 13,
+          "wall_clock_ms": 195.4048,
+          "internal_time_ms": 176.556,
+          "checksum": "541096364",
+          "startup_ms": 0.505,
+          "program_ms": 176.659,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 14,
+          "wall_clock_ms": 178.939,
+          "internal_time_ms": 159.425,
+          "checksum": "541096364",
+          "startup_ms": 0.917,
+          "program_ms": 159.571,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 15,
+          "wall_clock_ms": 176.0919,
+          "internal_time_ms": 156.875,
+          "checksum": "541096364",
+          "startup_ms": 0.465,
+          "program_ms": 156.969,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 16,
+          "wall_clock_ms": 188.4529,
+          "internal_time_ms": 170.119,
+          "checksum": "541096364",
+          "startup_ms": 0.488,
+          "program_ms": 170.224,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 17,
+          "wall_clock_ms": 177.7332,
+          "internal_time_ms": 159.581,
+          "checksum": "541096364",
+          "startup_ms": 0.485,
+          "program_ms": 159.669,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 18,
+          "wall_clock_ms": 172.679,
+          "internal_time_ms": 157.309,
+          "checksum": "541096364",
+          "startup_ms": 0.473,
+          "program_ms": 157.401,
+          "jit_compile_ms": 0
+        },
+        {
+          "run_id": 19,
+          "wall_clock_ms": 183.3103,
+          "internal_time_ms": 167.062,
+          "checksum": "541096364",
+          "startup_ms": 0.661,
+          "program_ms": 167.191,
+          "jit_compile_ms": 0
+        }
+      ],
+      "last_telemetry": {
+        "profiling_mode": "FULL",
+        "wall_clock": {
+          "total_time_ns": 167853000,
+          "startup_time_ns": 661000,
+          "program_time_ns": 167191000,
+          "shutdown_time_ns": 1000,
+          "startup_time_ms": 0.661,
+          "program_time_ms": 167.191,
+          "total_time_ms": 167.853
+        },
+        "tier_jit": {
+          "invocation_count": 0,
+          "backedge_count": 0,
+          "jit_compile_count": 0,
+          "jit_compile_time_ns": 0,
+          "jit_compile_time_ms": 0,
+          "baseline_compile_count": 0,
+          "baseline_compile_time_ns": 0,
+          "optimizing_compile_count": 0,
+          "optimizing_compile_time_ns": 0,
+          "osr_count": 0,
+          "osr_compile_count": 0,
+          "osr_compile_time_ns": 0,
+          "deopt_count": 0,
+          "deopt_time_ns": 0,
+          "tier0_execution_ns": 0,
+          "tier1_execution_ns": 0,
+          "tier2_execution_ns": 0,
+          "compile_requested": 0,
+          "compile_completed": 0,
+          "code_entered": 0,
+          "code_executed": 0
+        },
+        "dispatch": {
+          "total_opcode_dispatch": 19283706,
+          "dispatch_loop_iterations": 0,
+          "indirect_dispatch_count": 0,
+          "direct_dispatch_count": 0,
+          "superinstruction_count": 8490935,
+          "branch_count": 0,
+          "load_count": 0,
+          "store_count": 0,
+          "opcode_counts": {
+            "0x01": 898191,
+            "0x05": 2,
+            "0x07": 1,
+            "0x10": 2498192,
+            "0x20": 8,
+            "0x21": 1,
+            "0x22": 16,
+            "0x29": 298178,
+            "0x32": 8,
+            "0x34": 200000,
+            "0x50": 200000,
+            "0x51": 400001,
+            "0x60": 1,
+            "0x61": 400002,
+            "0x70": 3,
+            "0x71": 1,
+            "0x9c": 2,
+            "0xa1": 1,
+            "0xa4": 400001,
+            "0xb0": 600005,
+            "0xb1": 1600001,
+            "0xb2": 498180,
+            "0xb3": 2,
+            "0xbc": 199992,
+            "0xbe": 399984,
+            "0xbf": 199993,
+            "0xc2": 1600000,
+            "0xc3": 400004,
+            "0xc4": 5094567,
+            "0xc5": 1,
+            "0xc6": 400001,
+            "0xc7": 498179,
+            "0xc8": 200001,
+            "0xc9": 1498186,
+            "0xca": 800000,
+            "0xff": 1
+          }
+        },
+        "stack_execution_state": {
+          "push_count": 400009,
+          "pop_count": 5,
+          "dup_count": 0,
+          "swap_count": 0,
+          "tos0_hits": 0,
+          "tos1_hits": 0,
+          "tos_hit": 0,
+          "tos_miss": 0,
+          "tos_hit_rate": 0,
+          "flush_count": 0,
+          "materialize_count": 0,
+          "stack_spill_count": 0,
+          "stack_reload_count": 0,
+          "execution_state_loads": 0,
+          "execution_state_stores": 0,
+          "state_transition_count": 0,
+          "state_sync_count": 0,
+          "state_sync_bytes": 0
+        },
+        "call_frame": {
+          "call_count": 1,
+          "return_count": 400002,
+          "function_frame_create": 0,
+          "function_frame_destroy": 0,
+          "recursive_call_count": 0,
+          "native_call_count": 0,
+          "managed_call_count": 0,
+          "frame_alloc_count": 0,
+          "frame_reuse_count": 0,
+          "monomorphic_call": 0,
+          "polymorphic_call": 0,
+          "megamorphic_call": 0
+        },
+        "array": {
+          "generic_array_load": 0,
+          "generic_array_store": 0,
+          "generic_accesses": 0,
+          "typed_i32_load": 0,
+          "typed_i32_store": 0,
+          "typed_i64_load": 0,
+          "typed_i64_store": 0,
+          "typed_f64_load": 0,
+          "typed_f64_store": 0,
+          "i64_accesses": 0,
+          "u8_accesses": 0,
+          "f64_accesses": 0,
+          "tafpu_accesses": 0,
+          "bounds_check_count": 0,
+          "bounds_check_elided": 0,
+          "boxing_count": 0,
+          "unboxing_count": 0,
+          "array_representation_transition": 0,
+          "typed_access_ratio": 0,
+          "flat_access_ratio": 0
+        },
+        "fusion": {
+          "candidate_patterns": 0,
+          "fused_count": 0,
+          "rejected_count": 0,
+          "semantic_barrier_rejections": 0,
+          "jump_target_rejections": 0,
+          "fused_opcode_execution_count": 8490935,
+          "normal_load_count": 0,
+          "normal_store_count": 0,
+          "normal_add_count": 0,
+          "normal_mul_count": 0,
+          "normal_branch_count": 0
+        },
+        "object_ic_gc": {
+          "object_alloc_count": 0,
+          "field_load_count": 0,
+          "field_store_count": 0,
+          "field_ic_hit": 2399988,
+          "field_ic_miss": 17,
+          "ic_hit_rate": 0.999993,
+          "shape_transition_count": 0,
+          "monomorphic_ic": 0,
+          "polymorphic_ic": 0,
+          "megamorphic_ic": 0,
+          "generic_property_lookup": 0,
+          "specialized_property_lookup": 0,
+          "property_guard_fail": 0,
+          "shape_guard_fail": 0,
+          "alloc_count": 0,
+          "allocated_bytes": 0,
+          "minor_gc_count": 0,
+          "minor_gc_time_ns": 0,
+          "major_gc_count": 0,
+          "major_gc_time_ns": 0,
+          "gc_pause_total_ns": 0,
+          "promoted_bytes": 0,
+          "survived_bytes": 0,
+          "heap_peak_bytes": 0,
+          "heap_end_bytes": 0,
+          "gc_fraction": 0
+        }
+      }
+    },
+    "M2": {
+      "workload_id": "W4",
+      "mode_id": "M2",
+      "mode_name": "Baseline JIT (Tier 1 Baseline JIT)",
+      "reps": 20,
+      "warmup": 5,
+      "cold": {
+        "wall_clock_total_ms": 16.8811,
+        "internal_time_ms": 16.8811,
+        "checksum": "none",
+        "telemetry_file": null
+      },
+      "stats": {
+        "count": 20,
+        "median_ms": 16.6992,
+        "mean_ms": 16.3795,
+        "stddev_ms": 1.7309,
+        "p95_ms": 18.6396,
+        "min_ms": 13.1048,
+        "max_ms": 19.3835,
+        "cv_pct": 10.57,
+        "ci95_low_ms": 15.5695,
+        "ci95_high_ms": 17.1896
+      },
+      "raw_runs": [
+        {
+          "run_id": 0,
+          "wall_clock_ms": 14.076,
+          "internal_time_ms": 14.076,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 1,
+          "wall_clock_ms": 17.1396,
+          "internal_time_ms": 17.1396,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 2,
+          "wall_clock_ms": 17.7649,
+          "internal_time_ms": 17.7649,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 3,
+          "wall_clock_ms": 17.4639,
+          "internal_time_ms": 17.4639,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 4,
+          "wall_clock_ms": 15.2836,
+          "internal_time_ms": 15.2836,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 5,
+          "wall_clock_ms": 16.471,
+          "internal_time_ms": 16.471,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 6,
+          "wall_clock_ms": 15.9091,
+          "internal_time_ms": 15.9091,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 7,
+          "wall_clock_ms": 19.3835,
+          "internal_time_ms": 19.3835,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 8,
+          "wall_clock_ms": 14.0151,
+          "internal_time_ms": 14.0151,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 9,
+          "wall_clock_ms": 18.2098,
+          "internal_time_ms": 18.2098,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 10,
+          "wall_clock_ms": 18.6396,
+          "internal_time_ms": 18.6396,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 11,
+          "wall_clock_ms": 15.3265,
+          "internal_time_ms": 15.3265,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 12,
+          "wall_clock_ms": 16.7155,
+          "internal_time_ms": 16.7155,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 13,
+          "wall_clock_ms": 13.5192,
+          "internal_time_ms": 13.5192,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 14,
+          "wall_clock_ms": 16.6829,
+          "internal_time_ms": 16.6829,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 15,
+          "wall_clock_ms": 16.8729,
+          "internal_time_ms": 16.8729,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 16,
+          "wall_clock_ms": 17.5605,
+          "internal_time_ms": 17.5605,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 17,
+          "wall_clock_ms": 15.9068,
+          "internal_time_ms": 15.9068,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 18,
+          "wall_clock_ms": 17.5456,
+          "internal_time_ms": 17.5456,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 19,
+          "wall_clock_ms": 13.1048,
+          "internal_time_ms": 13.1048,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        }
+      ],
+      "last_telemetry": {}
+    },
+    "M3": {
+      "workload_id": "W4",
+      "mode_id": "M3",
+      "mode_name": "Auto-Tier JIT (Tier 0/1/2 OSR Adaptive)",
+      "reps": 20,
+      "warmup": 5,
+      "cold": {
+        "wall_clock_total_ms": 19.3914,
+        "internal_time_ms": 19.3914,
+        "checksum": "none",
+        "telemetry_file": null
+      },
+      "stats": {
+        "count": 20,
+        "median_ms": 15.3344,
+        "mean_ms": 16.6873,
+        "stddev_ms": 3.4791,
+        "p95_ms": 19.6661,
+        "min_ms": 13.4671,
+        "max_ms": 28.7696,
+        "cv_pct": 20.85,
+        "ci95_low_ms": 15.0591,
+        "ci95_high_ms": 18.3156
+      },
+      "raw_runs": [
+        {
+          "run_id": 0,
+          "wall_clock_ms": 18.4586,
+          "internal_time_ms": 18.4586,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 1,
+          "wall_clock_ms": 19.2725,
+          "internal_time_ms": 19.2725,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 2,
+          "wall_clock_ms": 19.6661,
+          "internal_time_ms": 19.6661,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 3,
+          "wall_clock_ms": 18.5158,
+          "internal_time_ms": 18.5158,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 4,
+          "wall_clock_ms": 15.8713,
+          "internal_time_ms": 15.8713,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 5,
+          "wall_clock_ms": 15.6164,
+          "internal_time_ms": 15.6164,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 6,
+          "wall_clock_ms": 18.0657,
+          "internal_time_ms": 18.0657,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 7,
+          "wall_clock_ms": 15.0523,
+          "internal_time_ms": 15.0523,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 8,
+          "wall_clock_ms": 13.693,
+          "internal_time_ms": 13.693,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 9,
+          "wall_clock_ms": 18.5695,
+          "internal_time_ms": 18.5695,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 10,
+          "wall_clock_ms": 13.4671,
+          "internal_time_ms": 13.4671,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 11,
+          "wall_clock_ms": 14.2194,
+          "internal_time_ms": 14.2194,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 12,
+          "wall_clock_ms": 14.7268,
+          "internal_time_ms": 14.7268,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 13,
+          "wall_clock_ms": 16.9311,
+          "internal_time_ms": 16.9311,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 14,
+          "wall_clock_ms": 14.4602,
+          "internal_time_ms": 14.4602,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 15,
+          "wall_clock_ms": 28.7696,
+          "internal_time_ms": 28.7696,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 16,
+          "wall_clock_ms": 14.5854,
+          "internal_time_ms": 14.5854,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 17,
+          "wall_clock_ms": 14.5849,
+          "internal_time_ms": 14.5849,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 18,
+          "wall_clock_ms": 14.2365,
+          "internal_time_ms": 14.2365,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 19,
+          "wall_clock_ms": 14.9845,
+          "internal_time_ms": 14.9845,
+          "checksum": "none",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        }
+      ],
+      "last_telemetry": {}
+    },
+    "M4": {
+      "workload_id": "W4",
+      "mode_id": "M4",
+      "mode_name": "Native AOT (LLVM / Native -O3)",
+      "reps": 20,
+      "warmup": 5,
+      "cold": {
+        "wall_clock_total_ms": 714.647,
+        "internal_time_ms": 0.522,
+        "checksum": "5.41096e+08",
+        "telemetry_file": null
+      },
+      "stats": {
+        "count": 20,
+        "median_ms": 0.5675,
+        "mean_ms": 0.569,
+        "stddev_ms": 0.0141,
+        "p95_ms": 0.583,
+        "min_ms": 0.548,
+        "max_ms": 0.618,
+        "cv_pct": 2.49,
+        "ci95_low_ms": 0.5624,
+        "ci95_high_ms": 0.5756
+      },
+      "raw_runs": [
+        {
+          "run_id": 0,
+          "wall_clock_ms": 6.2396,
+          "internal_time_ms": 0.558,
+          "checksum": "5.41096e+08",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 1,
+          "wall_clock_ms": 6.0731,
+          "internal_time_ms": 0.558,
+          "checksum": "5.41096e+08",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 2,
+          "wall_clock_ms": 5.7645,
+          "internal_time_ms": 0.568,
+          "checksum": "5.41096e+08",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 3,
+          "wall_clock_ms": 6.3968,
+          "internal_time_ms": 0.569,
+          "checksum": "5.41096e+08",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 4,
+          "wall_clock_ms": 5.9929,
+          "internal_time_ms": 0.548,
+          "checksum": "5.41096e+08",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 5,
+          "wall_clock_ms": 5.9889,
+          "internal_time_ms": 0.568,
+          "checksum": "5.41096e+08",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 6,
+          "wall_clock_ms": 6.533,
+          "internal_time_ms": 0.561,
+          "checksum": "5.41096e+08",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 7,
+          "wall_clock_ms": 5.5599,
+          "internal_time_ms": 0.564,
+          "checksum": "5.41096e+08",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 8,
+          "wall_clock_ms": 5.7966,
+          "internal_time_ms": 0.583,
+          "checksum": "5.41096e+08",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 9,
+          "wall_clock_ms": 5.6246,
+          "internal_time_ms": 0.572,
+          "checksum": "5.41096e+08",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 10,
+          "wall_clock_ms": 5.6787,
+          "internal_time_ms": 0.579,
+          "checksum": "5.41096e+08",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 11,
+          "wall_clock_ms": 5.5751,
+          "internal_time_ms": 0.568,
+          "checksum": "5.41096e+08",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 12,
+          "wall_clock_ms": 5.6774,
+          "internal_time_ms": 0.559,
+          "checksum": "5.41096e+08",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 13,
+          "wall_clock_ms": 5.6042,
+          "internal_time_ms": 0.575,
+          "checksum": "5.41096e+08",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 14,
+          "wall_clock_ms": 6.1293,
+          "internal_time_ms": 0.618,
+          "checksum": "5.41096e+08",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 15,
+          "wall_clock_ms": 6.0003,
+          "internal_time_ms": 0.566,
+          "checksum": "5.41096e+08",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 16,
+          "wall_clock_ms": 5.6305,
+          "internal_time_ms": 0.564,
+          "checksum": "5.41096e+08",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 17,
+          "wall_clock_ms": 6.4813,
+          "internal_time_ms": 0.576,
+          "checksum": "5.41096e+08",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 18,
+          "wall_clock_ms": 5.6913,
+          "internal_time_ms": 0.559,
+          "checksum": "5.41096e+08",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        },
+        {
+          "run_id": 19,
+          "wall_clock_ms": 5.4089,
+          "internal_time_ms": 0.567,
+          "checksum": "5.41096e+08",
+          "startup_ms": 0.0,
+          "program_ms": 0.0,
+          "jit_compile_ms": 0.0
+        }
+      ],
+      "last_telemetry": {}
+    }
+  }
+}

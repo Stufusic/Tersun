@@ -1,0 +1,10 @@
+Component,Nanoseconds_Per_Call,Percentage_Of_Time,Cumulative_Time_2.69M_Calls_ms,Primary_Bottleneck_Category
+frame_allocation,31.2,33.37%,84.01,Allocation_Bound
+frame_stack_push,16.5,17.65%,44.43,Frame_Management_Bound
+frame_initialization,14.8,15.83%,39.85,Allocation_Bound
+frame_stack_pop,13.1,14.01%,35.27,Frame_Management_Bound
+argument_transfer,5.8,6.20%,15.62,Call_Dispatch_Bound
+frame_pointer_update,4.2,4.49%,11.31,Frame_Management_Bound
+recursive_dispatch,4.0,4.28%,10.77,Call_Dispatch_Bound
+return_transfer,3.9,4.17%,10.50,Call_Dispatch_Bound
+TOTAL,93.5,100.00%,251.77,Mixed_Allocation_And_Frame_Management

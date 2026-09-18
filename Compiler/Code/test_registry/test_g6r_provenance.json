@@ -1,0 +1,251 @@
+{
+  "seal_id": "G6R_TEST_PROVENANCE",
+  "benchmark_manifest": {
+    "benchmark_id": "G6R_TEST_PROVENANCE",
+    "timestamp_utc": "2026-09-17 14:56:49Z",
+    "mode": "interp",
+    "repetitions": 5,
+    "warmup": 2,
+    "fingerprint": {
+      "machine_id": "DESKTOP-0V2G4CC",
+      "cpu_model": "12th Gen Intel(R) Core(TM) i5-1245U",
+      "core_count": 10,
+      "power_plan": "Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)",
+      "os": "Windows 11 (64bit)",
+      "git_commit": "92fd93f33311e3f3b41b0610dffa0d268b5e7de8",
+      "compiler": "g++ (GCC) 15.2.0",
+      "compiler_flags": "-std=c++20 -O3 -Iinclude",
+      "binary_sha256": "ff22c3d9d4886b71a0544b55cd1c19750dc5dec1cb60d0983e8ff4e8c2d1e127",
+      "benchmark_script_sha256": "9d0b1ce8c6fa93f17aae1fca993602d28ef14166646ab4f33285b4eab2187022",
+      "process_affinity": "Single-Process Core Pinned"
+    }
+  },
+  "workloads": {
+    "fib_24": {
+      "id": "legacy_fib_24",
+      "name": "Fibonacci Recursive (N=24)",
+      "workload_group": "short_lived",
+      "checksum": 46368,
+      "stats": {
+        "count": 5,
+        "median_ms": 7.25,
+        "mean_ms": 7.3096,
+        "stddev_ms": 2.5424,
+        "p95_ms": 11.47,
+        "min_ms": 4.92,
+        "max_ms": 11.47,
+        "cv_pct": 34.78,
+        "ci95_low_ms": 4.9299,
+        "ci95_high_ms": 9.6893
+      },
+      "raw_times_ms": [
+        11.47,
+        7.25,
+        7.281,
+        4.92,
+        5.627
+      ]
+    },
+    "branch_2m": {
+      "id": "legacy_branch_2m",
+      "name": "Branch Intensive (2M iterations)",
+      "workload_group": "medium",
+      "checksum": 1754999350001,
+      "stats": {
+        "count": 5,
+        "median_ms": 101.668,
+        "mean_ms": 110.1228,
+        "stddev_ms": 19.5662,
+        "p95_ms": 144.718,
+        "min_ms": 98.166,
+        "max_ms": 144.718,
+        "cv_pct": 17.77,
+        "ci95_low_ms": 91.8085,
+        "ci95_high_ms": 128.4371
+      },
+      "raw_times_ms": [
+        106.152,
+        144.718,
+        99.91,
+        98.166,
+        101.668
+      ]
+    },
+    "sum_5m": {
+      "id": "legacy_sum_5m",
+      "name": "Arithmetic Accumulator (5M iterations)",
+      "workload_group": "medium",
+      "checksum": 154999504,
+      "stats": {
+        "count": 5,
+        "median_ms": 242.28,
+        "mean_ms": 240.6878,
+        "stddev_ms": 3.8794,
+        "p95_ms": 242.837,
+        "min_ms": 233.777,
+        "max_ms": 242.837,
+        "cv_pct": 1.61,
+        "ci95_low_ms": 237.0566,
+        "ci95_high_ms": 244.319
+      },
+      "raw_times_ms": [
+        233.777,
+        242.636,
+        241.909,
+        242.28,
+        242.837
+      ]
+    },
+    "memory_200k": {
+      "id": "legacy_memory_200k",
+      "name": "Array Read/Write Buffer (200k ops)",
+      "workload_group": "medium",
+      "checksum": 2000100000,
+      "stats": {
+        "count": 5,
+        "median_ms": 37.239,
+        "mean_ms": 37.3252,
+        "stddev_ms": 1.0599,
+        "p95_ms": 38.739,
+        "min_ms": 36.168,
+        "max_ms": 38.739,
+        "cv_pct": 2.84,
+        "ci95_low_ms": 36.3331,
+        "ci95_high_ms": 38.3173
+      },
+      "raw_times_ms": [
+        36.168,
+        38.739,
+        37.993,
+        37.239,
+        36.487
+      ]
+    },
+    "dispatch_3m": {
+      "id": "legacy_dispatch_3m",
+      "name": "Tight Loop Opcode Dispatch (3M ops)",
+      "workload_group": "medium",
+      "checksum": 3000000,
+      "stats": {
+        "count": 5,
+        "median_ms": 104.783,
+        "mean_ms": 104.3796,
+        "stddev_ms": 1.89,
+        "p95_ms": 106.633,
+        "min_ms": 101.831,
+        "max_ms": 106.633,
+        "cv_pct": 1.81,
+        "ci95_low_ms": 102.6105,
+        "ci95_high_ms": 106.1487
+      },
+      "raw_times_ms": [
+        104.783,
+        106.633,
+        105.454,
+        101.831,
+        103.197
+      ]
+    },
+    "W1": {
+      "id": "canonical_w1_fib",
+      "name": "Recursive Fibonacci (N=30)",
+      "workload_group": "medium",
+      "checksum": "832040",
+      "stats": {
+        "count": 5,
+        "median_ms": 103.177,
+        "mean_ms": 102.449,
+        "stddev_ms": 3.4517,
+        "p95_ms": 105.256,
+        "min_ms": 96.881,
+        "max_ms": 105.256,
+        "cv_pct": 3.37,
+        "ci95_low_ms": 99.2182,
+        "ci95_high_ms": 105.6798
+      },
+      "raw_times_ms": [
+        101.708,
+        105.256,
+        96.881,
+        103.177,
+        105.223
+      ]
+    },
+    "W2": {
+      "id": "canonical_w2_sieve",
+      "name": "Prime Sieve of Eratosthenes (N=100k)",
+      "workload_group": "short_lived",
+      "checksum": "9592",
+      "stats": {
+        "count": 5,
+        "median_ms": 29.716,
+        "mean_ms": 30.1696,
+        "stddev_ms": 1.808,
+        "p95_ms": 33.182,
+        "min_ms": 28.397,
+        "max_ms": 33.182,
+        "cv_pct": 5.99,
+        "ci95_low_ms": 28.4773,
+        "ci95_high_ms": 31.8619
+      },
+      "raw_times_ms": [
+        30.191,
+        33.182,
+        28.397,
+        29.716,
+        29.362
+      ]
+    },
+    "W3": {
+      "id": "canonical_w3_matmul",
+      "name": "Matrix Multiplication (100x100 Flat 1D)",
+      "workload_group": "medium",
+      "checksum": "20250000",
+      "stats": {
+        "count": 5,
+        "median_ms": 193.583,
+        "mean_ms": 194.2524,
+        "stddev_ms": 7.171,
+        "p95_ms": 204.443,
+        "min_ms": 186.019,
+        "max_ms": 204.443,
+        "cv_pct": 3.69,
+        "ci95_low_ms": 187.5402,
+        "ci95_high_ms": 200.9646
+      },
+      "raw_times_ms": [
+        189.56,
+        193.583,
+        197.657,
+        186.019,
+        204.443
+      ]
+    },
+    "W4": {
+      "id": "canonical_w4_object",
+      "name": "Object / Struct Property Updates (200k iters)",
+      "workload_group": "medium",
+      "checksum": "541096364",
+      "stats": {
+        "count": 5,
+        "median_ms": 103.685,
+        "mean_ms": 107.027,
+        "stddev_ms": 7.5186,
+        "p95_ms": 120.184,
+        "min_ms": 101.81,
+        "max_ms": 120.184,
+        "cv_pct": 7.02,
+        "ci95_low_ms": 99.9894,
+        "ci95_high_ms": 114.0646
+      },
+      "raw_times_ms": [
+        106.152,
+        120.184,
+        103.304,
+        101.81,
+        103.685
+      ]
+    }
+  },
+  "seal_sha256": "27a856f7fd4fee66790615df710bb350fee9c0e79179f8f939afe5ca2e4beeb9"
+}

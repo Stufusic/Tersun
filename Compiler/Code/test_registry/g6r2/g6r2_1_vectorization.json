@@ -1,0 +1,42 @@
+{
+  "gate": "G6R.2.1",
+  "status": "SEALED",
+  "timestamp": "2026-09-18T04:44:00+07:00",
+  "baseline_seal": "test_registry/g6r2/g6r2_0_evidence.json",
+  "baseline_sha256": "3345E90BF7C0451A9D71271CFFCD5C3E9A3C18E30C4E9827DB2CE5983B2BCD37",
+  "binary_sha256": "A4216602339506E2D77821DA482ECB5934C2E07182BD023ABBD6896EC2B9A81F",
+  "test_binary_sha256": "027A68F77B009D34046E01C3E33AC773A37F8464A1054CBA5FE6AF5228770BA7",
+  "validation": {
+    "differential_33_tests": "PASS",
+    "w3_correctness": "PASS",
+    "w3_checksum": "20250000",
+    "w3_runtime_ms": 4.882,
+    "w3_runtime_target_ms": 5.50,
+    "w3_runtime_status": "PASS",
+    "convergence_ratio_vs_aot": 1.31,
+    "vector_width": 256,
+    "vector_loop_count": 1,
+    "vector_instruction_count": 1250000,
+    "typed_numeric_ops": 1250000,
+    "generic_numeric_ops": 0,
+    "normalized_memory_access": 1000000,
+    "rejected_memory_access": 0,
+    "regression_w1": "PASS",
+    "regression_w2": "PASS",
+    "regression_w4": "PASS"
+  },
+  "causal_proofs": {
+    "W3": {
+      "status": "VALIDATED",
+      "mechanism": "AVX2 256-bit SIMD Vectorization (vpbroadcastq, vmovdqu, vpmuludq, vpaddq, vzeroall) with stride=4",
+      "vector_width": 256,
+      "disassembly_artifact": "benchmarks/g6r2/disassembly/W3/jit_vector.asm",
+      "telemetry_artifact": "benchmarks/g6r2/raw/w3_jit_vector_telemetry.json"
+    }
+  },
+  "artifacts": {
+    "w3_jit_vector": "benchmarks/g6r2/disassembly/W3/jit_vector.asm",
+    "w3_telemetry": "benchmarks/g6r2/raw/w3_jit_vector_telemetry.json",
+    "master_dossier": "Doc/g6r/g6r2_1_w3_vectorization.md"
+  }
+}

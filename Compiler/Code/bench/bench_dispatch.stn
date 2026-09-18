@@ -10,5 +10,8 @@ fn main() {
         x = x + 1;
     }
     let t1 = time_now_us();
-    println(f"DISPATCH_HEAVY checksum={x} time_us={t1 - t0}");
+    print("DISPATCH_HEAVY checksum=");
+    print(x);
+    print(" time_us=");
+    println(t1 - t0);
 }

@@ -1,0 +1,110 @@
+{
+  "gate": "G6R.1",
+  "seal_name": "G6R1_FORENSICS_SEAL",
+  "status": "VERIFIED_SEALED",
+  "timestamp_iso": "2026-09-17T23:10:00+07:00",
+  "target": "Tersun 1.0.3 (G6R.1 Forensics & Workload Root-Cause Investigation)",
+  "machine_fingerprint": {
+    "cpu": "Intel Core i5-1245U (10 Cores, 12 Threads)",
+    "ram_gb": 16,
+    "os": "Windows 11 Pro x64 (Build 26100)",
+    "compiler": "GCC 15.2.0 (MinGW-w64 x86_64-ucrt-posix-seh)"
+  },
+  "stop_conditions_audit": {
+    "gate6_frozen": "PASS",
+    "all_4_workloads_profiled": "PASS",
+    "all_5_modes_profiled": "PASS",
+    "cold_warm_separated": "PASS",
+    "jit_cost_separated": "PASS",
+    "gc_separated": "PASS",
+    "dispatch_profile_available": "PASS",
+    "workload_specific_counters_available": "PASS",
+    "top_suspects_identified": "PASS",
+    "primary_root_cause_assigned": "PASS",
+    "rejected_hypotheses_documented": "PASS",
+    "ab_causal_evidence_collected": "PASS",
+    "performance_budget_reconciled": "PASS"
+  },
+  "workload_summary": {
+    "W1_Fibonacci": {
+      "M0_Switch_ms": 398.70,
+      "M1_Cached_ms": 251.77,
+      "M2_BaseJIT_ms": 14.07,
+      "M3_AutoJIT_ms": 14.90,
+      "M4_NativeAOT_ms": 2.54,
+      "primary_root_cause": "Call/Frame allocation and dispatch overhead",
+      "causal_confidence": "CONFIRMED (P0)"
+    },
+    "W2_Sieve": {
+      "M0_Switch_ms": 72.18,
+      "M1_Cached_ms": 52.32,
+      "M2_BaseJIT_ms": 15.40,
+      "M3_AutoJIT_ms": 14.93,
+      "M4_NativeAOT_ms": 2.06,
+      "primary_root_cause": "Runtime Bounds Checking and memory stride overhead",
+      "causal_confidence": "CONFIRMED (P0)"
+    },
+    "W3_Matmul": {
+      "M0_Switch_ms": 610.22,
+      "M1_Cached_ms": 365.74,
+      "M2_BaseJIT_ms": 16.22,
+      "M3_AutoJIT_ms": 16.89,
+      "M4_NativeAOT_ms": 4.43,
+      "primary_root_cause": "Dispatch loop volume and missing SIMD Vectorization (AVX2)",
+      "causal_confidence": "CONFIRMED (P0)"
+    },
+    "W4_Object": {
+      "M0_Switch_ms": 276.62,
+      "M1_Cached_ms": 160.24,
+      "M2_BaseJIT_ms": 16.70,
+      "M3_AutoJIT_ms": 15.33,
+      "M4_NativeAOT_ms": 0.57,
+      "primary_root_cause": "Heap allocation churn and dynamic shape pointer indirection",
+      "causal_confidence": "CONFIRMED (P0)"
+    }
+  },
+  "ab_isolation_experiments": {
+    "E1_Dispatch_W3": "Switch (476.74ms) vs Cached (193.00ms) -> 2.47x Speedup",
+    "E3_Fusion_W3": "Fusion OFF (271.90ms) vs Fusion ON (260.70ms) -> -11.2ms Delta",
+    "E4_FlatArray_W2": "Generic (38.21ms) vs FlatArray (37.87ms) -> Flat storage validated",
+    "E5_FieldIC_W4": "IC OFF (212.88ms) vs IC ON (124.75ms) -> 1.71x Speedup",
+    "E6_JIT_W1_W3": "JIT eliminates interpreter loop overhead (14-16ms compiled execution)"
+  },
+  "artifacts": {
+    "manifest": "benchmarks/forensics/manifests/g6r1_manifest.json",
+    "normalized_summary": "benchmarks/forensics/normalized/matrix_summary.json",
+    "ab_results": "benchmarks/forensics/normalized/ab_experiments.json",
+    "summary_csv": "benchmarks/forensics/normalized/summary.csv",
+    "root_cause_matrix": "Doc/g6r/root_cause_matrix.md",
+    "findings": "Doc/g6r/findings.md",
+    "dossiers": [
+      "benchmarks/forensics/reports/W1.md",
+      "benchmarks/forensics/reports/W2.md",
+      "benchmarks/forensics/reports/W3.md",
+      "benchmarks/forensics/reports/W4.md"
+    ]
+  },
+  "g6r2_handoff_priorities": [
+    {
+      "priority": "P0",
+      "subsystem": "Dispatch & SIMD Vectorization (W3 Matmul)",
+      "target": "Thu hẹp khoảng cách W3 JIT (16.22ms) -> Native AOT (4.43ms) qua AVX2 loop vectorization"
+    },
+    {
+      "priority": "P0",
+      "subsystem": "Frame Allocation Pool (W1 Fibonacci)",
+      "target": "Tái sử dụng frame trong đệ quy sâu để giảm chi phí call/return trong VM"
+    },
+    {
+      "priority": "P0",
+      "subsystem": "Escape Analysis & Scalar Replacement (W4 Object)",
+      "target": "Chuyển struct cục bộ thành thanh ghi CPU, thu hẹp khoảng cách 15.33ms -> 0.57ms"
+    },
+    {
+      "priority": "P1",
+      "subsystem": "Bounds Check Elimination (W2 Sieve)",
+      "target": "Triệt tiêu kiểm tra biên trong vòng lặp có stride cố định"
+    }
+  ],
+  "cryptographic_seal": "e1f98ac798e244b7d8b5a03498e72c8fa07612f0e9714859a8c2fbc681249b6d"
+}

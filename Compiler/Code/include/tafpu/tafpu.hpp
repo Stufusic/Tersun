@@ -84,6 +84,11 @@ inline TafpuNum operator*(const TafpuNum& a, const TafpuNum& b) { return tafpu_m
 inline TafpuNum operator/(const TafpuNum& a, const TafpuNum& b) { return tafpu_div(a, b); }
 inline TafpuNum operator-(const TafpuNum& a) { return tafpu_neg(a); }
 
+// Gate 6.0-D: Exact FMA in field Q(sqrt(3)): computes c + a * b without hardware float rounding
+inline TafpuNum tafpu_fma_exact(const TafpuNum& c, const TafpuNum& a, const TafpuNum& b) {
+    return tafpu_add(c, tafpu_mul(a, b));
+}
+
 // 3D Vector Distance Squared in TAFPU (Combat & Physics calculation)
 inline TafpuNum distance_squared_3d(const TafpuNum& x1, const TafpuNum& y1, const TafpuNum& z1,
                                     const TafpuNum& x2, const TafpuNum& y2, const TafpuNum& z2) {

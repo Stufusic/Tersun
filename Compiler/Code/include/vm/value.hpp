@@ -4,6 +4,7 @@
 #include "tafpu/tafpu.hpp"
 #include "tafpu/exception.hpp"
 #include "vm/vm_arena.hpp"
+#include "vm/array_storage.hpp"
 #include <cstdint>
 #include <cstring>
 #include <string>
@@ -40,7 +41,7 @@ struct HeapPayload {
     TafpuNum tafpu{0, 0, 0};
     int64_t boxed_int{0};
     std::shared_ptr<VMObject> obj;
-    std::shared_ptr<std::vector<VMValue>> arr;
+    std::shared_ptr<ArrayObject> arr;
     std::shared_ptr<VMClosure> fn;
 
     explicit HeapPayload(std::string s) : kind(Kind::STRING), str(std::move(s)) {}
@@ -48,7 +49,8 @@ struct HeapPayload {
     explicit HeapPayload(TafpuNum t) : kind(Kind::TAFPU), tafpu(t) {}
     explicit HeapPayload(int64_t v) : kind(Kind::BOXED_INT64), boxed_int(v) {}
     explicit HeapPayload(std::shared_ptr<VMObject> o) : kind(Kind::OBJECT), obj(std::move(o)) {}
-    explicit HeapPayload(std::shared_ptr<std::vector<VMValue>> a) : kind(Kind::ARRAY), arr(std::move(a)) {}
+    explicit HeapPayload(std::shared_ptr<ArrayObject> a) : kind(Kind::ARRAY), arr(std::move(a)) {}
+    explicit HeapPayload(std::shared_ptr<std::vector<VMValue>> a) : kind(Kind::ARRAY), arr(std::make_shared<ArrayObject>(std::move(*a))) {}
     explicit HeapPayload(std::shared_ptr<VMClosure> f) : kind(Kind::CLOSURE), fn(std::move(f)) {}
 };
 
@@ -165,7 +167,12 @@ struct alignas(8) VMValue {
         auto* p = VMArena::instance().make<HeapPayload>(std::move(obj));
         raw_ = encode_heap(HeapSubtype::OBJECT, VMArena::instance().to_handle(p));
     }
-    VMValue(std::shared_ptr<std::vector<VMValue>> arr) {
+    VMValue(std::shared_ptr<ArrayObject> arr) {
+        auto* p = VMArena::instance().make<HeapPayload>(std::move(arr));
+        raw_ = encode_heap(HeapSubtype::ARRAY, VMArena::instance().to_handle(p));
+    }
+    VMValue(std::shared_ptr<std::vector<VMValue>> vec) {
+        auto arr = std::make_shared<ArrayObject>(std::move(*vec));
         auto* p = VMArena::instance().make<HeapPayload>(std::move(arr));
         raw_ = encode_heap(HeapSubtype::ARRAY, VMArena::instance().to_handle(p));
     }
@@ -291,8 +298,8 @@ struct alignas(8) VMValue {
         return nullptr;
     }
 
-    std::shared_ptr<std::vector<VMValue>> as_array() const {
-        if (is_array()) return payload()->arr;
+    std::shared_ptr<ArrayObject> as_array() const {
+        if (is_array() && payload()) return payload()->arr;
         return nullptr;
     }
 
@@ -552,6 +559,9 @@ struct alignas(8) VMValue {
 static_assert(sizeof(VMValue) == 8, "VMValue must be exactly 8 bytes for Gate 3!");
 static_assert(std::is_trivially_copyable_v<VMValue>, "VMValue must be trivially copyable for Gate 3!");
 
+inline bool operator==(const VMValue& a, const VMValue& b) noexcept { return a.as_raw() == b.as_raw(); }
+inline bool operator!=(const VMValue& a, const VMValue& b) noexcept { return a.as_raw() != b.as_raw(); }
+
 struct VMClosure {
     uint32_t entry{0};
     uint16_t fn_idx{0};
@@ -642,6 +652,10 @@ struct VMObject {
         fields_array[new_slot] = val;
     }
 };
+
+inline VMValue ArrayObject::operator[](size_t index) const {
+    return get(index);
+}
 
 inline std::string VMValue::to_string() const {
     if (is_string()) return payload()->str;

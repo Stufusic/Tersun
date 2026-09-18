@@ -1,0 +1,54 @@
+{
+  "gate": "G6R.2.0",
+  "status": "SEALED",
+  "timestamp": "2026-09-18T00:54:00+07:00",
+  "baseline_seal": "test_registry/g6r1_forensics_seal.json",
+  "baseline_commit": "e1f98ac798e244b7d8b5a03498e72c8fa07612f0e9714859a8c2fbc681249b6d",
+  "binary_sha256": "3345E90BF7C0451A9D71271CFFCD5C3E9A3C18E30C4E9827DB2CE5983B2BCD37",
+  "validation": {
+    "correctness": "PASS",
+    "regression": "PASS",
+    "differential_33_tests": "PASS",
+    "w3_simd_hypothesis": "VALIDATED",
+    "w4_sra_hypothesis": "VALIDATED",
+    "w1_frame_hypothesis": "ISOLATED",
+    "w2_bce_hypothesis": "VALIDATED"
+  },
+  "causal_proofs": {
+    "W3": {
+      "status": "VALIDATED",
+      "mechanism": "Native AOT vectorization via movaps/movdqa/vmovupd/vfmadd231pd vs JIT scalar imul",
+      "disassembly_diff": "benchmarks/g6r2/disassembly/W3/comparison.md",
+      "legality_report": "benchmarks/g6r2/reports/W3_vectorization_analysis.md"
+    },
+    "W4": {
+      "status": "VALIDATED",
+      "mechanism": "Zero heap allocations in AOT, Particle fields mapped to registers RCX/R10, update/energy inlined",
+      "disassembly_report": "benchmarks/g6r2/reports/W4_allocation_analysis.md",
+      "escape_state": "NoEscape"
+    },
+    "W1": {
+      "status": "ISOLATED",
+      "mechanism": "Frame allocation & vector resizing accounts for 33.4% of call cost, stack management accounts for 31.7%",
+      "breakdown_csv": "benchmarks/g6r2/reports/W1_frame_cost_breakdown.csv",
+      "classification": "Mixed_Allocation_And_Frame_Management"
+    },
+    "W2": {
+      "status": "VALIDATED",
+      "mechanism": "Induction variable mult monotonically increases from 4 to 100,000 within bounds of 100,004 array",
+      "proof_report": "benchmarks/g6r2/reports/W2_bce_analysis.md",
+      "diagnostic_mode": "--trace-bce"
+    }
+  },
+  "artifacts": {
+    "w3_jit_baseline": "benchmarks/g6r2/disassembly/W3/jit_baseline.asm",
+    "w3_jit_auto": "benchmarks/g6r2/disassembly/W3/jit_auto.asm",
+    "w3_aot_o3": "benchmarks/g6r2/disassembly/W3/aot_o3.asm",
+    "w3_comparison": "benchmarks/g6r2/disassembly/W3/comparison.md",
+    "w3_vectorization_analysis": "benchmarks/g6r2/reports/W3_vectorization_analysis.md",
+    "w4_allocation_analysis": "benchmarks/g6r2/reports/W4_allocation_analysis.md",
+    "w1_frame_cost_breakdown": "benchmarks/g6r2/reports/W1_frame_cost_breakdown.csv",
+    "w2_bce_analysis": "benchmarks/g6r2/reports/W2_bce_analysis.md",
+    "master_dossier": "Doc/g6r/g6r2_0_evidence_validation.md"
+  }
+}

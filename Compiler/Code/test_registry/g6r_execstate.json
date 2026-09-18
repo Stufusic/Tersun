@@ -1,0 +1,19 @@
+{
+  "seal_id": "G6R_EXECSTATE",
+  "timestamp_utc": "2026-09-17 15:06:26Z",
+  "subsystem": "Canonical VM Execution State & 3-Layer Runtime Protocol",
+  "contracts": {
+    "layer1_logical_state": "Frozen Tersun language and bytecode semantics",
+    "layer2_canonical_memory_state": "VMExecutionState (Single Source of Truth)",
+    "layer3_transient_optimized_state": "TransientTOSState (TOS0, TOS1, Depth) & JITFrame",
+    "protocol_materialize": "TOS flushed to operand stack before call/gc/exception",
+    "protocol_handoff": "State transferred to JIT/OSR execution",
+    "protocol_restore": "State recovered from JIT return",
+    "protocol_deopt": "State reconstructed from CPU registers and deopt tables"
+  },
+  "unit_tests": {
+    "test_file": "tests/test_vm_execution_state.cpp",
+    "status": "100% PASS"
+  },
+  "seal_sha256": "995dc9ab40469eeb6a7c98b30ffc39c6d6089887ee05325f3012dab07ed5f685"
+}

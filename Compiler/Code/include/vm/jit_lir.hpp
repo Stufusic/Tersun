@@ -36,6 +36,10 @@ enum class LIROpcode : uint8_t {
     GUARD_TYPE,     // arg1 = deopt_target_ip
     GUARD_OVERFLOW, // arg1 = deopt_target_ip
     DEOPT,          // arg1 = deopt_target_ip
+    GET_INDEX,
+    SET_INDEX,
+    TERNARY_MIN,
+    TERNARY_MAX,
     RET,
     HALT
 };

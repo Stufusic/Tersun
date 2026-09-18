@@ -3,7 +3,7 @@
 **Date:** 2026-09-06
 **Compiler:** Tersun 1.0.3 (Dual VM + LLVM AOT Architecture)
 **Verification Suite:** `Code/bench/exhaustive_verify.cpp`
-**Execution Time:** 361.54 ms
+**Execution Time:** 319.90 ms
 
 ## Summary Table
 

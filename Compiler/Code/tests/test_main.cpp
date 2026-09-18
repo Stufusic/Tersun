@@ -77,6 +77,27 @@ void test_baseline_jit_suite();
 // Gate 5.8 On-Stack Replacement (OSR) & Deoptimization Architecture
 void test_osr_deopt_suite();
 
+// Gate 5.9 Tier-2 Optimizing JIT Engine
+void test_optimizing_jit_suite();
+
+// Gate 5.9.1 Runtime Auto-Tiering Coordinator
+void test_auto_tiering_suite();
+
+// Gate 5.9.2 Inline Caching & Devirtualization
+void test_inline_cache_suite();
+
+// Gate 6.0-C FixedFrameArena & CallStack Verification
+void test_fixed_frame_arena_suite();
+
+// Gate 6.0-D Superinstruction Fusion Framework
+void test_superinstruction_suite();
+
+// Gate 6.0-E Flat Array Storage Contract
+void test_array_storage_suite();
+
+// Gate 6.0-G Cross-Tier Differential Verification (ST-12.1..ST-12.20)
+void test_cross_tier_differential_suite();
+
 } // namespace setun
 
 // Tersun 1.0.2 QVM Verification Suite
@@ -169,6 +190,27 @@ int run_all_tests() {
 
         std::cout << "\n[Gate 5.8 Evolution] Testing OSR & Speculative Deoptimization Engine...\n";
         setun::test_osr_deopt_suite();
+
+        std::cout << "\n[Gate 5.9 Evolution] Testing Tier-2 Optimizing JIT Engine (MachineIR, SSA & Opts)...\n";
+        setun::test_optimizing_jit_suite();
+
+        std::cout << "\n[Gate 5.9.1 Evolution] Testing Runtime Auto-Tiering Coordinator (ST-10.1 - ST-10.16)...\n";
+        setun::test_auto_tiering_suite();
+
+        std::cout << "\n[Gate 5.9.2 Evolution] Testing Inline Caching & Devirtualization (ST-11.1 - ST-11.16)...\n";
+        setun::test_inline_cache_suite();
+
+        std::cout << "\n[Gate 6.0-C Evolution] Testing Safe FixedFrameArena & CallStack Arena...\n";
+        setun::test_fixed_frame_arena_suite();
+
+        std::cout << "\n[Gate 6.0-D Evolution] Testing Superinstruction Fusion Framework...\n";
+        setun::test_superinstruction_suite();
+
+        std::cout << "\n[Gate 6.0-E Evolution] Testing Flat Array Storage Contract...\n";
+        setun::test_array_storage_suite();
+
+        std::cout << "\n[Gate 6.0-G Evolution] Testing Cross-Tier Differential Suite (ST-12.1..ST-12.20)...\n";
+        setun::test_cross_tier_differential_suite();
 
         std::cout << "\n==========================================================\n";
         std::cout << "  ALL TESTS PASSED SUCCESSFULLY! (100% Verification)      \n";

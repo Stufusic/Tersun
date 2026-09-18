@@ -125,6 +125,43 @@ int64_t setun_jit_helper_deopt_machine(VM* vm, JITFrame* frame, MachineState* ma
     return -1;
 }
 
+void* setun_jit_helper_array_raw_data(uint64_t raw_array_val) {
+    VMValue val = VMValue::from_raw(raw_array_val);
+    if (val.is_array()) {
+        auto arr = val.as_array();
+        if (arr) return arr->raw_data();
+    }
+    return nullptr;
+}
+
+int64_t setun_jit_helper_get_element_i64(uint64_t raw_array_val, int64_t idx) {
+    VMValue val = VMValue::from_raw(raw_array_val);
+    if (val.is_array()) {
+        auto arr = val.as_array();
+        if (arr) {
+            if (arr->rep == ArrayRep::I64 && idx >= 0 && static_cast<size_t>(idx) < arr->i64_data.size()) {
+                return arr->i64_data[static_cast<size_t>(idx)];
+            }
+            return arr->get(static_cast<size_t>(idx)).as_int();
+        }
+    }
+    return 0;
+}
+
+void setun_jit_helper_set_element_i64(uint64_t raw_array_val, int64_t idx, int64_t v) {
+    VMValue val = VMValue::from_raw(raw_array_val);
+    if (val.is_array()) {
+        auto arr = val.as_array();
+        if (arr) {
+            if (arr->rep == ArrayRep::I64 && idx >= 0 && static_cast<size_t>(idx) < arr->i64_data.size()) {
+                arr->i64_data[static_cast<size_t>(idx)] = v;
+                return;
+            }
+            arr->set(static_cast<size_t>(idx), VMValue(v));
+        }
+    }
+}
+
 } // extern "C"
 
 } // namespace setun

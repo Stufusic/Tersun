@@ -27,6 +27,26 @@ enum class X64Reg : uint8_t {
     R15 = 15
 };
 
+// AVX / AVX2 256-bit Vector Registers
+enum class YmmReg : uint8_t {
+    YMM0 = 0,
+    YMM1 = 1,
+    YMM2 = 2,
+    YMM3 = 3,
+    YMM4 = 4,
+    YMM5 = 5,
+    YMM6 = 6,
+    YMM7 = 7,
+    YMM8 = 8,
+    YMM9 = 9,
+    YMM10 = 10,
+    YMM11 = 11,
+    YMM12 = 12,
+    YMM13 = 13,
+    YMM14 = 14,
+    YMM15 = 15
+};
+
 // Branch condition codes (maps to x86 0x0F 0x80+cc)
 enum class X64Cond : uint8_t {
     O   = 0x0, // Overflow
@@ -108,6 +128,31 @@ public:
     void call_ptr(const void* target_fn, X64Reg scratch = X64Reg::RAX);
     void ret();
 
+    // Hardware Feature Detection
+    static bool has_avx2();
+    static bool has_fma();
+
+    // AVX / AVX2 Vector Operations
+    void vzeroall();
+
+    // 256-bit Integer SIMD (AVX2)
+    void vpbroadcastq(YmmReg dst, X64Reg base, int32_t disp = 0);
+    void vmovdqu_reg_mem_sib(YmmReg dst, X64Reg base, X64Reg index, uint8_t scale = 3, int32_t disp = 0);
+    void vmovdqu_mem_sib_reg(X64Reg base, X64Reg index, uint8_t scale, int32_t disp, YmmReg src);
+    void vpmuludq_reg_reg_reg(YmmReg dst, YmmReg src1, YmmReg src2);
+    void vpaddq_reg_reg_reg(YmmReg dst, YmmReg src1, YmmReg src2);
+    void vpaddq_reg_reg_mem_sib(YmmReg dst, YmmReg src1, X64Reg base, X64Reg index, uint8_t scale = 3, int32_t disp = 0);
+
+    // 256-bit Double Precision SIMD (AVX / FMA)
+    void vbroadcastsd(YmmReg dst, X64Reg base, int32_t disp = 0);
+    void vmovupd_reg_mem_sib(YmmReg dst, X64Reg base, X64Reg index, uint8_t scale = 3, int32_t disp = 0);
+    void vmovupd_mem_sib_reg(X64Reg base, X64Reg index, uint8_t scale, int32_t disp, YmmReg src);
+    void vmulpd_reg_reg_reg(YmmReg dst, YmmReg src1, YmmReg src2);
+    void vaddpd_reg_reg_reg(YmmReg dst, YmmReg src1, YmmReg src2);
+    void vfmadd231pd_reg_reg_reg(YmmReg dst, YmmReg src1, YmmReg src2);
+    void vfmadd231pd_reg_reg_mem_sib(YmmReg dst, YmmReg src1, X64Reg base, X64Reg index, uint8_t scale = 3, int32_t disp = 0);
+    void vxorpd_reg_reg_reg(YmmReg dst, YmmReg src1, YmmReg src2);
+
     // Low-level byte emitters
     void emit_u8(uint8_t byte) { buffer_.push_back(byte); }
     void emit_u16(uint16_t word);
@@ -118,9 +163,11 @@ private:
     std::vector<uint8_t> buffer_;
 
     void emit_rex(bool w, uint8_t r, uint8_t x, uint8_t b);
+    void emit_vex3(uint8_t r_reg, uint8_t x_reg, uint8_t b_reg, uint8_t m_mmmmm, uint8_t w, uint8_t vvvv, uint8_t l, uint8_t pp);
     void emit_modrm(uint8_t mod, uint8_t reg, uint8_t rm);
     void emit_sib(uint8_t scale, uint8_t index, uint8_t base);
     void emit_mem_disp(uint8_t reg_field, X64Reg base, int32_t disp);
+    void emit_mem_sib(uint8_t reg_field, X64Reg base, X64Reg index, uint8_t scale, int32_t disp);
 };
 
 } // namespace setun

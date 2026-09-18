@@ -1,0 +1,20 @@
+{
+  "benchmark_id": "G6R_BASELINE",
+  "timestamp_utc": "2026-09-17 14:57:10Z",
+  "mode": "interp",
+  "repetitions": 30,
+  "warmup": 10,
+  "fingerprint": {
+    "machine_id": "DESKTOP-0V2G4CC",
+    "cpu_model": "12th Gen Intel(R) Core(TM) i5-1245U",
+    "core_count": 10,
+    "power_plan": "Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)",
+    "os": "Windows 11 (64bit)",
+    "git_commit": "92fd93f33311e3f3b41b0610dffa0d268b5e7de8",
+    "compiler": "g++ (GCC) 15.2.0",
+    "compiler_flags": "-std=c++20 -O3 -Iinclude",
+    "binary_sha256": "ff22c3d9d4886b71a0544b55cd1c19750dc5dec1cb60d0983e8ff4e8c2d1e127",
+    "benchmark_script_sha256": "9d0b1ce8c6fa93f17aae1fca993602d28ef14166646ab4f33285b4eab2187022",
+    "process_affinity": "Single-Process Core Pinned"
+  }
+}

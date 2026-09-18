@@ -8,6 +8,21 @@
 #include <sstream>
 #include <stdexcept>
 #include <new>
+#ifdef _WIN32
+#include <windows.h>
+inline uint64_t get_available_physical_ram() {
+    MEMORYSTATUSEX memInfo;
+    memInfo.dwLength = sizeof(MEMORYSTATUSEX);
+    if (GlobalMemoryStatusEx(&memInfo)) {
+        return memInfo.ullAvailPhys;
+    }
+    return 8ULL * 1024 * 1024 * 1024;
+}
+#else
+inline uint64_t get_available_physical_ram() {
+    return 16ULL * 1024 * 1024 * 1024;
+}
+#endif
 
 using namespace tersun::qvm;
 
@@ -115,6 +130,20 @@ void run_hardware_memory_limits() {
         res.n_qubits = n;
         res.dim = dim;
         res.mem_mb = mem_mb;
+
+        uint64_t avail_ram = get_available_physical_ram();
+        if (mem_bytes > avail_ram) {
+            std::cout << std::left << std::setw(8)  << n
+                      << std::setw(14) << dim
+                      << std::setw(12) << mem_ss.str()
+                      << std::string(44, ' ')
+                      << "OUT_OF_MEMORY (Exceeds Physical Free RAM)\n";
+            std::cout << "HW_LIMIT N=" << n << " dim=" << dim 
+                      << " mem_mb=" << mem_mb << " total_ms=None status=OUT_OF_MEMORY\n";
+            std::cout << "  -> Physical RAM Ceiling strictly identified at N = " << n 
+                      << " (" << mem_ss.str() << ")!\n";
+            break;
+        }
 
         try {
             // Step 1: Allocation

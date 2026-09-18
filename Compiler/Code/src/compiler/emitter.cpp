@@ -122,6 +122,16 @@ std::string_view opcode_name(OpCode op) {
         case OpCode::OP_QUICK_EQ_INT: return "OP_QUICK_EQ_INT";
         case OpCode::OP_GET_FIELD_IC: return "OP_GET_FIELD_IC";
         case OpCode::OP_SET_FIELD_IC: return "OP_SET_FIELD_IC";
+        case OpCode::OP_STORE_LOCAL_POP: return "OP_STORE_LOCAL_POP";
+        case OpCode::OP_STORE_LOCAL_0_POP: return "OP_STORE_LOCAL_0_POP";
+        case OpCode::OP_STORE_LOCAL_1_POP: return "OP_STORE_LOCAL_1_POP";
+        case OpCode::OP_STORE_LOCAL_2_POP: return "OP_STORE_LOCAL_2_POP";
+        case OpCode::OP_STORE_LOCAL_3_POP: return "OP_STORE_LOCAL_3_POP";
+        case OpCode::OP_LOAD_LOAD_LOCAL: return "OP_LOAD_LOAD_LOCAL";
+        case OpCode::OP_FUSED_ADD_LOCAL_LOCAL_STORE: return "OP_FUSED_ADD_LOCAL_LOCAL_STORE";
+        case OpCode::OP_FUSED_MUL_ADD_I64: return "OP_FUSED_MUL_ADD_I64";
+        case OpCode::OP_FUSED_MUL_ADD_F64: return "OP_FUSED_MUL_ADD_F64";
+        case OpCode::OP_FUSED_MUL_ADD_TAFPU: return "OP_FUSED_MUL_ADD_TAFPU";
         case OpCode::OP_HALT: return "OP_HALT";
     }
     return "UNKNOWN_OP";

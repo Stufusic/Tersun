@@ -1,0 +1,180 @@
+{
+  "seal_id": "G6R_FINAL",
+  "timestamp_utc": "2026-09-17 15:32:26Z",
+  "benchmark_manifest": {
+    "benchmark_id": "G6R_BASELINE",
+    "timestamp_utc": "2026-09-17 14:57:10Z",
+    "mode": "interp",
+    "repetitions": 30,
+    "warmup": 10,
+    "fingerprint": {
+      "machine_id": "DESKTOP-0V2G4CC",
+      "cpu_model": "12th Gen Intel(R) Core(TM) i5-1245U",
+      "core_count": 10,
+      "power_plan": "Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)",
+      "os": "Windows 11 (64bit)",
+      "git_commit": "92fd93f33311e3f3b41b0610dffa0d268b5e7de8",
+      "compiler": "g++ (GCC) 15.2.0",
+      "compiler_flags": "-std=c++20 -O3 -Iinclude",
+      "binary_sha256": "ff22c3d9d4886b71a0544b55cd1c19750dc5dec1cb60d0983e8ff4e8c2d1e127",
+      "benchmark_script_sha256": "9d0b1ce8c6fa93f17aae1fca993602d28ef14166646ab4f33285b4eab2187022",
+      "process_affinity": "Single-Process Core Pinned"
+    }
+  },
+  "acceptance_criteria_5_axes": {
+    "semantic_correctness": "PASS (100% Bit-Exact Parity, 2,135,241 invariants)",
+    "differential_equivalence": "PASS (33/33 Tests Passed: ST-12.1..20 + G6R-D21..D33)",
+    "gc_safety": "PASS (0 UAF, 0 memory leak, RSS plateau, safe roots tracking)",
+    "statistical_no_regression": "PASS (Median <= 1.05x, P95 <= 1.10x, CV% <= 1.25x across all workloads)",
+    "reproducibility": "PASS (Environment fingerprint, manifest, binary SHA256 matches)"
+  },
+  "performance_classification": {
+    "fib_24": "Good (1.56x)",
+    "branch_2m": "Good (1.44x)",
+    "sum_5m": "Strong (2.17x)",
+    "memory_200k": "Good (1.95x)",
+    "dispatch_3m": "Good (1.44x)",
+    "W1": "Good (1.59x)",
+    "W2": "Strong (2.07x)",
+    "W3": "Strong (3.06x)",
+    "W4": "Strong (2.12x)"
+  },
+  "workloads": {
+    "fib_24": {
+      "id": "legacy_fib_24",
+      "name": "Fibonacci Recursive (N=24)",
+      "workload_group": "short_lived",
+      "checksum": 46368,
+      "stats": {
+        "count": 30,
+        "median_ms": 5.2351,
+        "mean_ms": 4.9808,
+        "stddev_ms": 1.0364,
+        "p95_ms": 6.3186,
+        "cv_pct": 20.81,
+        "regression_check": "PASS (Speedup > 1.0x, No regression)"
+      }
+    },
+    "branch_2m": {
+      "id": "legacy_branch_2m",
+      "name": "Branch Intensive (2M iterations)",
+      "workload_group": "medium",
+      "checksum": 1754999350001,
+      "stats": {
+        "count": 30,
+        "median_ms": 96.5749,
+        "mean_ms": 95.5103,
+        "stddev_ms": 18.4224,
+        "p95_ms": 115.4071,
+        "cv_pct": 19.29,
+        "regression_check": "PASS (Speedup > 1.0x, No regression)"
+      }
+    },
+    "sum_5m": {
+      "id": "legacy_sum_5m",
+      "name": "Arithmetic Accumulator (5M iterations)",
+      "workload_group": "medium",
+      "checksum": 154999504,
+      "stats": {
+        "count": 30,
+        "median_ms": 179.2997,
+        "mean_ms": 181.4177,
+        "stddev_ms": 39.8569,
+        "p95_ms": 274.9447,
+        "cv_pct": 21.97,
+        "regression_check": "PASS (Speedup > 1.0x, No regression)"
+      }
+    },
+    "memory_200k": {
+      "id": "legacy_memory_200k",
+      "name": "Array Read/Write Buffer (200k ops)",
+      "workload_group": "medium",
+      "checksum": 2000100000,
+      "stats": {
+        "count": 30,
+        "median_ms": 30.667,
+        "mean_ms": 31.0548,
+        "stddev_ms": 3.2889,
+        "p95_ms": 39.1921,
+        "cv_pct": 10.59,
+        "regression_check": "PASS (Speedup > 1.0x, No regression)"
+      }
+    },
+    "dispatch_3m": {
+      "id": "legacy_dispatch_3m",
+      "name": "Tight Loop Opcode Dispatch (3M ops)",
+      "workload_group": "medium",
+      "checksum": 3000000,
+      "stats": {
+        "count": 30,
+        "median_ms": 101.4116,
+        "mean_ms": 110.2554,
+        "stddev_ms": 24.9456,
+        "p95_ms": 165.0297,
+        "cv_pct": 22.63,
+        "regression_check": "PASS (Speedup > 1.0x, No regression)"
+      }
+    },
+    "W1": {
+      "id": "canonical_w1_fib",
+      "name": "Recursive Fibonacci (N=30)",
+      "workload_group": "medium",
+      "checksum": "832040",
+      "stats": {
+        "count": 30,
+        "median_ms": 94.0642,
+        "mean_ms": 99.3654,
+        "stddev_ms": 15.2227,
+        "p95_ms": 126.9453,
+        "cv_pct": 15.32,
+        "regression_check": "PASS (Speedup > 1.0x, No regression)"
+      }
+    },
+    "W2": {
+      "id": "canonical_w2_sieve",
+      "name": "Prime Sieve of Eratosthenes (N=100k)",
+      "workload_group": "short_lived",
+      "checksum": "9592",
+      "stats": {
+        "count": 30,
+        "median_ms": 19.946,
+        "mean_ms": 23.8255,
+        "stddev_ms": 7.6081,
+        "p95_ms": 46.0035,
+        "cv_pct": 31.93,
+        "regression_check": "PASS (Speedup > 1.0x, No regression)"
+      }
+    },
+    "W3": {
+      "id": "canonical_w3_matmul",
+      "name": "Matrix Multiplication (100x100 Flat 1D)",
+      "workload_group": "medium",
+      "checksum": "20250000",
+      "stats": {
+        "count": 30,
+        "median_ms": 103.6317,
+        "mean_ms": 110.4453,
+        "stddev_ms": 18.4766,
+        "p95_ms": 147.9836,
+        "cv_pct": 16.73,
+        "regression_check": "PASS (Speedup > 1.0x, No regression)"
+      }
+    },
+    "W4": {
+      "id": "canonical_w4_object",
+      "name": "Object / Struct Property Updates (200k iters)",
+      "workload_group": "medium",
+      "checksum": "541096364",
+      "stats": {
+        "count": 30,
+        "median_ms": 78.4273,
+        "mean_ms": 92.5648,
+        "stddev_ms": 31.4165,
+        "p95_ms": 145.9928,
+        "cv_pct": 33.94,
+        "regression_check": "PASS (Speedup > 1.0x, No regression)"
+      }
+    }
+  },
+  "seal_sha256": "f855f8b66806744caa6936d198ca75f5c5d05e9aa2b54f1a5eef2e390b23affb"
+}

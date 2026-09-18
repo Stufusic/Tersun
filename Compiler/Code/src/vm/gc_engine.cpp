@@ -26,11 +26,13 @@ void GCEngine::mark_value(const VMValue& val) {
 }
 
 void GCEngine::mark_roots(VM& vm) {
-    // 1. Operand Stack roots
+    // 1. Operand Stack roots & Gate 6.0 2-Slot TOS Cache (I-TOS-04)
     const auto& stack = vm.stack();
     for (size_t i = 0; i < stack.size(); ++i) {
         mark_value(stack.data()[i]);
     }
+    if (vm.tos_depth() >= 1) mark_value(vm.tos0());
+    if (vm.tos_depth() == 2) mark_value(vm.tos1());
 
     // 2. Local variables
     const auto& locals = vm.locals();

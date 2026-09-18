@@ -31,6 +31,11 @@ int64_t setun_jit_helper_deopt(VM* vm, JITFrame* frame, uint32_t deopt_id, uint3
 // Gate 5.8 (Advanced): Deopt handler receiving machine register snapshot
 int64_t setun_jit_helper_deopt_machine(VM* vm, JITFrame* frame, MachineState* machine, uint32_t deopt_id);
 
+// G6R.2 Array access helpers for JIT
+void* setun_jit_helper_array_raw_data(uint64_t raw_array_val);
+int64_t setun_jit_helper_get_element_i64(uint64_t raw_array_val, int64_t idx);
+void setun_jit_helper_set_element_i64(uint64_t raw_array_val, int64_t idx, int64_t val);
+
 } // extern "C"
 
 } // namespace setun

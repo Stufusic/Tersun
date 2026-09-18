@@ -2,6 +2,7 @@
 
 #include "compiler/emitter.hpp"
 #include "vm/opcode.hpp"
+#include "vm/superinstruction.hpp"
 #include <cstdint>
 #include <vector>
 #include <unordered_map>
@@ -43,20 +44,21 @@ struct OptimizedChunk : public Chunk {
 };
 
 // ============================================================================
-// Gate 4 Ablation Flags for Scientific Experiments (V3 -> V4A..V4F)
+// Gate 4 & Gate 6 Ablation Flags for Scientific Experiments
 // ============================================================================
 struct OptFlags {
-    bool enable_locals{true};         // Tier A: LOAD/STORE_LOCAL_0..3, INCR_LOCAL_IMM (4A)
-    bool enable_array_indexing{true}; // Tier B: Array indexing superinstructions
-    bool enable_loop_fusion{true};    // Tier C: LOOP_RANGE_FAST (4B)
-    bool enable_quickening{true};     // Adaptive Quickening (4C)
-    bool enable_field_ic{true};       // Shape-based Field Inline Cache (4D)
-    bool enable_fast_frames{true};    // Zero dynamic allocation call frames (4E)
+    bool enable_locals{true};            // Tier A: LOAD/STORE_LOCAL_0..3, INCR_LOCAL_IMM (4A)
+    bool enable_array_indexing{true};    // Tier B: Array indexing superinstructions
+    bool enable_loop_fusion{true};       // Tier C: LOOP_RANGE_FAST (4B)
+    bool enable_quickening{true};        // Adaptive Quickening (4C)
+    bool enable_field_ic{true};          // Shape-based Field Inline Cache (4D)
+    bool enable_fast_frames{true};       // Zero dynamic allocation call frames (4E)
+    bool enable_superinstructions{true}; // Gate 6.0-D: Phase 4 Superinstruction Fusion Framework
 
-    static OptFlags all_enabled() { return OptFlags{true, true, true, true, true, true}; }
-    static OptFlags baseline_v3() { return OptFlags{false, false, false, false, false, false}; }
-    static OptFlags tier_a_only() { return OptFlags{true, false, false, false, false, false}; }
-    static OptFlags tier_b_only() { return OptFlags{true, true, false, false, false, false}; }
+    static OptFlags all_enabled() { return OptFlags{true, true, true, true, true, true, true}; }
+    static OptFlags baseline_v3() { return OptFlags{false, false, false, false, false, false, false}; }
+    static OptFlags tier_a_only() { return OptFlags{true, false, false, false, false, false, false}; }
+    static OptFlags tier_b_only() { return OptFlags{true, true, false, false, false, false, false}; }
 };
 
 class OptBytecodeOptimizer {
@@ -119,6 +121,10 @@ public:
         std::vector<JumpPatch> jump_patches;
 
         size_t ip = 0;
+        std::unordered_set<size_t> jump_targets;
+        if (flags.enable_superinstructions) {
+            jump_targets = SuperInstructionRegistry::collect_jump_targets(src);
+        }
 
         // ====================================================================
         // Pass 1: Pattern Recognition, Superinstruction Fusion & oBC Generation
@@ -184,6 +190,88 @@ public:
             }
 
             // ----------------------------------------------------------------
+            // Pattern: Gate 6.0-D Fused Multiply-Add (OP_FUSED_MUL_ADD_I64/F64/TAFPU)
+            // Pattern A: LOAD_LOCAL a (3B) + LOAD_LOCAL b (3B) + MUL (1B) + LOAD_LOCAL c (3B) + ADD (1B) + STORE_LOCAL d (3B) + POP (1B) = 15B
+            // Pattern B: LOAD_LOCAL c (3B) + LOAD_LOCAL a (3B) + LOAD_LOCAL b (3B) + MUL (1B) + ADD (1B) + STORE_LOCAL d (3B) + POP (1B) = 15B
+            // ----------------------------------------------------------------
+            if (flags.enable_superinstructions && ip + 15 <= src.code.size()) {
+                if (op == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
+                    src.code[ip + 3] == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
+                    src.code[ip + 6] == static_cast<uint8_t>(OpCode::OP_MUL) &&
+                    src.code[ip + 7] == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
+                    src.code[ip + 10] == static_cast<uint8_t>(OpCode::OP_ADD) &&
+                    src.code[ip + 11] == static_cast<uint8_t>(OpCode::OP_STORE_LOCAL) &&
+                    src.code[ip + 14] == static_cast<uint8_t>(OpCode::OP_POP) &&
+                    SuperInstructionRegistry::can_fuse_range(src, ip, ip + 15, jump_targets))
+                {
+                    uint16_t slotA = static_cast<uint16_t>(src.code[ip + 1] | (src.code[ip + 2] << 8));
+                    uint16_t slotB = static_cast<uint16_t>(src.code[ip + 4] | (src.code[ip + 5] << 8));
+                    uint16_t slotC = static_cast<uint16_t>(src.code[ip + 8] | (src.code[ip + 9] << 8));
+                    uint16_t slotD = static_cast<uint16_t>(src.code[ip + 12] | (src.code[ip + 13] << 8));
+                    opt.write_opcode(OpCode::OP_FUSED_MUL_ADD_I64, line);
+                    opt.write_int16(static_cast<int16_t>(slotA), line);
+                    opt.write_int16(static_cast<int16_t>(slotB), line);
+                    opt.write_int16(static_cast<int16_t>(slotC), line);
+                    opt.write_int16(static_cast<int16_t>(slotD), line);
+                    for (size_t k = orig_ip; k < orig_ip + 15; ++k) pc_map[k] = opt_ip;
+                    SuperInstructionRegistry::telemetry().mul_add_fused++;
+                    SuperInstructionRegistry::telemetry().total_fusions++;
+                    ip += 15;
+                    continue;
+                }
+                if (op == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
+                    src.code[ip + 3] == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
+                    src.code[ip + 6] == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
+                    src.code[ip + 9] == static_cast<uint8_t>(OpCode::OP_MUL) &&
+                    src.code[ip + 10] == static_cast<uint8_t>(OpCode::OP_ADD) &&
+                    src.code[ip + 11] == static_cast<uint8_t>(OpCode::OP_STORE_LOCAL) &&
+                    src.code[ip + 14] == static_cast<uint8_t>(OpCode::OP_POP) &&
+                    SuperInstructionRegistry::can_fuse_range(src, ip, ip + 15, jump_targets))
+                {
+                    uint16_t slotC = static_cast<uint16_t>(src.code[ip + 1] | (src.code[ip + 2] << 8));
+                    uint16_t slotA = static_cast<uint16_t>(src.code[ip + 4] | (src.code[ip + 5] << 8));
+                    uint16_t slotB = static_cast<uint16_t>(src.code[ip + 7] | (src.code[ip + 8] << 8));
+                    uint16_t slotD = static_cast<uint16_t>(src.code[ip + 12] | (src.code[ip + 13] << 8));
+                    opt.write_opcode(OpCode::OP_FUSED_MUL_ADD_I64, line);
+                    opt.write_int16(static_cast<int16_t>(slotA), line);
+                    opt.write_int16(static_cast<int16_t>(slotB), line);
+                    opt.write_int16(static_cast<int16_t>(slotC), line);
+                    opt.write_int16(static_cast<int16_t>(slotD), line);
+                    for (size_t k = orig_ip; k < orig_ip + 15; ++k) pc_map[k] = opt_ip;
+                    SuperInstructionRegistry::telemetry().mul_add_fused++;
+                    SuperInstructionRegistry::telemetry().total_fusions++;
+                    ip += 15;
+                    continue;
+                }
+            }
+
+            // ----------------------------------------------------------------
+            // Pattern: Gate 6.0-D Fused Add Local Local Store (OP_FUSED_ADD_LOCAL_LOCAL_STORE)
+            // LOAD_LOCAL a (3B) + LOAD_LOCAL b (3B) + ADD (1B) + STORE_LOCAL d (3B) + POP (1B) = 11B
+            // ----------------------------------------------------------------
+            if (flags.enable_superinstructions && ip + 11 <= src.code.size() &&
+                op == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
+                src.code[ip + 3] == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
+                src.code[ip + 6] == static_cast<uint8_t>(OpCode::OP_ADD) &&
+                src.code[ip + 7] == static_cast<uint8_t>(OpCode::OP_STORE_LOCAL) &&
+                src.code[ip + 10] == static_cast<uint8_t>(OpCode::OP_POP) &&
+                SuperInstructionRegistry::can_fuse_range(src, ip, ip + 11, jump_targets))
+            {
+                uint16_t slotA = static_cast<uint16_t>(src.code[ip + 1] | (src.code[ip + 2] << 8));
+                uint16_t slotB = static_cast<uint16_t>(src.code[ip + 4] | (src.code[ip + 5] << 8));
+                uint16_t slotD = static_cast<uint16_t>(src.code[ip + 8] | (src.code[ip + 9] << 8));
+                opt.write_opcode(OpCode::OP_FUSED_ADD_LOCAL_LOCAL_STORE, line);
+                opt.write_int16(static_cast<int16_t>(slotA), line);
+                opt.write_int16(static_cast<int16_t>(slotB), line);
+                opt.write_int16(static_cast<int16_t>(slotD), line);
+                for (size_t k = orig_ip; k < orig_ip + 11; ++k) pc_map[k] = opt_ip;
+                SuperInstructionRegistry::telemetry().add_local_store_fused++;
+                SuperInstructionRegistry::telemetry().total_fusions++;
+                ip += 11;
+                continue;
+            }
+
+            // ----------------------------------------------------------------
             // Pattern: Tier A In-place Increment (OP_INCR_LOCAL_IMM)
             // OP_LOAD_LOCAL slot (3B) + OP_PUSH_INT val (9B) + OP_ADD (1B) + OP_STORE_LOCAL slot (3B) = 16B
             // ----------------------------------------------------------------
@@ -208,6 +296,50 @@ public:
                         continue;
                     }
                 }
+            }
+
+            // ----------------------------------------------------------------
+            // Pattern: Gate 6.0-D Store Local and Pop Fusion (OP_STORE_LOCAL_POP / 0..3_POP)
+            // STORE_LOCAL slot (3B) + POP (1B) = 4B
+            // ----------------------------------------------------------------
+            if (flags.enable_superinstructions && ip + 4 <= src.code.size() &&
+                op == static_cast<uint8_t>(OpCode::OP_STORE_LOCAL) &&
+                src.code[ip + 3] == static_cast<uint8_t>(OpCode::OP_POP) &&
+                SuperInstructionRegistry::can_fuse_range(src, ip, ip + 4, jump_targets))
+            {
+                uint16_t slot = static_cast<uint16_t>(src.code[ip + 1] | (src.code[ip + 2] << 8));
+                if (slot <= 3) {
+                    opt.write_opcode(static_cast<OpCode>(static_cast<uint8_t>(OpCode::OP_STORE_LOCAL_0_POP) + slot), line);
+                } else {
+                    opt.write_opcode(OpCode::OP_STORE_LOCAL_POP, line);
+                    opt.write_int16(static_cast<int16_t>(slot), line);
+                }
+                for (size_t k = orig_ip; k < orig_ip + 4; ++k) pc_map[k] = opt_ip;
+                SuperInstructionRegistry::telemetry().store_pop_fused++;
+                SuperInstructionRegistry::telemetry().total_fusions++;
+                ip += 4;
+                continue;
+            }
+
+            // ----------------------------------------------------------------
+            // Pattern: Gate 6.0-D Load Load Local Fusion (OP_LOAD_LOAD_LOCAL)
+            // LOAD_LOCAL a (3B) + LOAD_LOCAL b (3B) = 6B
+            // ----------------------------------------------------------------
+            if (flags.enable_superinstructions && ip + 6 <= src.code.size() &&
+                op == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
+                src.code[ip + 3] == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
+                SuperInstructionRegistry::can_fuse_range(src, ip, ip + 6, jump_targets))
+            {
+                uint16_t slotA = static_cast<uint16_t>(src.code[ip + 1] | (src.code[ip + 2] << 8));
+                uint16_t slotB = static_cast<uint16_t>(src.code[ip + 4] | (src.code[ip + 5] << 8));
+                opt.write_opcode(OpCode::OP_LOAD_LOAD_LOCAL, line);
+                opt.write_int16(static_cast<int16_t>(slotA), line);
+                opt.write_int16(static_cast<int16_t>(slotB), line);
+                for (size_t k = orig_ip; k < orig_ip + 6; ++k) pc_map[k] = opt_ip;
+                SuperInstructionRegistry::telemetry().load_load_fused++;
+                SuperInstructionRegistry::telemetry().total_fusions++;
+                ip += 6;
+                continue;
             }
 
             // ----------------------------------------------------------------
@@ -375,6 +507,21 @@ public:
                 case OpCode::OP_GET_FIELD_IC:
                 case OpCode::OP_SET_FIELD_IC:
                     return 7;
+                case OpCode::OP_STORE_LOCAL_POP:
+                    return 3;
+                case OpCode::OP_STORE_LOCAL_0_POP:
+                case OpCode::OP_STORE_LOCAL_1_POP:
+                case OpCode::OP_STORE_LOCAL_2_POP:
+                case OpCode::OP_STORE_LOCAL_3_POP:
+                    return 1;
+                case OpCode::OP_LOAD_LOAD_LOCAL:
+                    return 5;
+                case OpCode::OP_FUSED_ADD_LOCAL_LOCAL_STORE:
+                    return 7;
+                case OpCode::OP_FUSED_MUL_ADD_I64:
+                case OpCode::OP_FUSED_MUL_ADD_F64:
+                case OpCode::OP_FUSED_MUL_ADD_TAFPU:
+                    return 9;
                 default:
                     return 1;
             }
@@ -418,6 +565,52 @@ public:
                 case OpCode::OP_LOAD_LOCAL_3:
                 case OpCode::OP_STORE_LOCAL_3:
                     update_slot(3); break;
+                case OpCode::OP_STORE_LOCAL_POP:
+                    if (scan_ip + 2 < opt.code.size()) {
+                        uint16_t s = static_cast<uint16_t>(opt.code[scan_ip + 1] | (opt.code[scan_ip + 2] << 8));
+                        update_slot(s);
+                    }
+                    break;
+                case OpCode::OP_STORE_LOCAL_0_POP:
+                    update_slot(0); break;
+                case OpCode::OP_STORE_LOCAL_1_POP:
+                    update_slot(1); break;
+                case OpCode::OP_STORE_LOCAL_2_POP:
+                    update_slot(2); break;
+                case OpCode::OP_STORE_LOCAL_3_POP:
+                    update_slot(3); break;
+                case OpCode::OP_LOAD_LOAD_LOCAL:
+                    if (scan_ip + 4 < opt.code.size()) {
+                        uint16_t a = static_cast<uint16_t>(opt.code[scan_ip + 1] | (opt.code[scan_ip + 2] << 8));
+                        uint16_t b = static_cast<uint16_t>(opt.code[scan_ip + 3] | (opt.code[scan_ip + 4] << 8));
+                        update_slot(a);
+                        update_slot(b);
+                    }
+                    break;
+                case OpCode::OP_FUSED_ADD_LOCAL_LOCAL_STORE:
+                    if (scan_ip + 6 < opt.code.size()) {
+                        uint16_t a = static_cast<uint16_t>(opt.code[scan_ip + 1] | (opt.code[scan_ip + 2] << 8));
+                        uint16_t b = static_cast<uint16_t>(opt.code[scan_ip + 3] | (opt.code[scan_ip + 4] << 8));
+                        uint16_t d = static_cast<uint16_t>(opt.code[scan_ip + 5] | (opt.code[scan_ip + 6] << 8));
+                        update_slot(a);
+                        update_slot(b);
+                        update_slot(d);
+                    }
+                    break;
+                case OpCode::OP_FUSED_MUL_ADD_I64:
+                case OpCode::OP_FUSED_MUL_ADD_F64:
+                case OpCode::OP_FUSED_MUL_ADD_TAFPU:
+                    if (scan_ip + 8 < opt.code.size()) {
+                        uint16_t a = static_cast<uint16_t>(opt.code[scan_ip + 1] | (opt.code[scan_ip + 2] << 8));
+                        uint16_t b = static_cast<uint16_t>(opt.code[scan_ip + 3] | (opt.code[scan_ip + 4] << 8));
+                        uint16_t c = static_cast<uint16_t>(opt.code[scan_ip + 5] | (opt.code[scan_ip + 6] << 8));
+                        uint16_t d = static_cast<uint16_t>(opt.code[scan_ip + 7] | (opt.code[scan_ip + 8] << 8));
+                        update_slot(a);
+                        update_slot(b);
+                        update_slot(c);
+                        update_slot(d);
+                    }
+                    break;
                 case OpCode::OP_INCR_LOCAL_IMM:
                     if (scan_ip + 2 < opt.code.size()) {
                         uint16_t s = static_cast<uint16_t>(opt.code[scan_ip + 1] | (opt.code[scan_ip + 2] << 8));

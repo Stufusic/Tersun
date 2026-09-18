@@ -131,6 +131,18 @@ enum class OpCode : uint8_t {
     OP_GET_FIELD_IC    = 0xC2, // uint16_t ic_index
     OP_SET_FIELD_IC    = 0xC3, // uint16_t ic_index
 
+    // Gate 6.0-D: Phase 4 Superinstruction Fusion Framework (0xC4 - 0xCD)
+    OP_STORE_LOCAL_POP             = 0xC4, // uint16_t slot
+    OP_STORE_LOCAL_0_POP           = 0xC5,
+    OP_STORE_LOCAL_1_POP           = 0xC6,
+    OP_STORE_LOCAL_2_POP           = 0xC7,
+    OP_STORE_LOCAL_3_POP           = 0xC8,
+    OP_LOAD_LOAD_LOCAL             = 0xC9, // uint16_t slotA, uint16_t slotB
+    OP_FUSED_ADD_LOCAL_LOCAL_STORE = 0xCA, // uint16_t slotA, uint16_t slotB, uint16_t slotDest
+    OP_FUSED_MUL_ADD_I64           = 0xCB, // uint16_t slotA, uint16_t slotB, uint16_t slotC, uint16_t slotDest
+    OP_FUSED_MUL_ADD_F64           = 0xCC, // uint16_t slotA, uint16_t slotB, uint16_t slotC, uint16_t slotDest
+    OP_FUSED_MUL_ADD_TAFPU         = 0xCD, // uint16_t slotA, uint16_t slotB, uint16_t slotC, uint16_t slotDest
+
     OP_HALT            = 0xFF
 };
 

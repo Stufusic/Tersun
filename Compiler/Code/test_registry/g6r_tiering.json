@@ -1,0 +1,22 @@
+{
+  "seal_id": "G6R_TIER",
+  "timestamp_utc": "2026-09-17 15:16:29Z",
+  "subsystem": "Tier Economics & Cost Model Estimator (TierCostModel)",
+  "economic_formula": {
+    "expected_saved_ms": "E[T_saved] = E[N_remaining] * (C_interp - C_jit)",
+    "roi_ms": "ROI = E[T_saved] - T_compile - E[T_deopt]",
+    "promotion_rule": "Promote if ROI > 0.50ms (Safety Margin) AND Confidence >= 0.85"
+  },
+  "decision_cases": {
+    "short_cli_scripts": "Denied JIT (prevents compilation tax on quick tasks)",
+    "hot_numeric_loops": "Promoted to Baseline JIT (target_tier = 1)",
+    "type_stable_loops": "Promoted to Optimizing JIT (target_tier = 2)",
+    "unstable_or_thrashing": "Kept in Interpreter / Baseline with deopt guard",
+    "hot_backedges": "Triggered On-Stack Replacement (OSR)"
+  },
+  "unit_tests": {
+    "test_file": "tests/test_tier_policy.cpp",
+    "status": "100% PASS"
+  },
+  "seal_sha256": "98124e8b9a4905c129a3fd2cdcbafc6a2d1a7f9e484faf61d8cc2bbd1c70f9ec"
+}

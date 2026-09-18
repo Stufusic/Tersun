@@ -1,8 +1,8 @@
 {
   "seal_id": "SEAL-CLASSICAL-BENCH-20260913-STN",
   "algorithm": "SHA-256",
-  "seal_hash": "730da54d26449ad674b96d99b30ed8eb400f6cd0b0f553458ed45de4cd713b1f",
-  "verified_at": "2026-09-13T15:35:00+07:00",
+  "seal_hash": "b8ee756877e5e942f89913bd5cd0b20e920a0cee5d1f6f6f200c45733dcc06d9",
+  "verified_at": "2026-09-14T03:21:07+07:00",
   "record": {
     "metadata": {
       "suite": "Tersun Multi-Language Classical Benchmark (4 Canonical Methods)",
@@ -26,13 +26,13 @@
         "results_ms": {
           "cpp_gcc_o3": 1.18,
           "rust_o": 1.83,
-          "tersun_native_aot": 2.74,
+          "tersun_native_aot": 2.55,
           "java_openjdk25": 3.31,
           "python_314": 85.35,
-          "tersun_vm_bytecode": 116.1
+          "tersun_vm_bytecode": 111.28
         },
-        "speedup_aot_vs_vm": 42.4,
-        "speedup_aot_vs_python": 31.2
+        "speedup_aot_vs_vm": 43.6,
+        "speedup_aot_vs_python": 33.5
       },
       {
         "id": "W2",
@@ -42,12 +42,12 @@
           "cpp_gcc_o3": 0.23,
           "rust_o": 0.26,
           "java_openjdk25": 1.3,
-          "tersun_native_aot": 1.9,
+          "tersun_native_aot": 1.97,
           "python_314": 7.08,
-          "tersun_vm_bytecode": 29.98
+          "tersun_vm_bytecode": 30.53
         },
-        "speedup_aot_vs_vm": 15.8,
-        "speedup_aot_vs_python": 3.7
+        "speedup_aot_vs_vm": 15.5,
+        "speedup_aot_vs_python": 3.6
       },
       {
         "id": "W3",
@@ -56,13 +56,13 @@
         "results_ms": {
           "cpp_gcc_o3": 0.37,
           "rust_o": 0.47,
-          "tersun_native_aot": 3.31,
+          "tersun_native_aot": 3.41,
           "java_openjdk25": 3.89,
           "python_314": 75.27,
-          "tersun_vm_bytecode": 194.4
+          "tersun_vm_bytecode": 205.01
         },
-        "speedup_aot_vs_vm": 58.8,
-        "speedup_aot_vs_python": 22.8
+        "speedup_aot_vs_vm": 60.1,
+        "speedup_aot_vs_python": 22.1
       },
       {
         "id": "W4",
@@ -71,13 +71,13 @@
         "results_ms": {
           "cpp_gcc_o3": 0.46,
           "rust_o": 0.51,
-          "tersun_native_aot": 0.56,
+          "tersun_native_aot": 0.85,
           "java_openjdk25": 4.07,
           "python_314": 40.63,
-          "tersun_vm_bytecode": 105.2
+          "tersun_vm_bytecode": 106.16
         },
-        "speedup_aot_vs_vm": 187.5,
-        "speedup_aot_vs_python": 72.4
+        "speedup_aot_vs_vm": 124.9,
+        "speedup_aot_vs_python": 47.8
       }
     ]
   }

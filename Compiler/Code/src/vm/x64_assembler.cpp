@@ -58,6 +58,36 @@ void X64Assembler::emit_mem_disp(uint8_t reg_field, X64Reg base, int32_t disp) {
     }
 }
 
+void X64Assembler::emit_mem_sib(uint8_t reg_field, X64Reg base, X64Reg index, uint8_t scale, int32_t disp) {
+    uint8_t b = static_cast<uint8_t>(base) & 7;
+    uint8_t idx = static_cast<uint8_t>(index) & 7;
+    bool is_rbp_base = (b == 5); // RBP or R13
+
+    if (disp == 0 && !is_rbp_base) {
+        emit_modrm(0x00, reg_field, 4); // rm = 4 indicates SIB follows
+        emit_sib(scale, idx, b);
+    } else if (disp >= -128 && disp <= 127) {
+        emit_modrm(0x01, reg_field, 4);
+        emit_sib(scale, idx, b);
+        emit_u8(static_cast<uint8_t>(disp & 0xFF));
+    } else {
+        emit_modrm(0x02, reg_field, 4);
+        emit_sib(scale, idx, b);
+        emit_u32(static_cast<uint32_t>(disp));
+    }
+}
+
+void X64Assembler::emit_vex3(uint8_t r_reg, uint8_t x_reg, uint8_t b_reg, uint8_t m_mmmmm, uint8_t w, uint8_t vvvv, uint8_t l, uint8_t pp) {
+    uint8_t r_inv = (r_reg < 8) ? 1 : 0;
+    uint8_t x_inv = (x_reg < 8) ? 1 : 0;
+    uint8_t b_inv = (b_reg < 8) ? 1 : 0;
+    uint8_t b2 = ((r_inv & 1) << 7) | ((x_inv & 1) << 6) | ((b_inv & 1) << 5) | (m_mmmmm & 0x1F);
+    uint8_t b3 = ((w & 1) << 7) | ((~vvvv & 0xF) << 3) | ((l & 1) << 2) | (pp & 3);
+    emit_u8(0xC4);
+    emit_u8(b2);
+    emit_u8(b3);
+}
+
 void X64Assembler::bind(X64Label& label) {
     assert(!label.is_bound() && "Label already bound!");
     label.offset = static_cast<int32_t>(current_offset());
@@ -311,6 +341,168 @@ void X64Assembler::call_ptr(const void* target_fn, X64Reg scratch) {
 
 void X64Assembler::ret() {
     emit_u8(0xC3);
+}
+
+bool X64Assembler::has_avx2() {
+#if defined(__x86_64__) || defined(_M_X64)
+    return __builtin_cpu_supports("avx2");
+#else
+    return false;
+#endif
+}
+
+bool X64Assembler::has_fma() {
+#if defined(__x86_64__) || defined(_M_X64)
+    return __builtin_cpu_supports("fma");
+#else
+    return false;
+#endif
+}
+
+void X64Assembler::vzeroall() {
+    emit_u8(0xC5);
+    emit_u8(0xFC);
+    emit_u8(0x77);
+}
+
+void X64Assembler::vpbroadcastq(YmmReg dst, X64Reg base, int32_t disp) {
+    // VEX.256.66.0F38.W0 59 /r
+    uint8_t d = static_cast<uint8_t>(dst);
+    uint8_t b = static_cast<uint8_t>(base);
+    emit_vex3(d, 0, b, 0x02, 0, 0, 1, 0x01);
+    emit_u8(0x59);
+    emit_mem_disp(d & 7, base, disp);
+}
+
+void X64Assembler::vmovdqu_reg_mem_sib(YmmReg dst, X64Reg base, X64Reg index, uint8_t scale, int32_t disp) {
+    // VEX.256.F3.0F.WIG 6F /r
+    uint8_t d = static_cast<uint8_t>(dst);
+    uint8_t idx = static_cast<uint8_t>(index);
+    uint8_t b = static_cast<uint8_t>(base);
+    emit_vex3(d, idx, b, 0x01, 0, 0, 1, 0x02);
+    emit_u8(0x6F);
+    emit_mem_sib(d & 7, base, index, scale, disp);
+}
+
+void X64Assembler::vmovdqu_mem_sib_reg(X64Reg base, X64Reg index, uint8_t scale, int32_t disp, YmmReg src) {
+    // VEX.256.F3.0F.WIG 7F /r
+    uint8_t s = static_cast<uint8_t>(src);
+    uint8_t idx = static_cast<uint8_t>(index);
+    uint8_t b = static_cast<uint8_t>(base);
+    emit_vex3(s, idx, b, 0x01, 0, 0, 1, 0x02);
+    emit_u8(0x7F);
+    emit_mem_sib(s & 7, base, index, scale, disp);
+}
+
+void X64Assembler::vpmuludq_reg_reg_reg(YmmReg dst, YmmReg src1, YmmReg src2) {
+    // VEX.256.66.0F.WIG F4 /r (dst = src1 * src2)
+    uint8_t d = static_cast<uint8_t>(dst);
+    uint8_t s1 = static_cast<uint8_t>(src1);
+    uint8_t s2 = static_cast<uint8_t>(src2);
+    emit_vex3(d, 0, s2, 0x01, 0, s1, 1, 0x01);
+    emit_u8(0xF4);
+    emit_modrm(0x03, d & 7, s2 & 7);
+}
+
+void X64Assembler::vpaddq_reg_reg_reg(YmmReg dst, YmmReg src1, YmmReg src2) {
+    // VEX.256.66.0F.WIG D4 /r (dst = src1 + src2)
+    uint8_t d = static_cast<uint8_t>(dst);
+    uint8_t s1 = static_cast<uint8_t>(src1);
+    uint8_t s2 = static_cast<uint8_t>(src2);
+    emit_vex3(d, 0, s2, 0x01, 0, s1, 1, 0x01);
+    emit_u8(0xD4);
+    emit_modrm(0x03, d & 7, s2 & 7);
+}
+
+void X64Assembler::vpaddq_reg_reg_mem_sib(YmmReg dst, YmmReg src1, X64Reg base, X64Reg index, uint8_t scale, int32_t disp) {
+    // VEX.256.66.0F.WIG D4 /r (dst = src1 + [base+index*scale+disp])
+    uint8_t d = static_cast<uint8_t>(dst);
+    uint8_t s1 = static_cast<uint8_t>(src1);
+    uint8_t idx = static_cast<uint8_t>(index);
+    uint8_t b = static_cast<uint8_t>(base);
+    emit_vex3(d, idx, b, 0x01, 0, s1, 1, 0x01);
+    emit_u8(0xD4);
+    emit_mem_sib(d & 7, base, index, scale, disp);
+}
+
+void X64Assembler::vbroadcastsd(YmmReg dst, X64Reg base, int32_t disp) {
+    // VEX.256.66.0F38.W0 19 /r
+    uint8_t d = static_cast<uint8_t>(dst);
+    uint8_t b = static_cast<uint8_t>(base);
+    emit_vex3(d, 0, b, 0x02, 0, 0, 1, 0x01);
+    emit_u8(0x19);
+    emit_mem_disp(d & 7, base, disp);
+}
+
+void X64Assembler::vmovupd_reg_mem_sib(YmmReg dst, X64Reg base, X64Reg index, uint8_t scale, int32_t disp) {
+    // VEX.256.66.0F.WIG 10 /r
+    uint8_t d = static_cast<uint8_t>(dst);
+    uint8_t idx = static_cast<uint8_t>(index);
+    uint8_t b = static_cast<uint8_t>(base);
+    emit_vex3(d, idx, b, 0x01, 0, 0, 1, 0x01);
+    emit_u8(0x10);
+    emit_mem_sib(d & 7, base, index, scale, disp);
+}
+
+void X64Assembler::vmovupd_mem_sib_reg(X64Reg base, X64Reg index, uint8_t scale, int32_t disp, YmmReg src) {
+    // VEX.256.66.0F.WIG 11 /r
+    uint8_t s = static_cast<uint8_t>(src);
+    uint8_t idx = static_cast<uint8_t>(index);
+    uint8_t b = static_cast<uint8_t>(base);
+    emit_vex3(s, idx, b, 0x01, 0, 0, 1, 0x01);
+    emit_u8(0x11);
+    emit_mem_sib(s & 7, base, index, scale, disp);
+}
+
+void X64Assembler::vmulpd_reg_reg_reg(YmmReg dst, YmmReg src1, YmmReg src2) {
+    // VEX.256.66.0F.WIG 59 /r
+    uint8_t d = static_cast<uint8_t>(dst);
+    uint8_t s1 = static_cast<uint8_t>(src1);
+    uint8_t s2 = static_cast<uint8_t>(src2);
+    emit_vex3(d, 0, s2, 0x01, 0, s1, 1, 0x01);
+    emit_u8(0x59);
+    emit_modrm(0x03, d & 7, s2 & 7);
+}
+
+void X64Assembler::vaddpd_reg_reg_reg(YmmReg dst, YmmReg src1, YmmReg src2) {
+    // VEX.256.66.0F.WIG 58 /r
+    uint8_t d = static_cast<uint8_t>(dst);
+    uint8_t s1 = static_cast<uint8_t>(src1);
+    uint8_t s2 = static_cast<uint8_t>(src2);
+    emit_vex3(d, 0, s2, 0x01, 0, s1, 1, 0x01);
+    emit_u8(0x58);
+    emit_modrm(0x03, d & 7, s2 & 7);
+}
+
+void X64Assembler::vfmadd231pd_reg_reg_reg(YmmReg dst, YmmReg src1, YmmReg src2) {
+    // VEX.256.66.0F38.W1 B8 /r (dst = dst + src1 * src2)
+    uint8_t d = static_cast<uint8_t>(dst);
+    uint8_t s1 = static_cast<uint8_t>(src1);
+    uint8_t s2 = static_cast<uint8_t>(src2);
+    emit_vex3(d, 0, s2, 0x02, 1, s1, 1, 0x01);
+    emit_u8(0xB8);
+    emit_modrm(0x03, d & 7, s2 & 7);
+}
+
+void X64Assembler::vfmadd231pd_reg_reg_mem_sib(YmmReg dst, YmmReg src1, X64Reg base, X64Reg index, uint8_t scale, int32_t disp) {
+    // VEX.256.66.0F38.W1 B8 /r (dst = dst + src1 * [base+index*scale+disp])
+    uint8_t d = static_cast<uint8_t>(dst);
+    uint8_t s1 = static_cast<uint8_t>(src1);
+    uint8_t idx = static_cast<uint8_t>(index);
+    uint8_t b = static_cast<uint8_t>(base);
+    emit_vex3(d, idx, b, 0x02, 1, s1, 1, 0x01);
+    emit_u8(0xB8);
+    emit_mem_sib(d & 7, base, index, scale, disp);
+}
+
+void X64Assembler::vxorpd_reg_reg_reg(YmmReg dst, YmmReg src1, YmmReg src2) {
+    // VEX.256.66.0F.WIG 57 /r
+    uint8_t d = static_cast<uint8_t>(dst);
+    uint8_t s1 = static_cast<uint8_t>(src1);
+    uint8_t s2 = static_cast<uint8_t>(src2);
+    emit_vex3(d, 0, s2, 0x01, 0, s1, 1, 0x01);
+    emit_u8(0x57);
+    emit_modrm(0x03, d & 7, s2 & 7);
 }
 
 } // namespace setun

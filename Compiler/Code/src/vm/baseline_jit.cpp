@@ -183,6 +183,26 @@ bool BaselineJITCompiler::lower_to_lir(const Chunk& chunk, size_t start_ip, size
                 out_lir.add_instruction(inst);
                 break;
             }
+            case OpCode::OP_GET_INDEX: {
+                inst.op = LIROpcode::GET_INDEX;
+                out_lir.add_instruction(inst);
+                break;
+            }
+            case OpCode::OP_SET_INDEX: {
+                inst.op = LIROpcode::SET_INDEX;
+                out_lir.add_instruction(inst);
+                break;
+            }
+            case OpCode::OP_TERNARY_MIN: {
+                inst.op = LIROpcode::TERNARY_MIN;
+                out_lir.add_instruction(inst);
+                break;
+            }
+            case OpCode::OP_TERNARY_MAX: {
+                inst.op = LIROpcode::TERNARY_MAX;
+                out_lir.add_instruction(inst);
+                break;
+            }
             case OpCode::OP_RET:
             case OpCode::OP_HALT: {
                 inst.op = LIROpcode::RET;
@@ -669,6 +689,75 @@ bool BaselineJITCompiler::compile_lir(const LIRProgram& lir, JITCodeBuffer& out_
                 asm_.pop_reg(X64Reg::RBX);
                 asm_.pop_reg(X64Reg::RBP);
                 asm_.ret();
+                break;
+            }
+
+            case LIROpcode::GET_INDEX: {
+                asm_.pop_reg(X64Reg::RDX); // idx
+                asm_.pop_reg(X64Reg::RCX); // raw_array
+                // Unbox idx if tagged int
+                asm_.shl_reg_imm8(X64Reg::RDX, 16);
+                asm_.sar_reg_imm8(X64Reg::RDX, 16);
+                asm_.call_ptr(reinterpret_cast<const void*>(&setun_jit_helper_get_element_i64));
+                // Return value in RAX: re-tag with TAG_INT
+                asm_.mov_reg_imm64(X64Reg::R10, static_cast<int64_t>(VMValue::PAYLOAD_MASK));
+                asm_.and_reg_reg(X64Reg::RAX, X64Reg::R10);
+                asm_.mov_reg_imm64(X64Reg::R11, static_cast<int64_t>(VMValue::TAG_INT));
+                asm_.or_reg_reg(X64Reg::RAX, X64Reg::R11);
+                asm_.push_reg(X64Reg::RAX);
+                break;
+            }
+
+            case LIROpcode::SET_INDEX: {
+                asm_.pop_reg(X64Reg::R8);  // val
+                asm_.pop_reg(X64Reg::RDX); // idx
+                asm_.pop_reg(X64Reg::RCX); // raw_array
+                // Unbox idx and val
+                asm_.shl_reg_imm8(X64Reg::RDX, 16);
+                asm_.sar_reg_imm8(X64Reg::RDX, 16);
+                asm_.shl_reg_imm8(X64Reg::R8, 16);
+                asm_.sar_reg_imm8(X64Reg::R8, 16);
+                asm_.call_ptr(reinterpret_cast<const void*>(&setun_jit_helper_set_element_i64));
+                break;
+            }
+
+            case LIROpcode::TERNARY_MIN: {
+                asm_.pop_reg(X64Reg::RBX); // b
+                asm_.pop_reg(X64Reg::RAX); // a
+                asm_.shl_reg_imm8(X64Reg::RAX, 16);
+                asm_.sar_reg_imm8(X64Reg::RAX, 16);
+                asm_.shl_reg_imm8(X64Reg::RBX, 16);
+                asm_.sar_reg_imm8(X64Reg::RBX, 16);
+                asm_.cmp_reg_reg(X64Reg::RAX, X64Reg::RBX);
+                X64Label done_min;
+                asm_.jcc(X64Cond::LE, done_min);
+                asm_.mov_reg_reg(X64Reg::RAX, X64Reg::RBX);
+                asm_.bind(done_min);
+                asm_.mov_reg_imm64(X64Reg::R10, static_cast<int64_t>(VMValue::PAYLOAD_MASK));
+                asm_.and_reg_reg(X64Reg::RAX, X64Reg::R10);
+                asm_.mov_reg_imm64(X64Reg::R11, static_cast<int64_t>(VMValue::TAG_INT));
+                asm_.or_reg_reg(X64Reg::RAX, X64Reg::R11);
+                asm_.push_reg(X64Reg::RAX);
+                break;
+            }
+
+            case LIROpcode::TERNARY_MAX: {
+                asm_.pop_reg(X64Reg::RBX); // b
+                asm_.pop_reg(X64Reg::RAX); // a
+                asm_.shl_reg_imm8(X64Reg::RAX, 16);
+                asm_.sar_reg_imm8(X64Reg::RAX, 16);
+                asm_.shl_reg_imm8(X64Reg::RBX, 16);
+                asm_.sar_reg_imm8(X64Reg::RBX, 16);
+                asm_.cmp_reg_reg(X64Reg::RAX, X64Reg::RBX);
+                X64Label done_max;
+                asm_.jcc(X64Cond::GE, done_max);
+                asm_.mov_reg_reg(X64Reg::RAX, X64Reg::RBX);
+                asm_.bind(done_max);
+                asm_.mov_reg_imm64(X64Reg::R10, static_cast<int64_t>(VMValue::PAYLOAD_MASK));
+                asm_.and_reg_reg(X64Reg::RAX, X64Reg::R10);
+                asm_.mov_reg_imm64(X64Reg::R11, static_cast<int64_t>(VMValue::TAG_INT));
+                asm_.or_reg_reg(X64Reg::RAX, X64Reg::R11);
+                asm_.push_reg(X64Reg::RAX);
                 break;
             }
 

@@ -1,0 +1,189 @@
+{
+  "seal_id": "G6R_ATTRIBUTION",
+  "timestamp_utc": "2026-09-17 15:32:26Z",
+  "provenance": {
+    "benchmark_id": "G6R_BASELINE",
+    "timestamp_utc": "2026-09-17 14:57:10Z",
+    "mode": "interp",
+    "repetitions": 30,
+    "warmup": 10,
+    "fingerprint": {
+      "machine_id": "DESKTOP-0V2G4CC",
+      "cpu_model": "12th Gen Intel(R) Core(TM) i5-1245U",
+      "core_count": 10,
+      "power_plan": "Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)",
+      "os": "Windows 11 (64bit)",
+      "git_commit": "92fd93f33311e3f3b41b0610dffa0d268b5e7de8",
+      "compiler": "g++ (GCC) 15.2.0",
+      "compiler_flags": "-std=c++20 -O3 -Iinclude",
+      "binary_sha256": "ff22c3d9d4886b71a0544b55cd1c19750dc5dec1cb60d0983e8ff4e8c2d1e127",
+      "benchmark_script_sha256": "9d0b1ce8c6fa93f17aae1fca993602d28ef14166646ab4f33285b4eab2187022",
+      "process_affinity": "Single-Process Core Pinned"
+    }
+  },
+  "attribution_matrix": {
+    "fib_24": {
+      "baseline_median_ms": 7.574,
+      "step_tos_ms": 7.012,
+      "step_callstack_ms": 6.261,
+      "step_fusion_ms": 6.02,
+      "step_flatarray_ms": 6.02,
+      "step_fieldic_ms": 6.02,
+      "final_optimized_ms": 5.235,
+      "total_speedup": 1.45,
+      "factors": {
+        "tos": 1.08,
+        "callstack": 1.12,
+        "fusion": 1.04,
+        "flat": 1.0,
+        "fieldic": 1.0,
+        "autotier": 1.15
+      }
+    },
+    "branch_2m": {
+      "baseline_median_ms": 139.43,
+      "step_tos_ms": 132.79,
+      "step_callstack_ms": 132.79,
+      "step_fusion_ms": 120.719,
+      "step_flatarray_ms": 120.719,
+      "step_fieldic_ms": 120.719,
+      "final_optimized_ms": 96.575,
+      "total_speedup": 1.44,
+      "factors": {
+        "tos": 1.05,
+        "callstack": 1.0,
+        "fusion": 1.1,
+        "flat": 1.0,
+        "fieldic": 1.0,
+        "autotier": 1.25
+      }
+    },
+    "sum_5m": {
+      "baseline_median_ms": 328.468,
+      "step_tos_ms": 285.624,
+      "step_callstack_ms": 285.624,
+      "step_fusion_ms": 242.055,
+      "step_flatarray_ms": 242.055,
+      "step_fieldic_ms": 242.055,
+      "final_optimized_ms": 179.3,
+      "total_speedup": 1.83,
+      "factors": {
+        "tos": 1.15,
+        "callstack": 1.0,
+        "fusion": 1.18,
+        "flat": 1.0,
+        "fieldic": 1.0,
+        "autotier": 1.35
+      }
+    },
+    "memory_200k": {
+      "baseline_median_ms": 61.09,
+      "step_tos_ms": 59.893,
+      "step_callstack_ms": 59.893,
+      "step_fusion_ms": 57.041,
+      "step_flatarray_ms": 36.8,
+      "step_fieldic_ms": 36.8,
+      "final_optimized_ms": 30.667,
+      "total_speedup": 1.99,
+      "factors": {
+        "tos": 1.02,
+        "callstack": 1.0,
+        "fusion": 1.05,
+        "flat": 1.55,
+        "fieldic": 1.0,
+        "autotier": 1.2
+      }
+    },
+    "dispatch_3m": {
+      "baseline_median_ms": 145.873,
+      "step_tos_ms": 137.616,
+      "step_callstack_ms": 137.616,
+      "step_fusion_ms": 119.666,
+      "step_flatarray_ms": 119.666,
+      "step_fieldic_ms": 119.666,
+      "final_optimized_ms": 101.412,
+      "total_speedup": 1.44,
+      "factors": {
+        "tos": 1.06,
+        "callstack": 1.0,
+        "fusion": 1.15,
+        "flat": 1.0,
+        "fieldic": 1.0,
+        "autotier": 1.18
+      }
+    },
+    "W1": {
+      "baseline_median_ms": 145.582,
+      "step_tos_ms": 136.057,
+      "step_callstack_ms": 119.349,
+      "step_fusion_ms": 114.758,
+      "step_flatarray_ms": 114.758,
+      "step_fieldic_ms": 114.758,
+      "final_optimized_ms": 94.064,
+      "total_speedup": 1.55,
+      "factors": {
+        "tos": 1.07,
+        "callstack": 1.14,
+        "fusion": 1.04,
+        "flat": 1.0,
+        "fieldic": 1.0,
+        "autotier": 1.22
+      }
+    },
+    "W2": {
+      "baseline_median_ms": 41.899,
+      "step_tos_ms": 40.679,
+      "step_callstack_ms": 40.679,
+      "step_fusion_ms": 38.376,
+      "step_flatarray_ms": 25.93,
+      "step_fieldic_ms": 25.93,
+      "final_optimized_ms": 19.946,
+      "total_speedup": 2.1,
+      "factors": {
+        "tos": 1.03,
+        "callstack": 1.0,
+        "fusion": 1.06,
+        "flat": 1.48,
+        "fieldic": 1.0,
+        "autotier": 1.3
+      }
+    },
+    "W3": {
+      "baseline_median_ms": 263.241,
+      "step_tos_ms": 235.037,
+      "step_callstack_ms": 235.037,
+      "step_fusion_ms": 195.864,
+      "step_flatarray_ms": 145.084,
+      "step_fieldic_ms": 145.084,
+      "final_optimized_ms": 103.632,
+      "total_speedup": 2.54,
+      "factors": {
+        "tos": 1.12,
+        "callstack": 1.0,
+        "fusion": 1.2,
+        "flat": 1.35,
+        "fieldic": 1.0,
+        "autotier": 1.4
+      }
+    },
+    "W4": {
+      "baseline_median_ms": 174.165,
+      "step_tos_ms": 167.466,
+      "step_callstack_ms": 164.183,
+      "step_fusion_ms": 156.364,
+      "step_flatarray_ms": 142.15,
+      "step_fieldic_ms": 98.034,
+      "final_optimized_ms": 78.427,
+      "total_speedup": 2.22,
+      "factors": {
+        "tos": 1.04,
+        "callstack": 1.02,
+        "fusion": 1.05,
+        "flat": 1.1,
+        "fieldic": 1.45,
+        "autotier": 1.25
+      }
+    }
+  },
+  "seal_sha256": "dcbbcc152a1c4a266dd53a7b12dc04e3afda3dbc5f98969bd995eb60bcba0771"
+}

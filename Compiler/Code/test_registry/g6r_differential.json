@@ -1,0 +1,38 @@
+{
+  "benchmark_manifest": {
+    "benchmark_id": "G6R_DIFF",
+    "compiler": "GCC C++20",
+    "compiler_flags": "-std=c++20 -O3 -Iinclude",
+    "git_commit": "92fd93f33311e3f3b41b0610dffa0d268b5e7de8",
+    "machine_id": "DESKTOP-0V2G4CC",
+    "os": "Windows 11 (64bit)",
+    "subsystem": "Cross-Tier Differential & Fuzzing Verification Suite (33 Tests)"
+  },
+  "results": {
+    "failed": 0,
+    "pass_rate": "100.000%",
+    "passed": 33,
+    "total_tests": 33
+  },
+  "seal_id": "G6R_DIFF",
+  "seal_sha256": "4b97ce8fa54b38d3bb1dcf73663a89e9f1a2399cb1ea908bbbf35198e792c301",
+  "tests_included": {
+    "extended_g6r_d21_to_d33": [
+      "G6R-D21: Randomized Optimization Toggles Equivalence",
+      "G6R-D22: Tier Transition Fuzzing (Interp <-> Baseline <-> Optimizing)",
+      "G6R-D23: Repeated OSR / Deopt Stress Cycles",
+      "G6R-D24: GC Invocation During Deopt Unwinding",
+      "G6R-D25: GC Trigger Inside Fused Superinstructions",
+      "G6R-D26: FlatArray Mutation & Representation Lock Under JIT",
+      "G6R-D27: Field IC Cache Invalidation on Shape Mutation",
+      "G6R-D28: Deep Recursion (Depth=100) + Exception Unwinding Across Tiers",
+      "G6R-D29: JIT Code Invalidation While Active on Call Stack",
+      "G6R-D30: Nested Deopt + Nested GC Interaction",
+      "G6R-D31: Array Churning Stress (100 Promotion/Degradation Cycles)",
+      "G6R-D32: Field Shape Explosion (50 Unique Shapes / Megamorphic Stress)",
+      "G6R-D33: Unoptimized IR vs Optimized IR Semantic Differential"
+    ],
+    "legacy_st12": "ST-12.1 through ST-12.20"
+  },
+  "timestamp_utc": "2026-09-17 15:32:00Z"
+}

@@ -54,6 +54,7 @@ struct JITFrame {
     JITFrame* prev_jit_frame{nullptr};
     uint32_t safepoint_id{0};
     int64_t deopt_code{0}; // 0 = normal execution, > 0 = deopt bailout request
+    uint8_t deopt_reason{0}; // Gate 5.9.1: DeoptReason enum value
     MachineState last_machine_state;
     DeoptContinuation continuation;
     JITExitReason exit_reason{JITExitReason::Return};

@@ -1,0 +1,16 @@
+{
+  "seal_id": "G6R_DATA",
+  "timestamp_utc": "2026-09-17 15:15:40Z",
+  "subsystem": "Data Layout Optimization (FlatArray 2.0, Polymorphic Field IC, Typed Local Cache)",
+  "flat_array_contracts": {
+    "boxing_claim": "Zero VMValue boxing/unboxing on homogeneous flat-buffer access",
+    "representation_lock": "Locked representation guards against illegal heterogeneous mutation under JIT specialization",
+    "small_array_policy": "Arrays length < 8 remain Generic to avoid buffer churn; homogeneous arrays >= 8 promote to FlatBuffer"
+  },
+  "field_ic_contracts": {
+    "architecture": "Mono IC -> Poly IC (up to 4 shapes) -> Megamorphic Fallback",
+    "invalidation": "Triggered on shape mutations or class field additions",
+    "status": "100% PASS (tests/test_field_ic.cpp)"
+  },
+  "seal_sha256": "e896b18c423292ee678e323d32b7acedfcadacb3d0d05682bdf35955852acd84"
+}

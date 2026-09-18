@@ -8,6 +8,8 @@
 #include <unordered_map>
 #include <string>
 
+#include "vm/jit_materialization.hpp"
+
 namespace setun {
 
 class VM;
@@ -18,7 +20,8 @@ enum class DeoptReason : uint8_t {
     ARITHMETIC_OVERFLOW = 2,
     DIVISION_BY_ZERO = 3,
     UNSUPPORTED_OPCODE = 4,
-    EXPLICIT_BAILOUT = 5
+    EXPLICIT_BAILOUT = 5,
+    SHAPE_GUARD_FAILURE = 6
 };
 
 struct DeoptRecord {
@@ -29,6 +32,7 @@ struct DeoptRecord {
     DeoptReason reason{DeoptReason::TYPE_GUARD_FAILURE};
     std::vector<Location> locals_mapping;
     std::vector<Location> stack_mapping;
+    std::vector<MaterializationEntry> materializations;
 };
 
 class DeoptTable {

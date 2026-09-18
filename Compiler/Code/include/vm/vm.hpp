@@ -7,6 +7,8 @@
 #include "vm/opt_bytecode.hpp"
 #include "vm/gc_engine.hpp"
 #include "tafpu/exception.hpp"
+#include "vm/inline_cache.hpp"
+#include "vm/fixed_frame_arena.hpp"
 #include <vector>
 #include <array>
 #include <functional>
@@ -16,6 +18,9 @@ namespace setun {
 
 struct JITFrame;
 class JITManager;
+class VMProfiler;
+struct FunctionHotData;
+struct LoopHotData;
 
 // ============================================================================
 // Gate 4: Scientific Telemetry & Hardware Counters
@@ -32,18 +37,6 @@ struct VMTelemetry {
     uint64_t ic_misses{0};
     uint64_t shape_mismatches{0};
     void reset() { *this = VMTelemetry{}; }
-};
-
-struct CallFrame {
-    size_t return_ip{0};
-    size_t local_base{0};
-    // Operand-stack depth at entry (after args were popped). OP_RET truncates
-    // back to this before pushing the return value, so a callee's leftover
-    // stack values (e.g. from STORE-peek semantics) can never contaminate
-    // the caller's expression evaluation.
-    size_t stack_depth{0};
-    size_t frame_size{32};
-    size_t func_entry{0};
 };
 
 // Active try block: where to land on exception + machine state to restore.
@@ -82,6 +75,7 @@ public:
     void set_opt_flags(OptFlags flags) { opt_flags_ = flags; }
     OptFlags opt_flags() const { return opt_flags_; }
     const VMTelemetry& telemetry() const { return telemetry_; }
+    VMTelemetry& telemetry() { return telemetry_; }
     void reset_telemetry() { telemetry_.reset(); }
 
     // Reset VM state
@@ -108,8 +102,43 @@ public:
     bool is_jit_enabled() const { return jit_enabled_; }
     void set_jit_enabled(bool enabled) { jit_enabled_ = enabled; }
 
+    bool is_auto_tiering_enabled() const { return auto_tiering_enabled_; }
+    void set_auto_tiering_enabled(bool enabled) { auto_tiering_enabled_ = enabled; }
+
     std::shared_ptr<JITManager> jit_manager() const { return jit_manager_; }
-    void set_jit_manager(std::shared_ptr<JITManager> mgr) { jit_manager_ = mgr; }
+    void set_jit_manager(std::shared_ptr<JITManager> mgr);
+
+    // Fast-path hot tables
+    FunctionHotData* function_hot_table() const { return function_hot_table_; }
+    LoopHotData* loop_hot_table() const { return loop_hot_table_; }
+
+    // Gate 5.9.2: Inline Caching Accessors
+    ChunkInlineCacheTable& inline_cache_table() { return inline_cache_table_; }
+    const ChunkInlineCacheTable& inline_cache_table() const { return inline_cache_table_; }
+    void set_enable_inline_caching(bool enable) { enable_inline_caching_ = enable; }
+    // Gate 6.0: VM Profiler Subsystem
+    void set_profiler(std::shared_ptr<VMProfiler> profiler) { profiler_ = profiler; }
+    std::shared_ptr<VMProfiler> profiler() const { return profiler_; }
+
+    // Gate 6.0: 2-Slot Top-of-Stack (TOS) Register Cache
+    inline void materialize_tos() noexcept {
+        if (tos_depth_ == 2) {
+            stack_.push(tos1_);
+            stack_.push(tos0_);
+            tos_depth_ = 0;
+        } else if (tos_depth_ == 1) {
+            stack_.push(tos0_);
+            tos_depth_ = 0;
+        }
+    }
+    inline uint8_t tos_depth() const noexcept { return tos_depth_; }
+    inline const VMValue& tos0() const noexcept { return tos0_; }
+    inline const VMValue& tos1() const noexcept { return tos1_; }
+    inline void set_tos_depth(uint8_t d) noexcept { tos_depth_ = d; }
+    inline void set_tos0(const VMValue& v) noexcept { tos0_ = v; }
+    inline void set_tos1(const VMValue& v) noexcept { tos1_ = v; }
+    inline FixedFrameArena& call_arena() noexcept { return call_stack_; }
+    inline const FixedFrameArena& call_arena() const noexcept { return call_stack_; }
 
     // Last printed output buffer (for test capture)
     std::string last_output() const { return output_buffer_; }
@@ -238,7 +267,7 @@ private:
     VMStack stack_;
     std::vector<VMValue> locals_;
     std::vector<VMValue> globals_;
-    std::vector<CallFrame> call_stack_;
+    FixedFrameArena call_stack_;
     std::vector<TryFrame> try_stack_;
 
     // Setun-70 Registers
@@ -253,10 +282,27 @@ private:
     size_t local_top_{256};
     GCEngine gc_engine_{};
 
-    // Gate 5.7: JIT Execution State
+    // Gate 5.7 & 5.9.1: JIT Execution State & Auto-Tiering Hot Tables
     JITFrame* active_jit_frame_{nullptr};
     bool jit_enabled_{false};
+    bool auto_tiering_enabled_{true};
     std::shared_ptr<JITManager> jit_manager_{nullptr};
+    FunctionHotData* function_hot_table_{nullptr};
+    LoopHotData* loop_hot_table_{nullptr};
+    size_t function_hot_count_{0};
+    size_t loop_hot_count_{0};
+    size_t function_hot_mask_{0};
+    size_t loop_hot_mask_{0};
+
+    // Gate 5.9.2: Polymorphic Inline Caching State
+    ChunkInlineCacheTable inline_cache_table_{};
+    bool enable_inline_caching_{true};
+
+    // Gate 6.0: VM Profiler & TOS Cache
+    std::shared_ptr<VMProfiler> profiler_{nullptr};
+    VMValue tos0_{};
+    VMValue tos1_{};
+    uint8_t tos_depth_{0};
 };
 
 } // namespace setun

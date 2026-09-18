@@ -94,7 +94,12 @@ bool reconstruct_interpreter_state_advanced(
         }
     }
 
-    // 3. Setup deopt continuation
+    // 3. Process Materialization Entries (Gate 5.9 Tier-2 JIT)
+    if (!rec.materializations.empty()) {
+        MaterializationEngine::materialize_all(vm, frame, machine, rec.materializations);
+    }
+
+    // 4. Setup deopt continuation
     out_cont.bytecode_ip = rec.target_bytecode_ip;
     out_cont.stack_depth = static_cast<uint32_t>(vm->stack().size());
     out_cont.local_base = 0;

@@ -1,0 +1,17 @@
+fn fib(n: int) -> int {
+    if (n < 2) {
+        return n;
+    }
+    return fib(n - 1) + fib(n - 2);
+}
+
+fn main() {
+    let t0 = time_now_us();
+    let res = fib(30);
+    let t1 = time_now_us();
+
+    print("W1_FIB checksum=");
+    print(res);
+    print(" time_us=");
+    println(t1 - t0);
+}

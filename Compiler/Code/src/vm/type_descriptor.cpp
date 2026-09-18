@@ -5,19 +5,21 @@ namespace setun {
 
 static void trace_array_payload(void* payload, const GCVisitor& visitor) {
     if (!payload) return;
-    auto* arr = reinterpret_cast<std::vector<VMValue>*>(payload);
-    for (const auto& elem : *arr) {
-        if (elem.is_heap_type()) {
-            void* p = VMArena::instance().from_handle(elem.handle());
-            if (p) visitor(p);
+    auto* arr = reinterpret_cast<ArrayObject*>(payload);
+    if (arr->rep == ArrayRep::Generic) {
+        for (const auto& elem : arr->generic_data) {
+            if (elem.is_heap_type()) {
+                void* p = VMArena::instance().from_handle(elem.handle());
+                if (p) visitor(p);
+            }
         }
     }
 }
 
 static void destruct_array_payload(void* payload) {
     if (!payload) return;
-    auto* arr = reinterpret_cast<std::vector<VMValue>*>(payload);
-    arr->~vector();
+    auto* arr = reinterpret_cast<ArrayObject*>(payload);
+    arr->~ArrayObject();
 }
 
 static void trace_object_payload(void* payload, const GCVisitor& visitor) {

@@ -1,6 +1,8 @@
 #include "vm/vm.hpp"
+#include "vm/vm_profiler.hpp"
 #include "vm/jit_frame.hpp"
 #include "vm/jit_manager.hpp"
+#include "vm/runtime_metadata.hpp"
 #include "vm/text.hpp"
 #include "graphics/setun2d_bridge.hpp"
 #include "compiler/types.hpp"
@@ -17,6 +19,16 @@
 #include <chrono>
 
 namespace setun {
+
+#ifndef UNLIKELY
+#if defined(__GNUC__) || defined(__clang__)
+#define UNLIKELY(x) __builtin_expect(!!(x), 0)
+#define LIKELY(x)   __builtin_expect(!!(x), 1)
+#else
+#define UNLIKELY(x) (x)
+#define LIKELY(x)   (x)
+#endif
+#endif
 
 // Last filesystem error message reported by the HostFs native API
 // (queried from scripts via host.fs_err(); empty string means success).
@@ -73,6 +85,9 @@ void VM::reset() {
     ip_ = 0;
     running_ = false;
     stack_.clear();
+    tos_depth_ = 0;
+    tos0_ = VMValue{};
+    tos1_ = VMValue{};
     local_top_ = 64;
     if (locals_.size() < 65536) locals_.resize(65536);
     std::fill(locals_.begin(), locals_.begin() + 1024, VMValue{});
@@ -83,6 +98,35 @@ void VM::reset() {
     for (auto& r : tryte_regs_) r = 0;
     output_buffer_.clear();
     telemetry_.reset();
+    inline_cache_table_.clear();
+}
+
+void VM::set_jit_manager(std::shared_ptr<JITManager> mgr) {
+    jit_manager_ = mgr;
+    if (mgr) {
+        jit_enabled_ = true;
+        auto& meta = mgr->runtime_metadata();
+        if (meta.function_count() == 0 || meta.loop_count() == 0) {
+            meta.initialize(128, 128,
+                            mgr->policy().tier1_invocation_threshold,
+                            mgr->policy().tier2_invocation_threshold,
+                            mgr->policy().tier1_backedge_threshold);
+        }
+        function_hot_table_ = meta.function_hot_table();
+        loop_hot_table_ = meta.loop_hot_table();
+        function_hot_count_ = meta.function_count();
+        loop_hot_count_ = meta.loop_count();
+        function_hot_mask_ = (function_hot_count_ > 0) ? (function_hot_count_ - 1) : 0;
+        loop_hot_mask_ = (loop_hot_count_ > 0) ? (loop_hot_count_ - 1) : 0;
+    } else {
+        jit_enabled_ = false;
+        function_hot_table_ = nullptr;
+        loop_hot_table_ = nullptr;
+        function_hot_count_ = 0;
+        loop_hot_count_ = 0;
+        function_hot_mask_ = 0;
+        loop_hot_mask_ = 0;
+    }
 }
 
 void VM::init_dispatch_table() {
@@ -198,7 +242,7 @@ void VM::run(const Chunk& chunk) {
 }
 
 void VM::run_function_pointer(const Chunk& chunk) {
-    ip_ = 0;
+    if (ip_ >= chunk.code.size()) ip_ = 0;
     running_ = true;
 
     for (const auto& [cname, methods] : chunk.vtables) {
@@ -232,8 +276,27 @@ void VM::run_function_pointer(const Chunk& chunk) {
 }
 
 void VM::run_switch(const Chunk& chunk) {
-    ip_ = 0;
+    if (ip_ >= chunk.code.size()) ip_ = 0;
     running_ = true;
+
+    if (jit_manager_ && auto_tiering_enabled_) {
+        auto& meta = jit_manager_->runtime_metadata();
+        if (meta.function_count() == 0 || meta.loop_count() == 0) {
+            size_t n_funcs = std::max<size_t>(128, chunk.function_table.size() + 16);
+            size_t p2_funcs = 128;
+            while (p2_funcs < n_funcs) p2_funcs <<= 1;
+            meta.initialize(p2_funcs, 128,
+                            jit_manager_->policy().tier1_invocation_threshold,
+                            jit_manager_->policy().tier2_invocation_threshold,
+                            jit_manager_->policy().tier1_backedge_threshold);
+        }
+        function_hot_table_ = meta.function_hot_table();
+        loop_hot_table_ = meta.loop_hot_table();
+        function_hot_count_ = meta.function_count();
+        loop_hot_count_ = meta.loop_count();
+        function_hot_mask_ = (function_hot_count_ > 0) ? (function_hot_count_ - 1) : 0;
+        loop_hot_mask_ = (loop_hot_count_ > 0) ? (loop_hot_count_ - 1) : 0;
+    }
 
     for (const auto& [cname, methods] : chunk.vtables) {
         auto vt = std::make_shared<VTable>();
@@ -348,7 +411,7 @@ void VM::run_switch(const Chunk& chunk) {
 
 void VM::run_threaded(const Chunk& chunk) {
 #if defined(__GNUC__) || defined(__clang__)
-    ip_ = 0;
+    if (ip_ >= chunk.code.size()) ip_ = 0;
     running_ = true;
 
     for (const auto& [cname, methods] : chunk.vtables) {
@@ -573,8 +636,27 @@ void VM::run_cached(const Chunk& chunk) {
 
 void VM::run_optimized(OptimizedChunk& chunk) {
 #if defined(__GNUC__) || defined(__clang__)
-    ip_ = 0;
+    if (ip_ >= chunk.code.size()) ip_ = 0;
     running_ = true;
+
+    if (jit_manager_ && auto_tiering_enabled_) {
+        auto& meta = jit_manager_->runtime_metadata();
+        if (meta.function_count() == 0 || meta.loop_count() == 0) {
+            size_t n_funcs = std::max<size_t>(128, chunk.function_table.size() + 16);
+            size_t p2_funcs = 128;
+            while (p2_funcs < n_funcs) p2_funcs <<= 1;
+            meta.initialize(p2_funcs, 128,
+                            jit_manager_->policy().tier1_invocation_threshold,
+                            jit_manager_->policy().tier2_invocation_threshold,
+                            jit_manager_->policy().tier1_backedge_threshold);
+        }
+        function_hot_table_ = meta.function_hot_table();
+        loop_hot_table_ = meta.loop_hot_table();
+        function_hot_count_ = meta.function_count();
+        loop_hot_count_ = meta.loop_count();
+        function_hot_mask_ = (function_hot_count_ > 0) ? (function_hot_count_ - 1) : 0;
+        loop_hot_mask_ = (loop_hot_count_ > 0) ? (loop_hot_count_ - 1) : 0;
+    }
 
     for (const auto& [cname, methods] : chunk.vtables) {
         auto vt = std::make_shared<VTable>();
@@ -585,7 +667,7 @@ void VM::run_optimized(OptimizedChunk& chunk) {
 
     size_t init_depth = stack_.size();
     uint8_t* code_base = chunk.code.data();
-    uint8_t* ip = code_base;
+    uint8_t* ip = code_base + ip_;
     uint8_t* code_end = code_base + chunk.code.size();
     VMValue* sp = stack_.data() + init_depth;
     VMValue* stack_end = stack_.data() + stack_.capacity();
@@ -702,19 +784,41 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         OP_TARGET_C(OP_QUICK_EQ_INT);
         OP_TARGET_C(OP_GET_FIELD_IC);
         OP_TARGET_C(OP_SET_FIELD_IC);
+
+        // Gate 6.0-D: Phase 4 Superinstruction Fusion Framework
+        OP_TARGET_C(OP_STORE_LOCAL_POP);
+        OP_TARGET_C(OP_STORE_LOCAL_0_POP);
+        OP_TARGET_C(OP_STORE_LOCAL_1_POP);
+        OP_TARGET_C(OP_STORE_LOCAL_2_POP);
+        OP_TARGET_C(OP_STORE_LOCAL_3_POP);
+        OP_TARGET_C(OP_LOAD_LOAD_LOCAL);
+        OP_TARGET_C(OP_FUSED_ADD_LOCAL_LOCAL_STORE);
+        OP_TARGET_C(OP_FUSED_MUL_ADD_I64);
+        OP_TARGET_C(OP_FUSED_MUL_ADD_F64);
+        OP_TARGET_C(OP_FUSED_MUL_ADD_TAFPU);
         #undef OP_TARGET_C
         inited = true;
     }
+
+    VMValue r_tos0{};
+    VMValue r_tos1{};
+    uint8_t r_depth = 0;
 
     #define DISPATCH_C() \
         do { \
             if (__builtin_expect(!running_ || ip >= code_end, 0)) goto c_lbl_exit; \
             telemetry_.total_dispatches++; \
+            if (__builtin_expect(profiler_ != nullptr, 0)) { \
+                profiler_->record_opcode(*ip); \
+            } \
             goto *lbl_table[*ip++]; \
         } while(0)
 
     #define ENSURE_STACK(n) \
         do { \
+            if (__builtin_expect(profiler_ != nullptr, 0)) { \
+                profiler_->record_stack_write(n); \
+            } \
             if (__builtin_expect(sp + (n) >= stack_end, 0)) { \
                 size_t cur = static_cast<size_t>(sp - stack_.data()); \
                 stack_.reserve(stack_.capacity() * 2); \
@@ -723,10 +827,127 @@ void VM::run_optimized(OptimizedChunk& chunk) {
             } \
         } while(0)
 
+    #define PUSH_TOS(val) \
+        do { \
+            if (r_depth == 0) { \
+                r_tos0 = (val); \
+                r_depth = 1; \
+            } else if (r_depth == 1) { \
+                r_tos1 = r_tos0; \
+                r_tos0 = (val); \
+                r_depth = 2; \
+            } else { \
+                ENSURE_STACK(1); \
+                *sp++ = r_tos1; \
+                r_tos1 = r_tos0; \
+                r_tos0 = (val); \
+            } \
+        } while (0)
+
+    #define POP_TOS_VAL(dest) \
+        do { \
+            if (__builtin_expect(r_depth == 1, 1)) { \
+                dest = r_tos0; \
+                r_depth = 0; \
+            } else if (r_depth == 2) { \
+                dest = r_tos0; \
+                r_tos0 = r_tos1; \
+                r_depth = 1; \
+            } else { \
+                if (UNLIKELY(profiler_ != nullptr)) profiler_->record_stack_read(1); \
+                dest = *--sp; \
+            } \
+        } while (0)
+
+    #define DISCARD_TOS() \
+        do { \
+            if (__builtin_expect(r_depth == 1, 1)) { \
+                r_depth = 0; \
+            } else if (r_depth == 2) { \
+                r_tos0 = r_tos1; \
+                r_depth = 1; \
+            } else { \
+                if (UNLIKELY(profiler_ != nullptr)) profiler_->record_stack_read(1); \
+                --sp; \
+            } \
+        } while (0)
+
+    #define PEEK_TOS() (__builtin_expect(r_depth >= 1, 1) ? r_tos0 : *(sp - 1))
+
+    #define DUP_TOS() \
+        do { \
+            if (r_depth == 0) { \
+                if (UNLIKELY(profiler_ != nullptr)) profiler_->record_stack_read(1); \
+                r_tos0 = *(sp - 1); \
+                r_depth = 1; \
+            } else if (r_depth == 1) { \
+                r_tos1 = r_tos0; \
+                r_depth = 2; \
+            } else { \
+                ENSURE_STACK(1); \
+                *sp++ = r_tos1; \
+                r_tos1 = r_tos0; \
+            } \
+        } while (0)
+
+    #define POP_TWO_TOS(a, b) \
+        do { \
+            if (__builtin_expect(r_depth == 2, 1)) { \
+                b = r_tos0; \
+                a = r_tos1; \
+                r_depth = 0; \
+            } else if (r_depth == 1) { \
+                b = r_tos0; \
+                if (UNLIKELY(profiler_ != nullptr)) profiler_->record_stack_read(1); \
+                a = *--sp; \
+                r_depth = 0; \
+            } else { \
+                if (UNLIKELY(profiler_ != nullptr)) profiler_->record_stack_read(2); \
+                b = *--sp; \
+                a = *--sp; \
+            } \
+        } while (0)
+
+    #define BINARY_OP_FETCH(a, b) \
+        do { \
+            if (__builtin_expect(r_depth == 2, 1)) { \
+                b = r_tos0; \
+                a = r_tos1; \
+                r_depth = 1; \
+            } else if (r_depth == 1) { \
+                b = r_tos0; \
+                if (UNLIKELY(profiler_ != nullptr)) profiler_->record_stack_read(1); \
+                a = *--sp; \
+            } else { \
+                if (UNLIKELY(profiler_ != nullptr)) profiler_->record_stack_read(2); \
+                b = *--sp; \
+                a = *--sp; \
+                r_depth = 1; \
+            } \
+        } while (0)
+
+    #define FLUSH_TOS() \
+        do { \
+            if (r_depth == 2) { \
+                ENSURE_STACK(2); \
+                *sp++ = r_tos1; \
+                *sp++ = r_tos0; \
+                r_depth = 0; \
+            } else if (r_depth == 1) { \
+                ENSURE_STACK(1); \
+                *sp++ = r_tos0; \
+                r_depth = 0; \
+            } \
+        } while (0)
+
     #define SYNC_TO_VM() \
         do { \
+            FLUSH_TOS(); \
             ip_ = static_cast<size_t>(ip - code_base); \
             stack_.set_top(static_cast<size_t>(sp - stack_.data())); \
+            tos_depth_ = 0; \
+            tos0_ = VMValue{}; \
+            tos1_ = VMValue{}; \
         } while(0)
 
     #define SYNC_FROM_VM() \
@@ -736,6 +957,7 @@ void VM::run_optimized(OptimizedChunk& chunk) {
             sp = stack_.data() + depth; \
             stack_end = stack_.data() + stack_.capacity(); \
             local_base = call_stack_.empty() ? 0 : call_stack_.back().local_base; \
+            r_depth = 0; \
         } while(0)
 
     DISPATCH_C();
@@ -747,8 +969,7 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         int64_t val;
         std::memcpy(&val, ip, 8);
         ip += 8;
-        ENSURE_STACK(1);
-        *sp++ = val;
+        PUSH_TOS(val);
         DISPATCH_C();
     }
 
@@ -756,8 +977,7 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         int16_t val;
         std::memcpy(&val, ip, 2);
         ip += 2;
-        ENSURE_STACK(1);
-        *sp++ = val;
+        PUSH_TOS(val);
         DISPATCH_C();
     }
 
@@ -767,8 +987,7 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         std::memcpy(&a, ip, 8); ip += 8;
         std::memcpy(&b, ip, 8); ip += 8;
         std::memcpy(&s, ip, 4); ip += 4;
-        ENSURE_STACK(1);
-        *sp++ = TafpuNum(a, b, s);
+        PUSH_TOS(TafpuNum(a, b, s));
         DISPATCH_C();
     }
 
@@ -776,29 +995,23 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         double val;
         std::memcpy(&val, ip, 8);
         ip += 8;
-        ENSURE_STACK(1);
-        *sp++ = val;
+        PUSH_TOS(val);
         DISPATCH_C();
     }
 
     c_lbl_OP_PUSH_BOOL: {
         uint8_t b = *ip++;
-        ENSURE_STACK(1);
-        *sp++ = (b != 0);
+        PUSH_TOS(b != 0);
         DISPATCH_C();
     }
 
     c_lbl_OP_POP: {
-        --sp;
+        DISCARD_TOS();
         DISPATCH_C();
     }
 
     c_lbl_OP_DUP: {
-        ENSURE_STACK(1);
-        {
-            VMValue v = *(sp - 1);
-            *sp++ = v;
-        }
+        DUP_TOS();
         DISPATCH_C();
     }
 
@@ -807,8 +1020,7 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         ip += 2;
         size_t idx = local_base + slot;
         if (__builtin_expect(idx >= locals_.size(), 0)) locals_.resize(idx + 32);
-        ENSURE_STACK(1);
-        *sp++ = locals_[idx];
+        PUSH_TOS(locals_[idx]);
         DISPATCH_C();
     }
 
@@ -823,7 +1035,7 @@ void VM::run_optimized(OptimizedChunk& chunk) {
             }
         }
         if (__builtin_expect(idx >= locals_.size(), 0)) locals_.resize(idx + 32);
-        locals_[idx] = *(sp - 1);
+        locals_[idx] = PEEK_TOS();
         DISPATCH_C();
     }
 
@@ -831,8 +1043,7 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         uint16_t slot = static_cast<uint16_t>(ip[0] | (ip[1] << 8));
         ip += 2;
         if (__builtin_expect(slot >= globals_.size(), 0)) globals_.resize(slot + 32);
-        ENSURE_STACK(1);
-        *sp++ = globals_[slot];
+        PUSH_TOS(globals_[slot]);
         DISPATCH_C();
     }
 
@@ -840,17 +1051,17 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         uint16_t slot = static_cast<uint16_t>(ip[0] | (ip[1] << 8));
         ip += 2;
         if (__builtin_expect(slot >= globals_.size(), 0)) globals_.resize(slot + 32);
-        globals_[slot] = *(sp - 1);
+        globals_[slot] = PEEK_TOS();
         DISPATCH_C();
     }
 
     c_lbl_OP_ADD: {
-        VMValue b = *--sp;
-        VMValue a = *--sp;
+        VMValue a, b;
+        BINARY_OP_FETCH(a, b);
         if (__builtin_expect(VMValue::is_both_immediate_int(a, b), 1)) {
             int64_t sum = a.as_immediate_int_fast() + b.as_immediate_int_fast();
             if (__builtin_expect(sum >= VMValue::MIN_INT48 && sum <= VMValue::MAX_INT48, 1)) {
-                *sp++ = VMValue::from_raw(VMValue::TAG_INT | (static_cast<uint64_t>(sum) & VMValue::PAYLOAD_MASK));
+                r_tos0 = VMValue::from_raw(VMValue::TAG_INT | (static_cast<uint64_t>(sum) & VMValue::PAYLOAD_MASK));
                 size_t site_ip = static_cast<size_t>(ip - 1 - code_base);
                 if (__builtin_expect(opt_flags_.enable_quickening && site_ip < chunk.warmup_counters.size(), 1)) {
                     uint8_t& counter = chunk.warmup_counters[site_ip];
@@ -861,17 +1072,17 @@ void VM::run_optimized(OptimizedChunk& chunk) {
                 DISPATCH_C();
             }
         }
-        *sp++ = a.add(b);
+        r_tos0 = a.add(b);
         DISPATCH_C();
     }
 
     c_lbl_OP_SUB: {
-        VMValue b = *--sp;
-        VMValue a = *--sp;
+        VMValue a, b;
+        BINARY_OP_FETCH(a, b);
         if (__builtin_expect(VMValue::is_both_immediate_int(a, b), 1)) {
             int64_t diff = a.as_immediate_int_fast() - b.as_immediate_int_fast();
             if (__builtin_expect(diff >= VMValue::MIN_INT48 && diff <= VMValue::MAX_INT48, 1)) {
-                *sp++ = VMValue::from_raw(VMValue::TAG_INT | (static_cast<uint64_t>(diff) & VMValue::PAYLOAD_MASK));
+                r_tos0 = VMValue::from_raw(VMValue::TAG_INT | (static_cast<uint64_t>(diff) & VMValue::PAYLOAD_MASK));
                 size_t site_ip = static_cast<size_t>(ip - 1 - code_base);
                 if (__builtin_expect(opt_flags_.enable_quickening && site_ip < chunk.warmup_counters.size(), 1)) {
                     uint8_t& counter = chunk.warmup_counters[site_ip];
@@ -882,17 +1093,17 @@ void VM::run_optimized(OptimizedChunk& chunk) {
                 DISPATCH_C();
             }
         }
-        *sp++ = a.sub(b);
+        r_tos0 = a.sub(b);
         DISPATCH_C();
     }
 
     c_lbl_OP_MUL: {
-        VMValue b = *--sp;
-        VMValue a = *--sp;
+        VMValue a, b;
+        BINARY_OP_FETCH(a, b);
         if (__builtin_expect(VMValue::is_both_immediate_int(a, b), 1)) {
             int64_t prod = a.as_immediate_int_fast() * b.as_immediate_int_fast();
             if (__builtin_expect(prod >= VMValue::MIN_INT48 && prod <= VMValue::MAX_INT48, 1)) {
-                *sp++ = VMValue::from_raw(VMValue::TAG_INT | (static_cast<uint64_t>(prod) & VMValue::PAYLOAD_MASK));
+                r_tos0 = VMValue::from_raw(VMValue::TAG_INT | (static_cast<uint64_t>(prod) & VMValue::PAYLOAD_MASK));
                 size_t site_ip = static_cast<size_t>(ip - 1 - code_base);
                 if (__builtin_expect(opt_flags_.enable_quickening && site_ip < chunk.warmup_counters.size(), 1)) {
                     uint8_t& counter = chunk.warmup_counters[site_ip];
@@ -903,126 +1114,111 @@ void VM::run_optimized(OptimizedChunk& chunk) {
                 DISPATCH_C();
             }
         }
-        *sp++ = a.mul(b);
+        r_tos0 = a.mul(b);
         DISPATCH_C();
     }
 
     c_lbl_OP_DIV: {
-        {
-            VMValue b = *--sp;
-            VMValue a = *--sp;
-            *sp++ = a.div(b);
-        }
+        VMValue a, b;
+        BINARY_OP_FETCH(a, b);
+        r_tos0 = a.div(b);
         DISPATCH_C();
     }
 
     c_lbl_OP_MOD: {
-        {
-            VMValue b = *--sp;
-            VMValue a = *--sp;
-            *sp++ = a.mod(b);
-        }
+        VMValue a, b;
+        BINARY_OP_FETCH(a, b);
+        r_tos0 = a.mod(b);
         DISPATCH_C();
     }
 
     c_lbl_OP_BIT_AND: {
-        {
-            VMValue b = *--sp;
-            VMValue a = *--sp;
-            *sp++ = a.bit_and(b);
-        }
+        VMValue a, b;
+        BINARY_OP_FETCH(a, b);
+        r_tos0 = a.bit_and(b);
         DISPATCH_C();
     }
 
     c_lbl_OP_BIT_OR: {
-        {
-            VMValue b = *--sp;
-            VMValue a = *--sp;
-            *sp++ = a.bit_or(b);
-        }
+        VMValue a, b;
+        BINARY_OP_FETCH(a, b);
+        r_tos0 = a.bit_or(b);
         DISPATCH_C();
     }
 
     c_lbl_OP_BIT_XOR: {
-        {
-            VMValue b = *--sp;
-            VMValue a = *--sp;
-            *sp++ = a.bit_xor(b);
-        }
+        VMValue a, b;
+        BINARY_OP_FETCH(a, b);
+        r_tos0 = a.bit_xor(b);
         DISPATCH_C();
     }
 
     c_lbl_OP_SHL: {
-        {
-            VMValue b = *--sp;
-            VMValue a = *--sp;
-            *sp++ = a.shl(b);
-        }
+        VMValue a, b;
+        BINARY_OP_FETCH(a, b);
+        r_tos0 = a.shl(b);
         DISPATCH_C();
     }
 
     c_lbl_OP_SHR: {
-        {
-            VMValue b = *--sp;
-            VMValue a = *--sp;
-            *sp++ = a.shr(b);
-        }
+        VMValue a, b;
+        BINARY_OP_FETCH(a, b);
+        r_tos0 = a.shr(b);
         DISPATCH_C();
     }
 
     c_lbl_OP_NEG: {
-        {
-            VMValue val = *--sp;
-            *sp++ = val.neg();
+        if (r_depth >= 1) {
+            r_tos0 = r_tos0.neg();
+        } else {
+            if (UNLIKELY(profiler_ != nullptr)) profiler_->record_stack_read(1);
+            r_tos0 = (*--sp).neg();
+            r_depth = 1;
         }
         DISPATCH_C();
     }
 
     c_lbl_OP_TERNARY_MIN: {
-        {
-            VMValue b = *--sp;
-            VMValue a = *--sp;
-            if (a.is_tafpu() || b.is_tafpu()) {
-                int cmp = tafpu_cmp(a.as_tafpu(), b.as_tafpu());
-                *sp++ = (cmp <= 0 ? a : b);
+        VMValue a, b;
+        BINARY_OP_FETCH(a, b);
+        if (a.is_tafpu() || b.is_tafpu()) {
+            int cmp = tafpu_cmp(a.as_tafpu(), b.as_tafpu());
+            r_tos0 = (cmp <= 0 ? a : b);
+        } else {
+            int64_t v1 = a.as_int();
+            int64_t v2 = b.as_int();
+            if (a.is_bool() && b.is_bool()) {
+                r_tos0 = VMValue(v1 < v2 ? v1 != 0 : v2 != 0);
             } else {
-                int64_t v1 = a.as_int();
-                int64_t v2 = b.as_int();
-                if (a.is_bool() && b.is_bool()) {
-                    *sp++ = VMValue(v1 < v2 ? v1 != 0 : v2 != 0);
-                } else {
-                    *sp++ = VMValue(v1 < v2 ? v1 : v2);
-                }
+                r_tos0 = VMValue(v1 < v2 ? v1 : v2);
             }
         }
         DISPATCH_C();
     }
 
     c_lbl_OP_TERNARY_MAX: {
-        {
-            VMValue b = *--sp;
-            VMValue a = *--sp;
-            if (a.is_tafpu() || b.is_tafpu()) {
-                int cmp = tafpu_cmp(a.as_tafpu(), b.as_tafpu());
-                *sp++ = (cmp >= 0 ? a : b);
+        VMValue a, b;
+        BINARY_OP_FETCH(a, b);
+        if (a.is_tafpu() || b.is_tafpu()) {
+            int cmp = tafpu_cmp(a.as_tafpu(), b.as_tafpu());
+            r_tos0 = (cmp >= 0 ? a : b);
+        } else {
+            int64_t v1 = a.as_int();
+            int64_t v2 = b.as_int();
+            if (a.is_bool() && b.is_bool()) {
+                r_tos0 = VMValue(v1 > v2 ? v1 != 0 : v2 != 0);
             } else {
-                int64_t v1 = a.as_int();
-                int64_t v2 = b.as_int();
-                if (a.is_bool() && b.is_bool()) {
-                    *sp++ = VMValue(v1 > v2 ? v1 != 0 : v2 != 0);
-                } else {
-                    *sp++ = VMValue(v1 > v2 ? v1 : v2);
-                }
+                r_tos0 = VMValue(v1 > v2 ? v1 : v2);
             }
         }
         DISPATCH_C();
     }
 
     c_lbl_OP_EQ: {
-        VMValue b = *--sp;
-        VMValue a = *--sp;
+        VMValue a, b;
+        BINARY_OP_FETCH(a, b);
         if (__builtin_expect(VMValue::is_both_immediate_int(a, b), 1)) {
-            *sp++ = VMValue(a.raw_ == b.raw_);
+            r_tos0 = VMValue(a.raw_ == b.raw_);
             size_t site_ip = static_cast<size_t>(ip - 1 - code_base);
             if (__builtin_expect(opt_flags_.enable_quickening && site_ip < chunk.warmup_counters.size(), 1)) {
                 uint8_t& counter = chunk.warmup_counters[site_ip];
@@ -1036,30 +1232,28 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         else if (a.is_string() || b.is_string()) res = (a.to_string() == b.to_string());
         else if (a.is_tafpu() || b.is_tafpu()) res = (tafpu_cmp(a.as_tafpu(), b.as_tafpu()) == 0);
         else res = (a.as_int() == b.as_int());
-        *sp++ = res;
+        r_tos0 = VMValue(res);
         DISPATCH_C();
     }
 
     c_lbl_OP_NEQ: {
+        VMValue a, b;
+        BINARY_OP_FETCH(a, b);
         bool res;
-        {
-            VMValue b = *--sp;
-            VMValue a = *--sp;
-            if (a.is_int() && b.is_int()) res = (a.as_int() != b.as_int());
-            else if (a.is_float() || b.is_float()) res = (std::abs(a.as_float() - b.as_float()) >= 1e-12);
-            else if (a.is_string() || b.is_string()) res = (a.to_string() != b.to_string());
-            else if (a.is_tafpu() || b.is_tafpu()) res = (tafpu_cmp(a.as_tafpu(), b.as_tafpu()) != 0);
-            else res = (a.as_int() != b.as_int());
-        }
-        *sp++ = res;
+        if (a.is_int() && b.is_int()) res = (a.as_int() != b.as_int());
+        else if (a.is_float() || b.is_float()) res = (std::abs(a.as_float() - b.as_float()) >= 1e-12);
+        else if (a.is_string() || b.is_string()) res = (a.to_string() != b.to_string());
+        else if (a.is_tafpu() || b.is_tafpu()) res = (tafpu_cmp(a.as_tafpu(), b.as_tafpu()) != 0);
+        else res = (a.as_int() != b.as_int());
+        r_tos0 = VMValue(res);
         DISPATCH_C();
     }
 
     c_lbl_OP_LT: {
-        VMValue b = *--sp;
-        VMValue a = *--sp;
+        VMValue a, b;
+        BINARY_OP_FETCH(a, b);
         if (__builtin_expect(VMValue::is_both_immediate_int(a, b), 1)) {
-            *sp++ = VMValue(a.as_immediate_int_fast() < b.as_immediate_int_fast());
+            r_tos0 = VMValue(a.as_immediate_int_fast() < b.as_immediate_int_fast());
             size_t site_ip = static_cast<size_t>(ip - 1 - code_base);
             if (__builtin_expect(opt_flags_.enable_quickening && site_ip < chunk.warmup_counters.size(), 1)) {
                 uint8_t& counter = chunk.warmup_counters[site_ip];
@@ -1073,15 +1267,15 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         else if (a.is_string() || b.is_string()) res = (a.to_string() < b.to_string());
         else if (a.is_tafpu() || b.is_tafpu()) res = (tafpu_cmp(a.as_tafpu(), b.as_tafpu()) < 0);
         else res = (a.as_int() < b.as_int());
-        *sp++ = res;
+        r_tos0 = VMValue(res);
         DISPATCH_C();
     }
 
     c_lbl_OP_LE: {
-        VMValue b = *--sp;
-        VMValue a = *--sp;
+        VMValue a, b;
+        BINARY_OP_FETCH(a, b);
         if (__builtin_expect(VMValue::is_both_immediate_int(a, b), 1)) {
-            *sp++ = VMValue(a.as_immediate_int_fast() <= b.as_immediate_int_fast());
+            r_tos0 = VMValue(a.as_immediate_int_fast() <= b.as_immediate_int_fast());
             size_t site_ip = static_cast<size_t>(ip - 1 - code_base);
             if (__builtin_expect(opt_flags_.enable_quickening && site_ip < chunk.warmup_counters.size(), 1)) {
                 uint8_t& counter = chunk.warmup_counters[site_ip];
@@ -1095,15 +1289,15 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         else if (a.is_string() || b.is_string()) res = (a.to_string() <= b.to_string());
         else if (a.is_tafpu() || b.is_tafpu()) res = (tafpu_cmp(a.as_tafpu(), b.as_tafpu()) <= 0);
         else res = (a.as_int() <= b.as_int());
-        *sp++ = res;
+        r_tos0 = VMValue(res);
         DISPATCH_C();
     }
 
     c_lbl_OP_GT: {
-        VMValue b = *--sp;
-        VMValue a = *--sp;
+        VMValue a, b;
+        BINARY_OP_FETCH(a, b);
         if (__builtin_expect(VMValue::is_both_immediate_int(a, b), 1)) {
-            *sp++ = VMValue(a.as_immediate_int_fast() > b.as_immediate_int_fast());
+            r_tos0 = VMValue(a.as_immediate_int_fast() > b.as_immediate_int_fast());
             DISPATCH_C();
         }
         bool res;
@@ -1112,15 +1306,15 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         else if (a.is_string() || b.is_string()) res = (a.to_string() > b.to_string());
         else if (a.is_tafpu() || b.is_tafpu()) res = (tafpu_cmp(a.as_tafpu(), b.as_tafpu()) > 0);
         else res = (a.as_int() > b.as_int());
-        *sp++ = res;
+        r_tos0 = VMValue(res);
         DISPATCH_C();
     }
 
     c_lbl_OP_GE: {
-        VMValue b = *--sp;
-        VMValue a = *--sp;
+        VMValue a, b;
+        BINARY_OP_FETCH(a, b);
         if (__builtin_expect(VMValue::is_both_immediate_int(a, b), 1)) {
-            *sp++ = VMValue(a.as_immediate_int_fast() >= b.as_immediate_int_fast());
+            r_tos0 = VMValue(a.as_immediate_int_fast() >= b.as_immediate_int_fast());
             DISPATCH_C();
         }
         bool res;
@@ -1129,19 +1323,75 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         else if (a.is_string() || b.is_string()) res = (a.to_string() >= b.to_string());
         else if (a.is_tafpu() || b.is_tafpu()) res = (tafpu_cmp(a.as_tafpu(), b.as_tafpu()) >= 0);
         else res = (a.as_int() >= b.as_int());
-        *sp++ = res;
+        r_tos0 = VMValue(res);
         DISPATCH_C();
     }
 
     c_lbl_OP_JUMP: {
         int16_t offset = static_cast<int16_t>(ip[0] | (ip[1] << 8));
         if (__builtin_expect(offset < 0, 0)) {
+            FLUSH_TOS();
             stack_.set_top(static_cast<size_t>(sp - stack_.data()));
             gc_engine_.safepoint(*this);
             sp = stack_.data() + stack_.size();
 
-            // Gate 5.8: OSR Transition Hook
-            if (jit_enabled_ && jit_manager_) {
+            // Gate 5.9.1: Auto-Tiering Fast OSR Dispatch
+            if (auto_tiering_enabled_ && loop_hot_table_) {
+                size_t loop_target = static_cast<size_t>(ip + 2 + offset - code_base);
+                size_t lidx = loop_target & loop_hot_mask_;
+                LoopHotData& lhot = loop_hot_table_[lidx];
+
+                if (lhot.osr_entry != nullptr) {
+                    JITFrame frame;
+                    frame.vm = this;
+                    frame.locals = locals_.data() + local_base;
+                    frame.num_locals = locals_.size() - local_base;
+                    frame.stack_base = stack_.data();
+                    frame.stack_depth = static_cast<size_t>(sp - stack_.data());
+                    frame.prev_call_frame = call_stack_.empty() ? nullptr : &call_stack_.back();
+                    frame.prev_jit_frame = active_jit_frame_;
+                    active_jit_frame_ = &frame;
+
+                    int64_t raw_res = lhot.osr_entry(this, &frame);
+                    active_jit_frame_ = frame.prev_jit_frame;
+
+                    if (__builtin_expect(frame.deopt_code > 0, 0)) {
+                        jit_manager_->handle_deopt_feedback(call_stack_.empty() ? 0 : call_stack_.back().func_entry,
+                                                            static_cast<uint32_t>(loop_target),
+                                                            static_cast<DeoptReason>(frame.deopt_reason));
+                        ip = code_base + frame.deopt_code;
+                        sp = stack_.data() + stack_.size();
+                        DISPATCH_C();
+                    } else {
+                        if (call_stack_.empty()) {
+                            *sp++ = VMValue::from_raw(static_cast<uint64_t>(raw_res));
+                            running_ = false;
+                            goto c_lbl_exit;
+                        } else {
+                            CallFrame cframe = call_stack_.back();
+                            call_stack_.pop_back();
+                            if (opt_flags_.enable_fast_frames) {
+                                local_top_ = cframe.local_base;
+                            } else {
+                                locals_.resize(cframe.local_base);
+                            }
+                            sp = stack_.data() + cframe.stack_depth;
+                            *sp++ = VMValue::from_raw(static_cast<uint64_t>(raw_res));
+                            local_base = call_stack_.empty() ? 0 : call_stack_.back().local_base;
+                            ip = code_base + cframe.return_ip;
+                            DISPATCH_C();
+                        }
+                    }
+                } else if (UNLIKELY(++lhot.backedge_counter >= lhot.osr_threshold)) {
+                    size_t func_ip = call_stack_.empty() ? 0 : call_stack_.back().func_entry;
+                    SYNC_TO_VM();
+                    bool ok = jit_manager_->slow_tiering_coordinator_osr(this, chunk, func_ip, static_cast<uint32_t>(loop_target), lhot);
+                    SYNC_FROM_VM();
+                    if (!ok) {
+                        lhot.osr_threshold += 1000;
+                    }
+                }
+            } else if (jit_enabled_ && jit_manager_) {
                 size_t func_ip = call_stack_.empty() ? 0 : call_stack_.back().func_entry;
                 size_t loop_target = static_cast<size_t>(ip + 2 + offset - code_base);
                 jit_manager_->record_backedge(func_ip);
@@ -1211,12 +1461,9 @@ void VM::run_optimized(OptimizedChunk& chunk) {
     c_lbl_OP_JUMP_IF_FALSE: {
         int16_t offset = static_cast<int16_t>(ip[0] | (ip[1] << 8));
         ip += 2;
-        bool take = false;
-        {
-            VMValue cond = *--sp;
-            take = !cond.as_bool();
-        }
-        if (take) ip += offset;
+        VMValue cond;
+        POP_TOS_VAL(cond);
+        if (!cond.as_bool()) ip += offset;
         DISPATCH_C();
     }
 
@@ -1226,21 +1473,20 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         int16_t pos_off = static_cast<int16_t>(ip[4] | (ip[5] << 8));
         ip += 6;
         int branch_sign = 0;
-        {
-            VMValue val = *--sp;
-            if (val.is_tafpu()) {
-                branch_sign = tafpu_cmp(val.as_tafpu(), TafpuNum(0, 0, 0));
-            } else if (val.is_float()) {
-                double d = val.as_float();
-                if (d < -1e-12) branch_sign = -1;
-                else if (d > 1e-12) branch_sign = 1;
-                else branch_sign = 0;
-            } else {
-                int64_t n = val.as_int();
-                if (n < 0) branch_sign = -1;
-                else if (n > 0) branch_sign = 1;
-                else branch_sign = 0;
-            }
+        VMValue val;
+        POP_TOS_VAL(val);
+        if (val.is_tafpu()) {
+            branch_sign = tafpu_cmp(val.as_tafpu(), TafpuNum(0, 0, 0));
+        } else if (val.is_float()) {
+            double d = val.as_float();
+            if (d < -1e-12) branch_sign = -1;
+            else if (d > 1e-12) branch_sign = 1;
+            else branch_sign = 0;
+        } else {
+            int64_t n = val.as_int();
+            if (n < 0) branch_sign = -1;
+            else if (n > 0) branch_sign = 1;
+            else branch_sign = 0;
         }
         if (branch_sign < 0) {
             ip = (ip - 4) + neg_off;
@@ -1253,6 +1499,7 @@ void VM::run_optimized(OptimizedChunk& chunk) {
     }
 
     c_lbl_OP_CALL: {
+        FLUSH_TOS();
         uint16_t fn_idx = static_cast<uint16_t>(ip[0] | (ip[1] << 8));
         ip += 2;
         uint32_t fn_entry = 0;
@@ -1268,6 +1515,65 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         uint8_t argc = *ip++;
 
         size_t callee_frame_size = chunk.get_frame_size(fn_idx, argc);
+
+        // Gate 5.9.1: Auto-Tiering Direct Native Dispatch & Hotness Tracking
+        if (auto_tiering_enabled_ && function_hot_table_) {
+            size_t h_idx = fn_idx & function_hot_mask_;
+            FunctionHotData& hot = function_hot_table_[h_idx];
+            if (hot.native_entry != nullptr) {
+                size_t new_local_base;
+                if (opt_flags_.enable_fast_frames) {
+                    new_local_base = local_top_;
+                    local_top_ += callee_frame_size;
+                    if (__builtin_expect(local_top_ + 64 >= locals_.size(), 0)) {
+                        locals_.resize(locals_.size() * 2);
+                    }
+                } else {
+                    new_local_base = locals_.size();
+                    locals_.resize(new_local_base + callee_frame_size);
+                }
+                for (int i = static_cast<int>(argc) - 1; i >= 0; --i) {
+                    locals_[new_local_base + i] = *--sp;
+                }
+
+                JITFrame frame;
+                frame.vm = this;
+                frame.locals = locals_.data() + new_local_base;
+                frame.num_locals = callee_frame_size;
+                frame.stack_base = stack_.data();
+                frame.stack_depth = static_cast<size_t>(sp - stack_.data());
+                frame.prev_call_frame = call_stack_.empty() ? nullptr : &call_stack_.back();
+                frame.prev_jit_frame = active_jit_frame_;
+                active_jit_frame_ = &frame;
+
+                int64_t raw_res = hot.native_entry(this, &frame);
+                active_jit_frame_ = frame.prev_jit_frame;
+
+                if (__builtin_expect(frame.deopt_code > 0, 0)) {
+                    jit_manager_->handle_deopt_feedback(fn_entry, 0, static_cast<DeoptReason>(frame.deopt_reason));
+                    call_stack_.push_back(CallFrame{static_cast<size_t>(ip - code_base), new_local_base, static_cast<size_t>(sp - stack_.data()), callee_frame_size, fn_entry});
+                    stack_.set_top(static_cast<size_t>(sp - stack_.data()));
+                    local_base = new_local_base;
+                    ip = code_base + frame.deopt_code;
+                    DISPATCH_C();
+                } else {
+                    PUSH_TOS(VMValue::from_raw(static_cast<uint64_t>(raw_res)));
+                    if (opt_flags_.enable_fast_frames) {
+                        local_top_ = new_local_base;
+                    } else {
+                        locals_.resize(new_local_base);
+                    }
+                    DISPATCH_C();
+                }
+            } else if (UNLIKELY(++hot.invocation_counter >= hot.tier1_threshold)) {
+                SYNC_TO_VM();
+                bool ok = jit_manager_->slow_tiering_coordinator_call(this, chunk, fn_entry, hot);
+                SYNC_FROM_VM();
+                if (!ok) {
+                    hot.tier1_threshold += 100;
+                }
+            }
+        }
 
         size_t new_local_base;
         if (opt_flags_.enable_fast_frames) {
@@ -1290,6 +1596,9 @@ void VM::run_optimized(OptimizedChunk& chunk) {
             locals_[new_local_base + i] = *--sp;
         }
 
+        if (UNLIKELY(profiler_ != nullptr)) {
+            profiler_->record_call(call_stack_.size() + 1);
+        }
         call_stack_.push_back(CallFrame{static_cast<size_t>(ip - code_base), new_local_base, static_cast<size_t>(sp - stack_.data()), callee_frame_size, fn_entry});
         stack_.set_top(static_cast<size_t>(sp - stack_.data()));
         gc_engine_.safepoint(*this);
@@ -1306,16 +1615,19 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         }
         CallFrame frame = call_stack_.back();
         call_stack_.pop_back();
-        {
-            VMValue ret_val = *--sp;
-            if (opt_flags_.enable_fast_frames) {
-                local_top_ = frame.local_base;
-            } else {
-                locals_.resize(frame.local_base);
-            }
-            sp = stack_.data() + frame.stack_depth;
-            *sp++ = ret_val;
+        if (UNLIKELY(profiler_ != nullptr)) {
+            profiler_->record_return();
         }
+        VMValue ret_val;
+        POP_TOS_VAL(ret_val);
+        r_depth = 0;
+        if (opt_flags_.enable_fast_frames) {
+            local_top_ = frame.local_base;
+        } else {
+            locals_.resize(frame.local_base);
+        }
+        sp = stack_.data() + frame.stack_depth;
+        PUSH_TOS(ret_val);
         local_base = call_stack_.empty() ? 0 : call_stack_.back().local_base;
         ip = code_base + frame.return_ip;
         DISPATCH_C();
@@ -1375,129 +1687,123 @@ void VM::run_optimized(OptimizedChunk& chunk) {
     c_lbl_OP_NEW_ARRAY: {
         uint16_t count = static_cast<uint16_t>(ip[0] | (ip[1] << 8));
         ip += 2;
-        ENSURE_STACK(1);
+        FLUSH_TOS();
         {
-            auto arr = std::make_shared<std::vector<VMValue>>(count);
+            auto arr = std::make_shared<ArrayObject>();
+            arr->generic_data.resize(count);
             for (int i = static_cast<int>(count) - 1; i >= 0; --i) {
-                (*arr)[i] = *--sp;
+                arr->generic_data[i] = *--sp;
             }
-            *sp++ = VMValue(arr);
+            arr->try_promote();
+            PUSH_TOS(VMValue(arr));
         }
         DISPATCH_C();
     }
 
     c_lbl_OP_GET_INDEX: {
-        {
-            VMValue idx = *--sp;
-            VMValue obj = *--sp;
-            if (obj.is_array()) {
-                auto arr = obj.as_array();
-                if (arr && !arr->empty()) {
-                    int64_t i = idx.as_int();
-                    if (i < 0) i += arr->size();
-                    if (i >= 0 && static_cast<size_t>(i) < arr->size()) {
-                        *sp++ = (*arr)[i];
-                    } else {
-                        *sp++ = VMValue(static_cast<int64_t>(0));
-                    }
-                } else {
-                    *sp++ = VMValue(static_cast<int64_t>(0));
-                }
-            } else if (obj.is_string()) {
-                std::string s = obj.to_string();
+        VMValue obj, idx;
+        POP_TWO_TOS(obj, idx);
+        if (obj.is_array()) {
+            auto arr = obj.as_array();
+            if (arr && !arr->empty()) {
                 int64_t i = idx.as_int();
-                if (i < 0) i += s.size();
-                if (i >= 0 && static_cast<size_t>(i) < s.size()) {
-                    *sp++ = VMValue(std::string(1, s[i]));
+                if (i < 0) i += arr->size();
+                if (i >= 0 && static_cast<size_t>(i) < arr->size()) {
+                    PUSH_TOS(arr->get(static_cast<size_t>(i)));
                 } else {
-                    *sp++ = VMValue("");
-                }
-            } else if (obj.is_tafpu()) {
-                TafpuNum num = obj.as_tafpu();
-                int64_t i = idx.as_int();
-                if (i == 0) *sp++ = VMValue(num.a);
-                else if (i == 1) *sp++ = VMValue(num.b);
-                else if (i == 2) *sp++ = VMValue(static_cast<int64_t>(num.s));
-                else *sp++ = VMValue(static_cast<int64_t>(0));
-            } else if (obj.is_object()) {
-                auto vmo = obj.as_object();
-                if (vmo) {
-                    *sp++ = vmo->get_field(idx.to_string());
-                } else {
-                    *sp++ = VMValue(static_cast<int64_t>(0));
+                    PUSH_TOS(VMValue(static_cast<int64_t>(0)));
                 }
             } else {
-                *sp++ = VMValue(static_cast<int64_t>(0));
+                PUSH_TOS(VMValue(static_cast<int64_t>(0)));
             }
+        } else if (obj.is_string()) {
+            std::string s = obj.to_string();
+            int64_t i = idx.as_int();
+            if (i < 0) i += s.size();
+            if (i >= 0 && static_cast<size_t>(i) < s.size()) {
+                PUSH_TOS(VMValue(std::string(1, s[i])));
+            } else {
+                PUSH_TOS(VMValue(""));
+            }
+        } else if (obj.is_tafpu()) {
+            TafpuNum num = obj.as_tafpu();
+            int64_t i = idx.as_int();
+            if (i == 0) PUSH_TOS(VMValue(num.a));
+            else if (i == 1) PUSH_TOS(VMValue(num.b));
+            else if (i == 2) PUSH_TOS(VMValue(static_cast<int64_t>(num.s)));
+            else PUSH_TOS(VMValue(static_cast<int64_t>(0)));
+        } else if (obj.is_object()) {
+            auto vmo = obj.as_object();
+            if (vmo) {
+                PUSH_TOS(vmo->get_field(idx.to_string()));
+            } else {
+                PUSH_TOS(VMValue(static_cast<int64_t>(0)));
+            }
+        } else {
+            PUSH_TOS(VMValue(static_cast<int64_t>(0)));
         }
         DISPATCH_C();
     }
 
     c_lbl_OP_SET_INDEX: {
-        {
-            VMValue val = *--sp;
-            VMValue idx_val = *--sp;
-            VMValue target = *--sp;
-            if (target.is_array()) {
-                auto arr = target.as_array();
-                if (arr) {
-                    int64_t i = idx_val.as_int();
-                    if (i < 0) i += arr->size();
-                    if (i >= 0 && static_cast<size_t>(i) < arr->size()) {
-                        (*arr)[i] = val;
-                    }
+        VMValue val, idx_val, target;
+        POP_TOS_VAL(val);
+        POP_TWO_TOS(target, idx_val);
+        if (target.is_array()) {
+            auto arr = target.as_array();
+            if (arr) {
+                int64_t i = idx_val.as_int();
+                if (i < 0) i += arr->size();
+                if (i >= 0 && static_cast<size_t>(i) < arr->size()) {
+                    arr->set(static_cast<size_t>(i), val);
                 }
-            } else if (target.is_object()) {
-                auto obj = target.as_object();
-                if (obj) {
-                    obj->set_field(idx_val.to_string(), val);
-                }
+            }
+        } else if (target.is_object()) {
+            auto obj = target.as_object();
+            if (obj) {
+                obj->set_field(idx_val.to_string(), val);
             }
         }
         DISPATCH_C();
     }
 
     c_lbl_OP_LOAD_LOCAL_0: {
-        ENSURE_STACK(1);
-        *sp++ = locals_[local_base + 0];
+        PUSH_TOS(locals_[local_base + 0]);
         DISPATCH_C();
     }
 
     c_lbl_OP_LOAD_LOCAL_1: {
-        ENSURE_STACK(1);
-        *sp++ = locals_[local_base + 1];
+        PUSH_TOS(locals_[local_base + 1]);
         DISPATCH_C();
     }
 
     c_lbl_OP_LOAD_LOCAL_2: {
-        ENSURE_STACK(1);
-        *sp++ = locals_[local_base + 2];
+        PUSH_TOS(locals_[local_base + 2]);
         DISPATCH_C();
     }
 
     c_lbl_OP_LOAD_LOCAL_3: {
-        ENSURE_STACK(1);
-        *sp++ = locals_[local_base + 3];
+        PUSH_TOS(locals_[local_base + 3]);
         DISPATCH_C();
     }
 
     c_lbl_OP_STORE_LOCAL_0: {
-        locals_[local_base + 0] = *(sp - 1);
+        locals_[local_base + 0] = PEEK_TOS();
         DISPATCH_C();
     }
 
     c_lbl_OP_STORE_LOCAL_1: {
-        locals_[local_base + 1] = *(sp - 1);
+        locals_[local_base + 1] = PEEK_TOS();
         DISPATCH_C();
     }
 
     c_lbl_OP_STORE_LOCAL_2: {
-        locals_[local_base + 2] = *(sp - 1);
+        locals_[local_base + 2] = PEEK_TOS();
         DISPATCH_C();
     }
 
     c_lbl_OP_STORE_LOCAL_3: {
-        locals_[local_base + 3] = *(sp - 1);
+        locals_[local_base + 3] = PEEK_TOS();
         DISPATCH_C();
     }
 
@@ -1526,16 +1832,41 @@ void VM::run_optimized(OptimizedChunk& chunk) {
     }
 
     c_lbl_OP_GET_INDEX_ARRAY: {
-        VMValue idx_val = *--sp;
-        VMValue target = *--sp;
+        VMValue target, idx_val;
+        POP_TWO_TOS(target, idx_val);
         if (__builtin_expect(target.is_array() && idx_val.is_immediate_int(), 1)) {
             auto* arr = target.payload()->arr.get();
             if (arr) {
                 int64_t i = idx_val.as_immediate_int_fast();
-                if (i >= 0 && static_cast<size_t>(i) < arr->size()) {
-                    *sp++ = (*arr)[i];
-                    telemetry_.superinstructions_executed++;
-                    DISPATCH_C();
+                if (__builtin_expect(i >= 0 && static_cast<size_t>(i) < arr->size(), 1)) {
+                    switch (arr->rep) {
+                        case ArrayRep::I64:
+                            if (UNLIKELY(profiler_ != nullptr)) profiler_->record_array_flat_read();
+                            PUSH_TOS(VMValue(arr->i64_data[i]));
+                            telemetry_.superinstructions_executed++;
+                            DISPATCH_C();
+                        case ArrayRep::F64:
+                            if (UNLIKELY(profiler_ != nullptr)) profiler_->record_array_flat_read();
+                            PUSH_TOS(VMValue(arr->f64_data[i]));
+                            telemetry_.superinstructions_executed++;
+                            DISPATCH_C();
+                        case ArrayRep::U8:
+                            if (UNLIKELY(profiler_ != nullptr)) profiler_->record_array_flat_read();
+                            PUSH_TOS(VMValue(static_cast<int64_t>(arr->u8_data[i])));
+                            telemetry_.superinstructions_executed++;
+                            DISPATCH_C();
+                        case ArrayRep::TAFPU:
+                            if (UNLIKELY(profiler_ != nullptr)) profiler_->record_array_flat_read();
+                            PUSH_TOS(VMValue(arr->tafpu_data[i]));
+                            telemetry_.superinstructions_executed++;
+                            DISPATCH_C();
+                        case ArrayRep::Generic:
+                        default:
+                            if (UNLIKELY(profiler_ != nullptr)) profiler_->record_array_generic_read();
+                            PUSH_TOS(arr->generic_data[i]);
+                            telemetry_.superinstructions_executed++;
+                            DISPATCH_C();
+                    }
                 }
             }
         }
@@ -1545,42 +1876,86 @@ void VM::run_optimized(OptimizedChunk& chunk) {
                 int64_t i = idx_val.as_int();
                 if (i < 0) i += arr->size();
                 if (i >= 0 && static_cast<size_t>(i) < arr->size()) {
-                    *sp++ = (*arr)[i];
+                    PUSH_TOS(arr->get(static_cast<size_t>(i)));
                 } else {
-                    *sp++ = VMValue(static_cast<int64_t>(0));
+                    PUSH_TOS(VMValue(static_cast<int64_t>(0)));
                 }
             } else {
-                *sp++ = VMValue(static_cast<int64_t>(0));
+                PUSH_TOS(VMValue(static_cast<int64_t>(0)));
             }
         } else if (target.is_string()) {
             std::string s = target.to_string();
             int64_t i = idx_val.as_int();
             if (i < 0) i += s.size();
             if (i >= 0 && static_cast<size_t>(i) < s.size()) {
-                *sp++ = VMValue(std::string(1, s[i]));
+                PUSH_TOS(VMValue(std::string(1, s[i])));
             } else {
-                *sp++ = VMValue("");
+                PUSH_TOS(VMValue(""));
             }
         } else if (target.is_object()) {
             auto* vmo = target.payload()->obj.get();
-            if (vmo) *sp++ = vmo->get_field(idx_val.to_string());
-            else *sp++ = VMValue(static_cast<int64_t>(0));
+            if (vmo) PUSH_TOS(vmo->get_field(idx_val.to_string()));
+            else PUSH_TOS(VMValue(static_cast<int64_t>(0)));
         } else {
-            *sp++ = VMValue(static_cast<int64_t>(0));
+            PUSH_TOS(VMValue(static_cast<int64_t>(0)));
         }
         DISPATCH_C();
     }
 
     c_lbl_OP_SET_INDEX_ARRAY: {
-        VMValue val = *--sp;
-        VMValue idx_val = *--sp;
-        VMValue target = *--sp;
+        VMValue val, idx_val, target;
+        POP_TOS_VAL(val);
+        POP_TWO_TOS(target, idx_val);
         if (__builtin_expect(target.is_array() && idx_val.is_immediate_int(), 1)) {
             auto* arr = target.payload()->arr.get();
             if (arr) {
                 int64_t i = idx_val.as_immediate_int_fast();
-                if (i >= 0 && static_cast<size_t>(i) < arr->size()) {
-                    (*arr)[i] = val;
+                if (__builtin_expect(i >= 0 && static_cast<size_t>(i) < arr->size(), 1)) {
+                    switch (arr->rep) {
+                        case ArrayRep::I64:
+                            if (__builtin_expect(val.is_immediate_int(), 1)) {
+                                if (UNLIKELY(profiler_ != nullptr)) profiler_->record_array_flat_write();
+                                arr->i64_data[i] = val.as_immediate_int_fast();
+                                telemetry_.superinstructions_executed++;
+                                DISPATCH_C();
+                            }
+                            break;
+                        case ArrayRep::F64:
+                            if (val.is_float()) {
+                                if (UNLIKELY(profiler_ != nullptr)) profiler_->record_array_flat_write();
+                                arr->f64_data[i] = val.as_float();
+                                telemetry_.superinstructions_executed++;
+                                DISPATCH_C();
+                            }
+                            break;
+                        case ArrayRep::U8:
+                            if (val.is_immediate_int()) {
+                                int64_t iv = val.as_immediate_int_fast();
+                                if (iv >= 0 && iv <= 255) {
+                                    if (UNLIKELY(profiler_ != nullptr)) profiler_->record_array_flat_write();
+                                    arr->u8_data[i] = static_cast<uint8_t>(iv);
+                                    telemetry_.superinstructions_executed++;
+                                    DISPATCH_C();
+                                }
+                            }
+                            break;
+                        case ArrayRep::TAFPU:
+                            if (val.is_tafpu()) {
+                                if (UNLIKELY(profiler_ != nullptr)) profiler_->record_array_flat_write();
+                                arr->tafpu_data[i] = val.as_tafpu();
+                                telemetry_.superinstructions_executed++;
+                                DISPATCH_C();
+                            }
+                            break;
+                        case ArrayRep::Generic:
+                        default:
+                            if (UNLIKELY(profiler_ != nullptr)) profiler_->record_array_generic_write();
+                            arr->generic_data[i] = val;
+                            telemetry_.superinstructions_executed++;
+                            DISPATCH_C();
+                    }
+                    arr->set(static_cast<size_t>(i), val);
+                    if (UNLIKELY(profiler_ != nullptr)) profiler_->record_array_generic_write();
                     telemetry_.superinstructions_executed++;
                     DISPATCH_C();
                 }
@@ -1592,7 +1967,7 @@ void VM::run_optimized(OptimizedChunk& chunk) {
                 int64_t i = idx_val.as_int();
                 if (i < 0) i += arr->size();
                 if (i >= 0 && static_cast<size_t>(i) < arr->size()) {
-                    (*arr)[i] = val;
+                    arr->set(static_cast<size_t>(i), val);
                 }
             }
         } else if (target.is_object()) {
@@ -1628,12 +2003,12 @@ void VM::run_optimized(OptimizedChunk& chunk) {
     }
 
     c_lbl_OP_QUICK_ADD_INT: {
-        VMValue b = *--sp;
-        VMValue a = *--sp;
+        VMValue a, b;
+        BINARY_OP_FETCH(a, b);
         if (__builtin_expect(VMValue::is_both_immediate_int(a, b), 1)) {
             int64_t sum = a.as_immediate_int_fast() + b.as_immediate_int_fast();
             if (__builtin_expect(sum >= VMValue::MIN_INT48 && sum <= VMValue::MAX_INT48, 1)) {
-                *sp++ = VMValue::from_raw(VMValue::TAG_INT | (static_cast<uint64_t>(sum) & VMValue::PAYLOAD_MASK));
+                r_tos0 = VMValue::from_raw(VMValue::TAG_INT | (static_cast<uint64_t>(sum) & VMValue::PAYLOAD_MASK));
                 telemetry_.quick_hits++;
                 DISPATCH_C();
             }
@@ -1641,17 +2016,17 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         telemetry_.deopt_count++;
         size_t site_ip = static_cast<size_t>(ip - 1 - code_base);
         code_base[site_ip] = static_cast<uint8_t>(OpCode::OP_ADD);
-        *sp++ = a.add(b);
+        r_tos0 = a.add(b);
         DISPATCH_C();
     }
 
     c_lbl_OP_QUICK_SUB_INT: {
-        VMValue b = *--sp;
-        VMValue a = *--sp;
+        VMValue a, b;
+        BINARY_OP_FETCH(a, b);
         if (__builtin_expect(VMValue::is_both_immediate_int(a, b), 1)) {
             int64_t diff = a.as_immediate_int_fast() - b.as_immediate_int_fast();
             if (__builtin_expect(diff >= VMValue::MIN_INT48 && diff <= VMValue::MAX_INT48, 1)) {
-                *sp++ = VMValue::from_raw(VMValue::TAG_INT | (static_cast<uint64_t>(diff) & VMValue::PAYLOAD_MASK));
+                r_tos0 = VMValue::from_raw(VMValue::TAG_INT | (static_cast<uint64_t>(diff) & VMValue::PAYLOAD_MASK));
                 telemetry_.quick_hits++;
                 DISPATCH_C();
             }
@@ -1659,17 +2034,17 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         telemetry_.deopt_count++;
         size_t site_ip = static_cast<size_t>(ip - 1 - code_base);
         code_base[site_ip] = static_cast<uint8_t>(OpCode::OP_SUB);
-        *sp++ = a.sub(b);
+        r_tos0 = a.sub(b);
         DISPATCH_C();
     }
 
     c_lbl_OP_QUICK_MUL_INT: {
-        VMValue b = *--sp;
-        VMValue a = *--sp;
+        VMValue a, b;
+        BINARY_OP_FETCH(a, b);
         if (__builtin_expect(VMValue::is_both_immediate_int(a, b), 1)) {
             int64_t prod = a.as_immediate_int_fast() * b.as_immediate_int_fast();
             if (__builtin_expect(prod >= VMValue::MIN_INT48 && prod <= VMValue::MAX_INT48, 1)) {
-                *sp++ = VMValue::from_raw(VMValue::TAG_INT | (static_cast<uint64_t>(prod) & VMValue::PAYLOAD_MASK));
+                r_tos0 = VMValue::from_raw(VMValue::TAG_INT | (static_cast<uint64_t>(prod) & VMValue::PAYLOAD_MASK));
                 telemetry_.quick_hits++;
                 DISPATCH_C();
             }
@@ -1677,15 +2052,15 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         telemetry_.deopt_count++;
         size_t site_ip = static_cast<size_t>(ip - 1 - code_base);
         code_base[site_ip] = static_cast<uint8_t>(OpCode::OP_MUL);
-        *sp++ = a.mul(b);
+        r_tos0 = a.mul(b);
         DISPATCH_C();
     }
 
     c_lbl_OP_QUICK_LT_INT: {
-        VMValue b = *--sp;
-        VMValue a = *--sp;
+        VMValue a, b;
+        BINARY_OP_FETCH(a, b);
         if (__builtin_expect(VMValue::is_both_immediate_int(a, b), 1)) {
-            *sp++ = VMValue(a.as_immediate_int_fast() < b.as_immediate_int_fast());
+            r_tos0 = VMValue(a.as_immediate_int_fast() < b.as_immediate_int_fast());
             telemetry_.quick_hits++;
             DISPATCH_C();
         }
@@ -1698,15 +2073,15 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         else if (a.is_string() || b.is_string()) res = (a.to_string() < b.to_string());
         else if (a.is_tafpu() || b.is_tafpu()) res = (tafpu_cmp(a.as_tafpu(), b.as_tafpu()) < 0);
         else res = (a.as_int() < b.as_int());
-        *sp++ = res;
+        r_tos0 = VMValue(res);
         DISPATCH_C();
     }
 
     c_lbl_OP_QUICK_LE_INT: {
-        VMValue b = *--sp;
-        VMValue a = *--sp;
+        VMValue a, b;
+        BINARY_OP_FETCH(a, b);
         if (__builtin_expect(VMValue::is_both_immediate_int(a, b), 1)) {
-            *sp++ = VMValue(a.as_immediate_int_fast() <= b.as_immediate_int_fast());
+            r_tos0 = VMValue(a.as_immediate_int_fast() <= b.as_immediate_int_fast());
             telemetry_.quick_hits++;
             DISPATCH_C();
         }
@@ -1719,15 +2094,15 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         else if (a.is_string() || b.is_string()) res = (a.to_string() <= b.to_string());
         else if (a.is_tafpu() || b.is_tafpu()) res = (tafpu_cmp(a.as_tafpu(), b.as_tafpu()) <= 0);
         else res = (a.as_int() <= b.as_int());
-        *sp++ = res;
+        r_tos0 = VMValue(res);
         DISPATCH_C();
     }
 
     c_lbl_OP_QUICK_EQ_INT: {
-        VMValue b = *--sp;
-        VMValue a = *--sp;
+        VMValue a, b;
+        BINARY_OP_FETCH(a, b);
         if (__builtin_expect(VMValue::is_both_immediate_int(a, b), 1)) {
-            *sp++ = VMValue(a.raw_ == b.raw_);
+            r_tos0 = VMValue(a.raw_ == b.raw_);
             telemetry_.quick_hits++;
             DISPATCH_C();
         }
@@ -1740,7 +2115,7 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         else if (a.is_string() || b.is_string()) res = (a.to_string() == b.to_string());
         else if (a.is_tafpu() || b.is_tafpu()) res = (tafpu_cmp(a.as_tafpu(), b.as_tafpu()) == 0);
         else res = (a.as_int() == b.as_int());
-        *sp++ = res;
+        r_tos0 = VMValue(res);
         DISPATCH_C();
     }
 
@@ -1748,12 +2123,13 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         uint16_t ic_idx = static_cast<uint16_t>(ip[0] | (ip[1] << 8));
         ip += 2;
         ICSite& ic = chunk.ic_sites[ic_idx];
-        VMValue obj = *--sp;
+        VMValue obj;
+        POP_TOS_VAL(obj);
 
         if (__builtin_expect(obj.is_object(), 1)) {
             auto* vmo = obj.payload()->obj.get();
             if (__builtin_expect(vmo && vmo->shape && vmo->shape->shape_id == ic.expected_shape && ic.expected_shape != 0, 1)) {
-                *sp++ = vmo->fields_array[ic.cached_slot];
+                PUSH_TOS(vmo->fields_array[ic.cached_slot]);
                 telemetry_.ic_hits++;
                 DISPATCH_C();
             }
@@ -1761,7 +2137,7 @@ void VM::run_optimized(OptimizedChunk& chunk) {
             if (vmo) {
                 const std::string& fname = chunk.string_table[ic.str_id];
                 if (fname == "len" || fname == "length") {
-                    *sp++ = VMValue(static_cast<int64_t>(vmo->field_count()));
+                    PUSH_TOS(VMValue(static_cast<int64_t>(vmo->field_count())));
                     DISPATCH_C();
                 }
                 if (vmo->shape) {
@@ -1769,12 +2145,12 @@ void VM::run_optimized(OptimizedChunk& chunk) {
                     if (slot >= 0 && static_cast<size_t>(slot) < vmo->fields_array.size()) {
                         ic.expected_shape = vmo->shape->shape_id;
                         ic.cached_slot = static_cast<uint16_t>(slot);
-                        *sp++ = vmo->fields_array[slot];
+                        PUSH_TOS(vmo->fields_array[slot]);
                         DISPATCH_C();
                     }
                 }
                 if (vmo->has_field(fname)) {
-                    *sp++ = vmo->get_field(fname);
+                    PUSH_TOS(vmo->get_field(fname));
                     DISPATCH_C();
                 }
                 SYNC_TO_VM();
@@ -1784,26 +2160,26 @@ void VM::run_optimized(OptimizedChunk& chunk) {
             auto* arr = obj.payload()->arr.get();
             const std::string& fname = chunk.string_table[ic.str_id];
             if (fname == "len" || fname == "length") {
-                *sp++ = VMValue(static_cast<int64_t>(arr ? arr->size() : 0));
+                PUSH_TOS(VMValue(static_cast<int64_t>(arr ? arr->size() : 0)));
                 DISPATCH_C();
             }
         } else if (obj.is_tafpu()) {
             TafpuNum num = obj.as_tafpu();
             const std::string& fname = chunk.string_table[ic.str_id];
-            if (fname == "len" || fname == "length") *sp++ = VMValue(static_cast<int64_t>(3));
-            else if (fname == "a" || fname == "x") *sp++ = VMValue(num.a);
-            else if (fname == "b" || fname == "y") *sp++ = VMValue(num.b);
-            else if (fname == "s" || fname == "z") *sp++ = VMValue(static_cast<int64_t>(num.s));
-            else *sp++ = VMValue(static_cast<int64_t>(0));
+            if (fname == "len" || fname == "length") PUSH_TOS(VMValue(static_cast<int64_t>(3)));
+            else if (fname == "a" || fname == "x") PUSH_TOS(VMValue(num.a));
+            else if (fname == "b" || fname == "y") PUSH_TOS(VMValue(num.b));
+            else if (fname == "s" || fname == "z") PUSH_TOS(VMValue(static_cast<int64_t>(num.s)));
+            else PUSH_TOS(VMValue(static_cast<int64_t>(0)));
             DISPATCH_C();
         } else if (obj.is_string()) {
             const std::string& fname = chunk.string_table[ic.str_id];
             if (fname == "length" || fname == "len") {
-                *sp++ = VMValue(static_cast<int64_t>(obj.to_string().size()));
+                PUSH_TOS(VMValue(static_cast<int64_t>(obj.to_string().size())));
                 DISPATCH_C();
             }
         }
-        *sp++ = VMValue(static_cast<int64_t>(0));
+        PUSH_TOS(VMValue(static_cast<int64_t>(0)));
         DISPATCH_C();
     }
 
@@ -1811,8 +2187,8 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         uint16_t ic_idx = static_cast<uint16_t>(ip[0] | (ip[1] << 8));
         ip += 2;
         ICSite& ic = chunk.ic_sites[ic_idx];
-        VMValue val = *--sp;
-        VMValue target = *--sp;
+        VMValue target, val;
+        POP_TWO_TOS(target, val);
 
         if (__builtin_expect(target.is_object(), 1)) {
             auto* vmo = target.payload()->obj.get();
@@ -1836,6 +2212,212 @@ void VM::run_optimized(OptimizedChunk& chunk) {
                 }
             }
         }
+        DISPATCH_C();
+    }
+
+    // ========================================================================
+    // Gate 6.0-D: Phase 4 Superinstruction Handlers
+    // ========================================================================
+    c_lbl_OP_STORE_LOCAL_0_POP: {
+        POP_TOS_VAL(locals_[local_base + 0]);
+        telemetry_.superinstructions_executed++;
+        DISPATCH_C();
+    }
+
+    c_lbl_OP_STORE_LOCAL_1_POP: {
+        POP_TOS_VAL(locals_[local_base + 1]);
+        telemetry_.superinstructions_executed++;
+        DISPATCH_C();
+    }
+
+    c_lbl_OP_STORE_LOCAL_2_POP: {
+        POP_TOS_VAL(locals_[local_base + 2]);
+        telemetry_.superinstructions_executed++;
+        DISPATCH_C();
+    }
+
+    c_lbl_OP_STORE_LOCAL_3_POP: {
+        POP_TOS_VAL(locals_[local_base + 3]);
+        telemetry_.superinstructions_executed++;
+        DISPATCH_C();
+    }
+
+    c_lbl_OP_STORE_LOCAL_POP: {
+        uint16_t slot = static_cast<uint16_t>(ip[0] | (ip[1] << 8));
+        ip += 2;
+        size_t idx = local_base + slot;
+        if (__builtin_expect(idx >= local_top_, 0)) {
+            local_top_ = idx + 8;
+            if (__builtin_expect(local_top_ + 64 >= locals_.size(), 0)) {
+                locals_.resize(locals_.size() * 2);
+            }
+        }
+        if (__builtin_expect(idx >= locals_.size(), 0)) locals_.resize(idx + 32);
+        POP_TOS_VAL(locals_[idx]);
+        telemetry_.superinstructions_executed++;
+        DISPATCH_C();
+    }
+
+    c_lbl_OP_LOAD_LOAD_LOCAL: {
+        uint16_t slotA = static_cast<uint16_t>(ip[0] | (ip[1] << 8));
+        uint16_t slotB = static_cast<uint16_t>(ip[2] | (ip[3] << 8));
+        ip += 4;
+        const VMValue& va = locals_[local_base + slotA];
+        const VMValue& vb = locals_[local_base + slotB];
+        if (__builtin_expect(r_depth == 0, 1)) {
+            r_tos1 = va;
+            r_tos0 = vb;
+            r_depth = 2;
+        } else if (r_depth == 1) {
+            ENSURE_STACK(1);
+            *sp++ = r_tos0;
+            r_tos1 = va;
+            r_tos0 = vb;
+            r_depth = 2;
+        } else {
+            ENSURE_STACK(2);
+            *sp++ = r_tos1;
+            *sp++ = r_tos0;
+            r_tos1 = va;
+            r_tos0 = vb;
+            r_depth = 2;
+        }
+        telemetry_.superinstructions_executed++;
+        DISPATCH_C();
+    }
+
+    c_lbl_OP_FUSED_ADD_LOCAL_LOCAL_STORE: {
+        uint16_t slotA = static_cast<uint16_t>(ip[0] | (ip[1] << 8));
+        uint16_t slotB = static_cast<uint16_t>(ip[2] | (ip[3] << 8));
+        uint16_t slotD = static_cast<uint16_t>(ip[4] | (ip[5] << 8));
+        ip += 6;
+        size_t idx = local_base + slotD;
+        if (__builtin_expect(idx >= local_top_, 0)) {
+            local_top_ = idx + 8;
+            if (__builtin_expect(local_top_ + 64 >= locals_.size(), 0)) {
+                locals_.resize(locals_.size() * 2);
+            }
+        }
+        if (__builtin_expect(idx >= locals_.size(), 0)) locals_.resize(idx + 32);
+        const VMValue& va = locals_[local_base + slotA];
+        const VMValue& vb = locals_[local_base + slotB];
+        if (__builtin_expect(VMValue::is_both_immediate_int(va, vb), 1)) {
+            int64_t sum = va.as_immediate_int_fast() + vb.as_immediate_int_fast();
+            if (__builtin_expect(sum >= VMValue::MIN_INT48 && sum <= VMValue::MAX_INT48, 1)) {
+                locals_[idx] = VMValue::from_raw(VMValue::TAG_INT | (static_cast<uint64_t>(sum) & VMValue::PAYLOAD_MASK));
+                telemetry_.superinstructions_executed++;
+                DISPATCH_C();
+            }
+        }
+        locals_[idx] = va.add(vb);
+        telemetry_.superinstructions_executed++;
+        DISPATCH_C();
+    }
+
+    c_lbl_OP_FUSED_MUL_ADD_I64: {
+        uint16_t slotA = static_cast<uint16_t>(ip[0] | (ip[1] << 8));
+        uint16_t slotB = static_cast<uint16_t>(ip[2] | (ip[3] << 8));
+        uint16_t slotC = static_cast<uint16_t>(ip[4] | (ip[5] << 8));
+        uint16_t slotD = static_cast<uint16_t>(ip[6] | (ip[7] << 8));
+        ip += 8;
+        size_t idx = local_base + slotD;
+        if (__builtin_expect(idx >= local_top_, 0)) {
+            local_top_ = idx + 8;
+            if (__builtin_expect(local_top_ + 64 >= locals_.size(), 0)) {
+                locals_.resize(locals_.size() * 2);
+            }
+        }
+        if (__builtin_expect(idx >= locals_.size(), 0)) locals_.resize(idx + 32);
+        const VMValue& va = locals_[local_base + slotA];
+        const VMValue& vb = locals_[local_base + slotB];
+        const VMValue& vc = locals_[local_base + slotC];
+        if (__builtin_expect(va.is_immediate_int() && vb.is_immediate_int() && vc.is_immediate_int(), 1)) {
+            int64_t ia = va.as_immediate_int_fast();
+            int64_t ib = vb.as_immediate_int_fast();
+            int64_t ic = vc.as_immediate_int_fast();
+            int64_t res = ia * ib + ic;
+            if (__builtin_expect(res >= VMValue::MIN_INT48 && res <= VMValue::MAX_INT48, 1)) {
+                locals_[idx] = VMValue::from_raw(VMValue::TAG_INT | (static_cast<uint64_t>(res) & VMValue::PAYLOAD_MASK));
+                telemetry_.superinstructions_executed++;
+                DISPATCH_C();
+            }
+        }
+        if (va.is_tafpu() || vb.is_tafpu() || vc.is_tafpu()) {
+            size_t site_ip = static_cast<size_t>(ip - 9 - code_base);
+            code_base[site_ip] = static_cast<uint8_t>(OpCode::OP_FUSED_MUL_ADD_TAFPU);
+            TafpuNum a_num = va.is_tafpu() ? va.as_tafpu() : (va.is_int() ? TafpuNum{va.as_int(), 0, 0} : TafpuNum{static_cast<int64_t>(va.as_float()), 0, 0});
+            TafpuNum b_num = vb.is_tafpu() ? vb.as_tafpu() : (vb.is_int() ? TafpuNum{vb.as_int(), 0, 0} : TafpuNum{static_cast<int64_t>(vb.as_float()), 0, 0});
+            TafpuNum c_num = vc.is_tafpu() ? vc.as_tafpu() : (vc.is_int() ? TafpuNum{vc.as_int(), 0, 0} : TafpuNum{static_cast<int64_t>(vc.as_float()), 0, 0});
+            locals_[idx] = VMValue(tafpu_fma_exact(c_num, a_num, b_num));
+        } else if (va.is_float() || vb.is_float() || vc.is_float()) {
+            size_t site_ip = static_cast<size_t>(ip - 9 - code_base);
+            code_base[site_ip] = static_cast<uint8_t>(OpCode::OP_FUSED_MUL_ADD_F64);
+            double fa = va.as_float();
+            double fb = vb.as_float();
+            double fc = vc.as_float();
+            locals_[idx] = VMValue(std::fma(fa, fb, fc));
+        } else {
+            locals_[idx] = va.mul(vb).add(vc);
+        }
+        telemetry_.superinstructions_executed++;
+        DISPATCH_C();
+    }
+
+    c_lbl_OP_FUSED_MUL_ADD_F64: {
+        uint16_t slotA = static_cast<uint16_t>(ip[0] | (ip[1] << 8));
+        uint16_t slotB = static_cast<uint16_t>(ip[2] | (ip[3] << 8));
+        uint16_t slotC = static_cast<uint16_t>(ip[4] | (ip[5] << 8));
+        uint16_t slotD = static_cast<uint16_t>(ip[6] | (ip[7] << 8));
+        ip += 8;
+        size_t idx = local_base + slotD;
+        if (__builtin_expect(idx >= local_top_, 0)) {
+            local_top_ = idx + 8;
+            if (__builtin_expect(local_top_ + 64 >= locals_.size(), 0)) {
+                locals_.resize(locals_.size() * 2);
+            }
+        }
+        if (__builtin_expect(idx >= locals_.size(), 0)) locals_.resize(idx + 32);
+        const VMValue& va = locals_[local_base + slotA];
+        const VMValue& vb = locals_[local_base + slotB];
+        const VMValue& vc = locals_[local_base + slotC];
+        if (__builtin_expect(va.is_float() && vb.is_float() && vc.is_float(), 1)) {
+            locals_[idx] = VMValue(std::fma(va.as_float(), vb.as_float(), vc.as_float()));
+        } else if (va.is_tafpu() || vb.is_tafpu() || vc.is_tafpu()) {
+            size_t site_ip = static_cast<size_t>(ip - 9 - code_base);
+            code_base[site_ip] = static_cast<uint8_t>(OpCode::OP_FUSED_MUL_ADD_TAFPU);
+            TafpuNum a_num = va.is_tafpu() ? va.as_tafpu() : (va.is_int() ? TafpuNum{va.as_int(), 0, 0} : TafpuNum{static_cast<int64_t>(va.as_float()), 0, 0});
+            TafpuNum b_num = vb.is_tafpu() ? vb.as_tafpu() : (vb.is_int() ? TafpuNum{vb.as_int(), 0, 0} : TafpuNum{static_cast<int64_t>(vb.as_float()), 0, 0});
+            TafpuNum c_num = vc.is_tafpu() ? vc.as_tafpu() : (vc.is_int() ? TafpuNum{vc.as_int(), 0, 0} : TafpuNum{static_cast<int64_t>(vc.as_float()), 0, 0});
+            locals_[idx] = VMValue(tafpu_fma_exact(c_num, a_num, b_num));
+        } else {
+            locals_[idx] = VMValue(std::fma(va.as_float(), vb.as_float(), vc.as_float()));
+        }
+        telemetry_.superinstructions_executed++;
+        DISPATCH_C();
+    }
+
+    c_lbl_OP_FUSED_MUL_ADD_TAFPU: {
+        uint16_t slotA = static_cast<uint16_t>(ip[0] | (ip[1] << 8));
+        uint16_t slotB = static_cast<uint16_t>(ip[2] | (ip[3] << 8));
+        uint16_t slotC = static_cast<uint16_t>(ip[4] | (ip[5] << 8));
+        uint16_t slotD = static_cast<uint16_t>(ip[6] | (ip[7] << 8));
+        ip += 8;
+        size_t idx = local_base + slotD;
+        if (__builtin_expect(idx >= local_top_, 0)) {
+            local_top_ = idx + 8;
+            if (__builtin_expect(local_top_ + 64 >= locals_.size(), 0)) {
+                locals_.resize(locals_.size() * 2);
+            }
+        }
+        if (__builtin_expect(idx >= locals_.size(), 0)) locals_.resize(idx + 32);
+        const VMValue& va = locals_[local_base + slotA];
+        const VMValue& vb = locals_[local_base + slotB];
+        const VMValue& vc = locals_[local_base + slotC];
+        TafpuNum a_num = va.is_tafpu() ? va.as_tafpu() : (va.is_int() ? TafpuNum{va.as_int(), 0, 0} : TafpuNum{static_cast<int64_t>(va.as_float()), 0, 0});
+        TafpuNum b_num = vb.is_tafpu() ? vb.as_tafpu() : (vb.is_int() ? TafpuNum{vb.as_int(), 0, 0} : TafpuNum{static_cast<int64_t>(vb.as_float()), 0, 0});
+        TafpuNum c_num = vc.is_tafpu() ? vc.as_tafpu() : (vc.is_int() ? TafpuNum{vc.as_int(), 0, 0} : TafpuNum{static_cast<int64_t>(vc.as_float()), 0, 0});
+        locals_[idx] = VMValue(tafpu_fma_exact(c_num, a_num, b_num));
+        telemetry_.superinstructions_executed++;
         DISPATCH_C();
     }
 
@@ -1866,6 +2448,20 @@ void VM::run_optimized(OptimizedChunk& chunk) {
     c_lbl_exit:
         SYNC_TO_VM();
         return;
+
+    #undef DISPATCH_C
+    #undef ENSURE_STACK
+    #undef PUSH_TOS
+    #undef POP_TOS_VAL
+    #undef DISCARD_TOS
+    #undef PEEK_TOS
+    #undef DUP_TOS
+    #undef POP_TWO_TOS
+    #undef BINARY_OP_FETCH
+    #undef FLUSH_TOS
+    #undef SYNC_TO_VM
+    #undef SYNC_FROM_VM
+    #undef DELEGATE_OP
 #else
     run_switch(chunk);
 #endif
@@ -2202,8 +2798,60 @@ void VM::handle_jump(const Chunk& chunk) {
     if (__builtin_expect(offset < 0, 0)) {
         gc_engine_.safepoint(*this);
 
-        // Gate 5.8: OSR Transition Hook
-        if (jit_enabled_ && jit_manager_) {
+        // Gate 5.9.1: Auto-Tiering Fast OSR Dispatch
+        if (auto_tiering_enabled_ && loop_hot_table_) {
+            size_t loop_target = ip_ + offset;
+            size_t lidx = loop_target & loop_hot_mask_;
+            LoopHotData& lhot = loop_hot_table_[lidx];
+
+            if (lhot.osr_entry != nullptr) {
+                size_t cur_local_base = call_stack_.empty() ? 0 : call_stack_.back().local_base;
+                JITFrame frame;
+                frame.vm = this;
+                frame.locals = locals_.data() + cur_local_base;
+                frame.num_locals = locals_.size() - cur_local_base;
+                frame.stack_base = stack_.data();
+                frame.stack_depth = stack_.size();
+                frame.prev_call_frame = call_stack_.empty() ? nullptr : &call_stack_.back();
+                frame.prev_jit_frame = active_jit_frame_;
+                active_jit_frame_ = &frame;
+
+                int64_t raw_res = lhot.osr_entry(this, &frame);
+                active_jit_frame_ = frame.prev_jit_frame;
+
+                if (__builtin_expect(frame.deopt_code > 0, 0)) {
+                    jit_manager_->handle_deopt_feedback(call_stack_.empty() ? 0 : call_stack_.back().func_entry,
+                                                        static_cast<uint32_t>(loop_target),
+                                                        static_cast<DeoptReason>(frame.deopt_reason));
+                    ip_ = static_cast<size_t>(frame.deopt_code);
+                    return;
+                } else {
+                    if (call_stack_.empty()) {
+                        stack_.push(VMValue::from_raw(static_cast<uint64_t>(raw_res)));
+                        running_ = false;
+                        return;
+                    } else {
+                        CallFrame cframe = call_stack_.back();
+                        call_stack_.pop_back();
+                        if (opt_flags_.enable_fast_frames) {
+                            local_top_ = cframe.local_base;
+                        } else {
+                            locals_.resize(cframe.local_base);
+                        }
+                        stack_.resize(cframe.stack_depth);
+                        stack_.push(VMValue::from_raw(static_cast<uint64_t>(raw_res)));
+                        ip_ = cframe.return_ip;
+                        return;
+                    }
+                }
+            } else if (UNLIKELY(++lhot.backedge_counter >= lhot.osr_threshold)) {
+                size_t func_ip = call_stack_.empty() ? 0 : call_stack_.back().func_entry;
+                bool ok = jit_manager_->slow_tiering_coordinator_osr(this, chunk, func_ip, static_cast<uint32_t>(loop_target), lhot);
+                if (!ok) {
+                    lhot.osr_threshold += 1000;
+                }
+            }
+        } else if (jit_enabled_ && jit_manager_) {
             size_t func_ip = call_stack_.empty() ? 0 : call_stack_.back().func_entry;
             size_t loop_target = ip_ + offset;
             jit_manager_->record_backedge(func_ip);
@@ -2300,24 +2948,110 @@ void VM::handle_branch_3(const Chunk& chunk) {
 }
 
 void VM::handle_call(const Chunk& chunk) {
+    uint32_t call_site_ip = (ip_ > 0) ? static_cast<uint32_t>(ip_ - 1) : 0;
     // Operand is a function-table index (v2) or a direct entry (legacy v1).
     uint16_t fn_idx = static_cast<uint16_t>(read_int16(chunk));
-    uint32_t fn_entry = 0;
-    if (chunk.function_table.empty()) {
-        fn_entry = fn_idx;
-    } else {
-        if (fn_idx >= chunk.function_table.size()) {
-            throw VMException("Invalid function index " + std::to_string(fn_idx) + " in OP_CALL.");
-        }
-        fn_entry = chunk.function_table[fn_idx];
-    }
     uint8_t argc = read_byte(chunk);
 
+    uint32_t fn_entry = 0;
     size_t callee_frame_size = 32;
-    if (!chunk.function_frame_sizes.empty() && fn_idx < chunk.function_frame_sizes.size()) {
-        callee_frame_size = chunk.function_frame_sizes[fn_idx];
+    JITNativeEntryPoint native_fn = nullptr;
+    bool ic_hit = false;
+
+    if (enable_inline_caching_) {
+        CallSiteIC& call_ic = inline_cache_table_.get_or_create_call_ic(call_site_ip);
+        if (call_ic.matches(fn_idx)) {
+            fn_entry = call_ic.fn_entry;
+            callee_frame_size = call_ic.callee_frame_size;
+            native_fn = call_ic.native_entry;
+            telemetry_.ic_hits++;
+            ic_hit = true;
+        } else {
+            telemetry_.ic_misses++;
+        }
     }
-    if (callee_frame_size < argc + 8) callee_frame_size = argc + 8;
+
+    if (!ic_hit) {
+        if (chunk.function_table.empty()) {
+            fn_entry = fn_idx;
+        } else {
+            if (fn_idx >= chunk.function_table.size()) {
+                throw VMException("Invalid function index " + std::to_string(fn_idx) + " in OP_CALL.");
+            }
+            fn_entry = chunk.function_table[fn_idx];
+        }
+
+        if (!chunk.function_frame_sizes.empty() && fn_idx < chunk.function_frame_sizes.size()) {
+            callee_frame_size = chunk.function_frame_sizes[fn_idx];
+        }
+        if (callee_frame_size < argc + 8) callee_frame_size = argc + 8;
+
+        if (auto_tiering_enabled_ && function_hot_table_) {
+            size_t h_idx = fn_idx & function_hot_mask_;
+            FunctionHotData& hot = function_hot_table_[h_idx];
+            native_fn = hot.native_entry;
+        }
+
+        if (enable_inline_caching_) {
+            CallSiteIC& call_ic = inline_cache_table_.get_or_create_call_ic(call_site_ip);
+            call_ic.update(fn_idx, fn_entry, callee_frame_size, native_fn);
+        }
+    }
+
+    // Gate 5.9.1: Auto-Tiering Direct Native Dispatch & Hotness Tracking
+    if (auto_tiering_enabled_ && function_hot_table_) {
+        size_t h_idx = fn_idx & function_hot_mask_;
+        FunctionHotData& hot = function_hot_table_[h_idx];
+        if (hot.native_entry != nullptr) {
+            size_t new_local_base;
+            if (opt_flags_.enable_fast_frames) {
+                new_local_base = local_top_;
+                local_top_ += callee_frame_size;
+                if (__builtin_expect(local_top_ + 64 >= locals_.size(), 0)) {
+                    locals_.resize(locals_.size() * 2);
+                }
+            } else {
+                new_local_base = locals_.size();
+                locals_.resize(new_local_base + callee_frame_size);
+            }
+            for (int i = static_cast<int>(argc) - 1; i >= 0; --i) {
+                locals_[new_local_base + i] = stack_.pop();
+            }
+
+            JITFrame frame;
+            frame.vm = this;
+            frame.locals = locals_.data() + new_local_base;
+            frame.num_locals = callee_frame_size;
+            frame.stack_base = stack_.data();
+            frame.stack_depth = stack_.size();
+            frame.prev_call_frame = call_stack_.empty() ? nullptr : &call_stack_.back();
+            frame.prev_jit_frame = active_jit_frame_;
+            active_jit_frame_ = &frame;
+
+            int64_t raw_res = hot.native_entry(this, &frame);
+            active_jit_frame_ = frame.prev_jit_frame;
+
+            if (__builtin_expect(frame.deopt_code > 0, 0)) {
+                jit_manager_->handle_deopt_feedback(fn_entry, 0, static_cast<DeoptReason>(frame.deopt_reason));
+                call_stack_.push_back(CallFrame{ip_, new_local_base, stack_.size(), callee_frame_size, fn_entry});
+                ip_ = static_cast<size_t>(frame.deopt_code);
+                return;
+            } else {
+                stack_.push(VMValue::from_raw(static_cast<uint64_t>(raw_res)));
+                if (opt_flags_.enable_fast_frames) {
+                    local_top_ = new_local_base;
+                } else {
+                    locals_.resize(new_local_base);
+                }
+                return;
+            }
+        } else if (UNLIKELY(++hot.invocation_counter >= hot.tier1_threshold)) {
+            bool ok = jit_manager_->slow_tiering_coordinator_call(this, chunk, fn_entry, hot);
+            if (!ok) {
+                hot.tier1_threshold += 100;
+            }
+        }
+    }
 
     size_t new_local_base;
     if (opt_flags_.enable_fast_frames) {
@@ -2682,7 +3416,7 @@ void VM::handle_get_index(const Chunk&) {
             int64_t i = idx.as_int();
             if (i < 0) i += arr->size(); // Python negative index support
             if (i >= 0 && static_cast<size_t>(i) < arr->size()) {
-                stack_.push((*arr)[i]);
+                stack_.push(arr->get(static_cast<size_t>(i)));
                 return;
             }
         }
@@ -2773,6 +3507,7 @@ void VM::handle_set_field(const Chunk& chunk) {
 }
 
 void VM::handle_invoke_method(const Chunk& chunk) {
+    uint32_t call_site_ip = (ip_ > 0) ? static_cast<uint32_t>(ip_ - 1) : 0;
     uint16_t mid = static_cast<uint16_t>(read_int16(chunk));
     uint8_t argc = read_byte(chunk);
     std::string method_name = (mid < chunk.string_table.size()) ? chunk.string_table[mid] : "";
@@ -2782,6 +3517,93 @@ void VM::handle_invoke_method(const Chunk& chunk) {
         args[i] = stack_.pop();
     }
     VMValue target = stack_.pop();
+
+    // Fast-path: Inline Caching probe for user objects
+    if (enable_inline_caching_ && target.is_object()) {
+        auto obj = target.as_object();
+        if (obj && obj->vtable && obj->type_name != "Host" && obj->type_name != "HostFs" && obj->type_name != "HostKb" && obj->type_name != "Syscall") {
+            uint32_t shape_id = obj->shape ? obj->shape->shape_id : 0;
+            MethodIC& mic = inline_cache_table_.get_or_create_method_ic(call_site_ip);
+            const MethodICEntry* hit = mic.probe(shape_id, obj->vtable.get());
+            if (hit != nullptr) {
+                telemetry_.ic_hits++;
+
+                // Direct native execution if compiled
+                if (hit->native_entry != nullptr) {
+                    size_t new_local_base;
+                    if (opt_flags_.enable_fast_frames) {
+                        new_local_base = local_top_;
+                        local_top_ += hit->callee_frame_size;
+                        if (__builtin_expect(local_top_ + 64 >= locals_.size(), 0)) {
+                            locals_.resize(locals_.size() * 2);
+                        }
+                    } else {
+                        new_local_base = locals_.size();
+                        locals_.resize(new_local_base + hit->callee_frame_size);
+                    }
+                    locals_[new_local_base] = target; // slot 0 is 'self'
+                    for (size_t i = 0; i < argc; ++i) {
+                        locals_[new_local_base + 1 + i] = args[i];
+                    }
+
+                    JITFrame frame;
+                    frame.vm = this;
+                    frame.locals = locals_.data() + new_local_base;
+                    frame.num_locals = hit->callee_frame_size;
+                    frame.stack_base = stack_.data();
+                    frame.stack_depth = stack_.size();
+                    frame.prev_call_frame = call_stack_.empty() ? nullptr : &call_stack_.back();
+                    frame.prev_jit_frame = active_jit_frame_;
+                    active_jit_frame_ = &frame;
+
+                    int64_t raw_res = hit->native_entry(this, &frame);
+                    active_jit_frame_ = frame.prev_jit_frame;
+
+                    if (__builtin_expect(frame.deopt_code > 0, 0)) {
+                        if (jit_manager_) {
+                            jit_manager_->handle_deopt_feedback(hit->fn_entry, 0, static_cast<DeoptReason>(frame.deopt_reason));
+                        }
+                        call_stack_.push_back(CallFrame{ip_, new_local_base, stack_.size(), hit->callee_frame_size, hit->fn_entry});
+                        ip_ = static_cast<size_t>(frame.deopt_code);
+                        return;
+                    } else {
+                        stack_.push(VMValue::from_raw(static_cast<uint64_t>(raw_res)));
+                        if (opt_flags_.enable_fast_frames) {
+                            local_top_ = new_local_base;
+                        } else {
+                            locals_.resize(new_local_base);
+                        }
+                        return;
+                    }
+                }
+
+                // Normal interpreter frame dispatch
+                size_t new_local_base;
+                if (opt_flags_.enable_fast_frames) {
+                    new_local_base = local_top_;
+                    local_top_ += hit->callee_frame_size;
+                    if (__builtin_expect(local_top_ + 64 >= locals_.size(), 0)) {
+                        locals_.resize(locals_.size() * 2);
+                    }
+                } else {
+                    new_local_base = locals_.size();
+                    locals_.resize(new_local_base + hit->callee_frame_size);
+                }
+                locals_[new_local_base] = target; // slot 0 is 'self'
+                for (size_t i = 0; i < argc; ++i) {
+                    locals_[new_local_base + 1 + i] = args[i];
+                }
+                call_stack_.push_back(CallFrame{ip_, new_local_base, stack_.size(), hit->callee_frame_size, hit->fn_entry});
+                ip_ = hit->fn_entry;
+                return;
+            } else {
+                telemetry_.ic_misses++;
+                if (mic.is_monomorphic() || mic.is_polymorphic()) {
+                    telemetry_.shape_mismatches++;
+                }
+            }
+        }
+    }
 
     // Primitive rendering for f-string interpolation: value.fmt(spec).
     // Objects are excluded so user methods named fmt/to_string are never
@@ -2821,44 +3643,24 @@ void VM::handle_invoke_method(const Chunk& chunk) {
                 int64_t start = (!args.empty()) ? args[0].as_int() : 0;
                 int64_t count = (args.size() >= 2) ? args[1].as_int()
                                                    : static_cast<int64_t>(arr->size());
-                if (start < 0) start += static_cast<int64_t>(arr->size());
-                if (start < 0) start = 0;
-                if (start > static_cast<int64_t>(arr->size())) start = static_cast<int64_t>(arr->size());
-                if (count < 0) count = 0;
-                auto out = std::make_shared<std::vector<VMValue>>();
-                for (int64_t k = start; k < start + count && k < static_cast<int64_t>(arr->size()); ++k) {
-                    out->push_back((*arr)[static_cast<size_t>(k)]);
-                }
+                auto out = arr->slice(start, count);
                 stack_.push(VMValue(out));
                 return;
             } else if (method_name == "sort") {
-                bool all_string = true;
-                bool all_numeric = true;
-                for (const auto& v : *arr) {
-                    if (!v.is_string()) all_string = false;
-                    if (!(v.is_int() || v.is_tryte() || v.is_float() || v.is_bool())) all_numeric = false;
-                }
-                if (!all_string && !all_numeric) {
-                    throw VMException("sort: array contains mixed or non-comparable element types.");
-                }
-                auto out = std::make_shared<std::vector<VMValue>>(*arr);
-                std::sort(out->begin(), out->end(), [](const VMValue& a, const VMValue& b) {
-                    if (a.is_string()) return a.to_string() < b.to_string();
-                    if (a.is_float() || b.is_float()) return a.as_float() < b.as_float();
-                    return a.as_int() < b.as_int();
-                });
+                auto out = arr->slice(0, arr->size());
+                out->sort();
                 stack_.push(VMValue(out));
                 return;
             } else if (method_name == "reverse") {
-                auto out = std::make_shared<std::vector<VMValue>>(*arr);
-                std::reverse(out->begin(), out->end());
+                auto out = arr->slice(0, arr->size());
+                out->reverse();
                 stack_.push(VMValue(out));
                 return;
             } else if (method_name == "contains") {
                 bool found = false;
                 if (!args.empty()) {
-                    for (const auto& v : *arr) {
-                        if (values_equal(v, args[0])) { found = true; break; }
+                    for (size_t k = 0; k < arr->size(); ++k) {
+                        if (values_equal(arr->get(k), args[0])) { found = true; break; }
                     }
                 }
                 stack_.push(VMValue(found));
@@ -2867,15 +3669,20 @@ void VM::handle_invoke_method(const Chunk& chunk) {
                 int64_t idx = -1;
                 if (!args.empty()) {
                     for (size_t k = 0; k < arr->size(); ++k) {
-                        if (values_equal((*arr)[k], args[0])) { idx = static_cast<int64_t>(k); break; }
+                        if (values_equal(arr->get(k), args[0])) { idx = static_cast<int64_t>(k); break; }
                     }
                 }
                 stack_.push(VMValue(idx));
                 return;
             } else if (method_name == "concat") {
-                auto out = std::make_shared<std::vector<VMValue>>(*arr);
+                auto out = arr->slice(0, arr->size());
                 if (!args.empty() && args[0].is_array()) {
-                    for (const auto& v : *args[0].as_array()) out->push_back(v);
+                    auto other = args[0].as_array();
+                    if (other) {
+                        for (size_t k = 0; k < other->size(); ++k) {
+                            out->push_back(other->get(k));
+                        }
+                    }
                 }
                 stack_.push(VMValue(out));
                 return;
@@ -2884,7 +3691,7 @@ void VM::handle_invoke_method(const Chunk& chunk) {
                 std::string out;
                 for (size_t k = 0; k < arr->size(); ++k) {
                     if (k > 0) out += sep;
-                    out += (*arr)[k].to_string();
+                    out += arr->get(k).to_string();
                 }
                 stack_.push(VMValue(out));
                 return;
@@ -3241,6 +4048,23 @@ void VM::handle_invoke_method(const Chunk& chunk) {
                     }
                     if (callee_frame_size < argc + 1 + 8) callee_frame_size = argc + 1 + 8;
 
+                    // Gate 5.9.2: MethodIC and TypeFeedback Update
+                    JITNativeEntryPoint native_fn = nullptr;
+                    if (auto_tiering_enabled_ && function_hot_table_) {
+                        size_t h_idx = it->second & function_hot_mask_;
+                        FunctionHotData& hot = function_hot_table_[h_idx];
+                        native_fn = hot.native_entry;
+                    }
+
+                    uint32_t shape_id = obj->shape ? obj->shape->shape_id : 0;
+                    if (enable_inline_caching_) {
+                        MethodIC& mic = inline_cache_table_.get_or_create_method_ic(call_site_ip);
+                        mic.update(shape_id, obj->vtable.get(), fn_entry, callee_frame_size, native_fn);
+                    }
+                    if (jit_manager_) {
+                        jit_manager_->type_feedback().record_method(call_site_ip, shape_id, fn_entry);
+                    }
+
                     size_t new_local_base;
                     if (opt_flags_.enable_fast_frames) {
                         new_local_base = local_top_;
@@ -3284,7 +4108,7 @@ void VM::handle_set_index(const Chunk&) {
             int64_t i = idx_val.as_int();
             if (i < 0) i += arr->size();
             if (i >= 0 && static_cast<size_t>(i) < arr->size()) {
-                (*arr)[i] = val;
+                arr->set(static_cast<size_t>(i), val);
             }
         }
     } else if (target.is_object()) {
@@ -3297,10 +4121,12 @@ void VM::handle_set_index(const Chunk&) {
 
 void VM::handle_new_array(const Chunk& chunk) {
     uint16_t count = static_cast<uint16_t>(read_int16(chunk));
-    auto arr = std::make_shared<std::vector<VMValue>>(count);
+    auto arr = std::make_shared<ArrayObject>();
+    arr->generic_data.resize(count);
     for (int i = static_cast<int>(count) - 1; i >= 0; --i) {
-        (*arr)[i] = stack_.pop();
+        arr->generic_data[i] = stack_.pop();
     }
+    arr->try_promote();
     stack_.push(VMValue(arr));
 }
 
