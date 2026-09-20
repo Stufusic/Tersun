@@ -47,10 +47,13 @@ enum class MIROpcode : uint16_t {
     SHR,
 
     // 3. Memory & Effects
+    ALLOC_OBJECT,
     LOAD_FIELD,
     STORE_FIELD,
     LOAD_ELEMENT,
     STORE_ELEMENT,
+    LOAD_ELEMENT_RAW,
+    STORE_ELEMENT_RAW,
 
     // 4. Control Flow & Calls
     JMP,
@@ -94,7 +97,8 @@ enum class MemoryEffect : uint8_t {
 };
 
 enum class MIRCondition : uint8_t {
-    EQ = 0,
+    NONE = 0,
+    EQ,
     NE,
     LT,
     LE,
@@ -120,7 +124,7 @@ struct MIRInstruction {
     vreg_t src2{NO_VREG};
     vreg_t src3{NO_VREG};
     int64_t imm64{0};
-    MIRCondition cond{MIRCondition::EQ};
+    MIRCondition cond{MIRCondition::NONE};
     MemoryEffect effect{MemoryEffect::None};
     uint32_t target_block{0};
     uint32_t bytecode_ip{0};
@@ -128,6 +132,9 @@ struct MIRInstruction {
 
     // PHI incoming nodes: (predecessor_block_id, vreg)
     std::vector<std::pair<uint32_t, vreg_t>> phi_incoming;
+
+    // Call / Method extra arguments (when argc > 2)
+    std::vector<vreg_t> extra_args;
 
     bool is_guard() const {
         return opcode == MIROpcode::GUARD_TYPE ||
@@ -141,6 +148,7 @@ struct MIRInstruction {
         return is_guard() ||
                opcode == MIROpcode::STORE_FIELD ||
                opcode == MIROpcode::STORE_ELEMENT ||
+               opcode == MIROpcode::STORE_ELEMENT_RAW ||
                opcode == MIROpcode::VEC_STORE ||
                opcode == MIROpcode::CALL_NATIVE ||
                opcode == MIROpcode::CALL_RUNTIME ||
@@ -191,7 +199,7 @@ struct MIRFunction {
     }
 
     // Build initial Stack-to-SSA MachineIR from bytecode Chunk
-    static std::unique_ptr<MIRFunction> build_from_bytecode(const Chunk& chunk, uint32_t func_id = 0);
+    static std::unique_ptr<MIRFunction> build_from_bytecode(const Chunk& chunk, uint32_t func_id = 0, size_t start_ip = 0, size_t end_ip = 0);
 
     // Diagnostic print
     void dump(std::ostream& os = std::cout) const;

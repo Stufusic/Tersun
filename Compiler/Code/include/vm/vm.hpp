@@ -203,6 +203,9 @@ private:
 
     void handle_call(const Chunk& chunk);
     void handle_ret(const Chunk& chunk);
+    void handle_call_fast_0(const Chunk& chunk);
+    void handle_call_fast_1(const Chunk& chunk);
+    void handle_ret_fast(const Chunk& chunk);
 
     void handle_print(const Chunk& chunk);
     void handle_println(const Chunk& chunk);
@@ -241,6 +244,10 @@ private:
     void handle_new_instance(const Chunk& chunk);
     void handle_set_field(const Chunk& chunk);
     void handle_invoke_method(const Chunk& chunk);
+    void handle_invoke_method_direct(const Chunk& chunk, uint16_t mid, uint8_t argc);
+    void handle_invoke_method_ic(const Chunk& chunk);
+    void handle_quick_gt_int(const Chunk& chunk);
+    void handle_quick_ge_int(const Chunk& chunk);
     void handle_set_index(const Chunk& chunk);
     void handle_try(const Chunk& chunk);
     void handle_throw(const Chunk& chunk);

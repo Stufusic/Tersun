@@ -1,5 +1,6 @@
 #include "qvm/qreg.hpp"
 #include "qvm/qgate.hpp"
+#include "qvm/qcircuit_opt.hpp"
 #include "qvm/qopcode.hpp"
 #include "qvm/qvm.hpp"
 #include "compiler/llvm2qvm.hpp"
@@ -586,6 +587,234 @@ static void test_qvm_qft_bytecode_path() {
 }
 
 // ----------------------------------------------------------------------------
+// Test 15: Native CP vs 5-Gate Decomposition Global Phase Differential
+// ----------------------------------------------------------------------------
+static void test_native_cphase_vs_decomposition_global_phase() {
+    std::cout << "  [Test 15/16] Gate QVM-OPT 1: Native CP vs 5-Gate Decomposition Differential Suite...\n";
+    const double test_thetas[] = {0.3, 0.78539816339, 1.25, 2.35619449, 3.14159265359, 4.71238898};
+
+    for (double theta : test_thetas) {
+        // Prepare non-trivial entangled 3-qubit state
+        QubitRegister reg_native(3);
+        reg_native.promote_to_statevector();
+        GateOps::apply_h(reg_native, 0);
+        GateOps::apply_cnot(reg_native, 0, 1);
+        GateOps::apply_ry(reg_native, 2, 0.65);
+        GateOps::apply_rx(reg_native, 1, 0.85);
+
+        // Clone state for decomposition path
+        QubitRegister reg_decomp = reg_native;
+
+        // Path A: Native single-pass diagonal CP
+        GateOps::apply_cphase(reg_native, 0, 1, theta);
+
+        // Path B: Standard 5-gate decomposition RZ(th/2) - CX - RZ(-th/2) - CX - RZ(th/2)
+        GateOps::apply_rz(reg_decomp, 0, theta * 0.5);
+        GateOps::apply_cnot(reg_decomp, 0, 1);
+        GateOps::apply_rz(reg_decomp, 1, -theta * 0.5);
+        GateOps::apply_cnot(reg_decomp, 0, 1);
+        GateOps::apply_rz(reg_decomp, 1, theta * 0.5);
+
+        const auto& sv_nat = reg_native.amplitudes();
+        const auto& sv_dec = reg_decomp.amplitudes();
+
+        // 1. Wavefunction Norm Conservation Check (< 1e-12)
+        double norm_nat = 0.0, norm_dec = 0.0;
+        for (size_t i = 0; i < 8; ++i) {
+            norm_nat += std::norm(sv_nat[i]);
+            norm_dec += std::norm(sv_dec[i]);
+        }
+        assert_test(std::abs(norm_nat - 1.0) < 1e-12, "Native CP must preserve norm to 1e-12");
+        assert_test(std::abs(norm_dec - 1.0) < 1e-12, "Decomposed CP must preserve norm to 1e-12");
+
+        // 2. Absolute Amplitude Invariant (|amp_native| == |amp_decomp| to 1e-12)
+        for (size_t i = 0; i < 8; ++i) {
+            assert_test(std::abs(std::abs(sv_nat[i]) - std::abs(sv_dec[i])) < 1e-12,
+                        "Magnitude mismatch between native CP and decomposition at index " + std::to_string(i));
+        }
+
+        // 3. Exact Theoretical Global Phase Factor: g = e^{-i * theta / 4}
+        QComplex expected_phase(std::cos(-theta * 0.25), std::sin(-theta * 0.25));
+        for (size_t i = 0; i < 8; ++i) {
+            if (std::abs(sv_nat[i]) > 1e-6) {
+                QComplex ratio = sv_dec[i] / sv_nat[i];
+                assert_test(std::abs(ratio - expected_phase) < 1e-12,
+                            "Global phase must analytically equal e^{-i*theta/4} (error < 1e-12)");
+            }
+        }
+
+        // 4. Quantum State Fidelity: F = |<psi_nat | psi_dec>|^2 == 1.0000000000
+        QComplex overlap(0.0, 0.0);
+        for (size_t i = 0; i < 8; ++i) {
+            overlap += std::conj(sv_nat[i]) * sv_dec[i];
+        }
+        double fidelity = std::norm(overlap);
+        assert_test(std::abs(fidelity - 1.0) < 1e-12,
+                    "Quantum state fidelity between native CP and decomposition must be 1.0 (error < 1e-12)");
+    }
+
+    std::cout << "    -> PASSED: Native CP matches 5-gate decomposition with exact e^{-i*theta/4} global phase & Fidelity = 1.0000000000!\n";
+}
+
+// ----------------------------------------------------------------------------
+// Test 16: Branch-Free Controlled Gate Planners Mathematical Exactness
+// ----------------------------------------------------------------------------
+static void test_branch_free_controlled_gates_exactness() {
+    std::cout << "  [Test 16/16] Gate QVM-OPT 1: Branch-Free Strided CNOT, CZ, Toffoli Exactness...\n";
+
+    // 1. CNOT: test both ctrl < target and ctrl > target configurations
+    for (size_t c = 0; c < 4; ++c) {
+        for (size_t t = 0; t < 4; ++t) {
+            if (c == t) continue;
+            QubitRegister reg(4);
+            reg.promote_to_statevector();
+            // Put control into |1> and target into arbitrary superposition
+            GateOps::apply_x(reg, c);
+            GateOps::apply_ry(reg, t, 0.9);
+            auto before = reg.amplitudes();
+
+            GateOps::apply_cnot(reg, c, t);
+            auto after = reg.amplitudes();
+
+            // Verify that for all basis states with bit c=1, bit t is swapped
+            for (size_t i = 0; i < 16; ++i) {
+                if ((i >> c) & 1) {
+                    size_t paired = i ^ (1ULL << t);
+                    assert_test(std::abs(after[i] - before[paired]) < 1e-14,
+                                "CNOT strided swap error between " + std::to_string(i) + " and " + std::to_string(paired));
+                } else {
+                    assert_test(std::abs(after[i] - before[i]) < 1e-14,
+                                "CNOT invariant state modified for control=0");
+                }
+            }
+        }
+    }
+
+    // 2. CZ: verify diagonal sign flip on |11> across all pairs
+    for (size_t c = 0; c < 4; ++c) {
+        for (size_t t = c + 1; t < 4; ++t) {
+            QubitRegister reg(4);
+            reg.promote_to_statevector();
+            // Equal superposition
+            for (size_t q = 0; q < 4; ++q) GateOps::apply_h(reg, q);
+            auto before = reg.amplitudes();
+
+            GateOps::apply_cz(reg, c, t);
+            auto after = reg.amplitudes();
+
+            for (size_t i = 0; i < 16; ++i) {
+                if (((i >> c) & 1) && ((i >> t) & 1)) {
+                    assert_test(std::abs(after[i] + before[i]) < 1e-14, "CZ must negate |11>");
+                } else {
+                    assert_test(std::abs(after[i] - before[i]) < 1e-14, "CZ must leave other states untouched");
+                }
+            }
+        }
+    }
+
+    // 3. Toffoli: verify 3-qubit controlled swap
+    {
+        QubitRegister reg(3);
+        reg.promote_to_statevector();
+        // Set c1=1, c2=1, target=|0>
+        GateOps::apply_x(reg, 0);
+        GateOps::apply_x(reg, 1);
+        // |110> = index 3 (binary: q2=0, q1=1, q0=1)
+        assert_test(std::abs(reg.amplitudes()[3] - QComplex(1.0, 0.0)) < 1e-14, "Init at |110>");
+        GateOps::apply_toffoli(reg, 0, 1, 2);
+        // |111> = index 7 (binary: q2=1, q1=1, q0=1)
+        assert_test(std::abs(reg.amplitudes()[7] - QComplex(1.0, 0.0)) < 1e-14, "Toffoli flips |110> to |111>");
+        assert_test(std::abs(reg.amplitudes()[3]) < 1e-14, "Old state must be zero");
+    }
+
+    std::cout << "    -> PASSED: Branch-free strided CNOT, CZ, and Toffoli verified for 100% mathematical exactness!\n";
+}
+
+// ----------------------------------------------------------------------------
+// Test 17: Circuit Optimizer & Algorithm-Aware QFT Planner Verification
+// ----------------------------------------------------------------------------
+static void test_circuit_optimizer_and_qft_planner() {
+    std::cout << "  [Test 17/17] Gate QVM-OPT 2: Circuit Optimizer & Algorithm-Aware QFT Planner...\n";
+
+    // 1. Commuting Diagonal Fusion Verification
+    {
+        QuantumCircuit circuit(3);
+        circuit.h(0);
+        circuit.cphase(0, 1, 0.45);
+        circuit.cphase(0, 2, 0.75);
+        circuit.cz(1, 2);
+        circuit.h(1);
+
+        auto plan = CircuitOptimizer::optimize(circuit);
+        assert_test(plan.size() == 3, "Plan must fuse 3 diagonal gates into 1 layer (H, DIAG_LAYER, H)");
+        assert_test(plan[0].type == FusedOpType::SINGLE_GATE, "First op is H");
+        assert_test(plan[1].type == FusedOpType::DIAGONAL_LAYER, "Second op is DIAGONAL_LAYER");
+        assert_test(plan[1].diagonal_ops.size() == 3, "Diagonal layer contains all 3 commuting gates");
+        assert_test(plan[2].type == FusedOpType::SINGLE_GATE, "Third op is H");
+
+        // Verify mathematical equivalence against unoptimized execution
+        QubitRegister reg_unopt(3);
+        reg_unopt.promote_to_statevector();
+        circuit.execute(reg_unopt);
+
+        QubitRegister reg_opt(3);
+        reg_opt.promote_to_statevector();
+        CircuitOptimizer::execute_plan(plan, reg_opt);
+
+        for (size_t i = 0; i < 8; ++i) {
+            assert_test(std::abs(reg_unopt.amplitudes()[i] - reg_opt.amplitudes()[i]) < 1e-14,
+                        "Fused diagonal layer output must be bit-exact with unoptimized circuit at index " + std::to_string(i));
+        }
+    }
+
+    // 2. QFT Planner vs Reference DFT (Fidelity == 1.0000000000 across n = 1..5)
+    for (size_t n = 1; n <= 5; ++n) {
+        const size_t N = size_t(1) << n;
+        QubitRegister reg_plan(n);
+        reg_plan.promote_to_statevector();
+
+        // Deterministic normalized non-uniform input state
+        std::vector<QComplex> input(N);
+        double norm = 0.0;
+        for (size_t j = 0; j < N; ++j) {
+            input[j] = QComplex(std::sin(0.9 * static_cast<double>(j) + 0.3),
+                                std::cos(1.3 * static_cast<double>(j) + 0.7));
+            norm += std::norm(input[j]);
+        }
+        norm = std::sqrt(norm);
+        for (auto& v : input) v /= norm;
+        reg_plan.amplitudes() = input;
+
+        // Execute planned QFT
+        QFTPlanner::execute_qft(n, reg_plan);
+
+        // Reference DFT
+        std::vector<QComplex> dft(N, QComplex(0.0, 0.0));
+        for (size_t k = 0; k < N; ++k) {
+            for (size_t j = 0; j < N; ++j) {
+                double ang = 2.0 * kPi * static_cast<double>(j) * static_cast<double>(k) / static_cast<double>(N);
+                dft[k] += input[j] * QComplex(std::cos(ang), std::sin(ang));
+            }
+            dft[k] /= std::sqrt(static_cast<double>(N));
+        }
+
+        // Fidelity & Norm checks
+        double norm_actual = 0.0;
+        QComplex overlap(0.0, 0.0);
+        for (size_t k = 0; k < N; ++k) {
+            norm_actual += std::norm(reg_plan.amplitudes()[k]);
+            overlap += std::conj(dft[k]) * reg_plan.amplitudes()[k];
+        }
+        assert_test(std::abs(norm_actual - 1.0) < 1e-12, "QFT plan must preserve norm");
+        double fidelity = std::norm(overlap);
+        assert_test(std::abs(fidelity - 1.0) < 1e-12,
+                    "QFT plan fidelity with analytic DFT must be 1.0 (n=" + std::to_string(n) + ")");
+    }
+
+    std::cout << "    -> PASSED: Circuit Optimizer diagonal fusion & QFT Planner match analytic DFT with Fidelity = 1.0000000000!\n";
+}
+
+// ----------------------------------------------------------------------------
 // Main QVM Test Runner
 // ----------------------------------------------------------------------------
 int run_qvm_tests() {
@@ -608,9 +837,14 @@ int run_qvm_tests() {
     test_qft_qasm_export();
     test_qemitter_quantum_builtins();
     test_qvm_qft_bytecode_path();
+    test_native_cphase_vs_decomposition_global_phase();
+    test_branch_free_controlled_gates_exactness();
+    test_circuit_optimizer_and_qft_planner();
 
     std::cout << "\n===================================================================\n";
-    std::cout << "  ALL TERSUN 1.0.2 QVM TESTS PASSED (14/14 SUCCESS)!                 \n";
+    std::cout << "  ALL TERSUN 1.0.2 QVM TESTS PASSED (17/17 SUCCESS)!                 \n";
     std::cout << "===================================================================\n\n";
     return 0;
 }
+
+

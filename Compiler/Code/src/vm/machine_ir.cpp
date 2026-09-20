@@ -8,22 +8,37 @@
 
 namespace setun {
 
-std::unique_ptr<MIRFunction> MIRFunction::build_from_bytecode(const Chunk& chunk, uint32_t func_id) {
+std::unique_ptr<MIRFunction> MIRFunction::build_from_bytecode(const Chunk& chunk, uint32_t func_id, size_t start_ip, size_t end_ip) {
     auto func = std::make_unique<MIRFunction>();
     func->function_id = func_id;
     func->num_locals = 64;
+    func->next_vreg = 64;
 
     if (chunk.code.empty()) {
         func->create_block("entry");
         return func;
     }
 
+    if (start_ip == 0 && func_id > 0) {
+        start_ip = func_id;
+    }
+    if (end_ip == 0 || end_ip > chunk.code.size()) {
+        end_ip = chunk.code.size();
+        for (size_t fe : chunk.function_table) {
+            if (fe > start_ip && fe < end_ip) {
+                end_ip = fe;
+            }
+        }
+    }
+
     // Pass 1: Identify Basic Block leader boundaries
     std::set<size_t> leaders;
-    leaders.insert(0); // entry
+    leaders.insert(start_ip);
 
-    size_t ip = 0;
-    while (ip < chunk.code.size()) {
+    size_t max_locals = 64;
+    size_t ip = start_ip;
+    size_t max_target = start_ip;
+    while (ip < end_ip && ip < chunk.code.size()) {
         OpCode op = static_cast<OpCode>(chunk.code[ip]);
         size_t cur_ip = ip;
         ip++;
@@ -35,7 +50,12 @@ std::unique_ptr<MIRFunction> MIRFunction::build_from_bytecode(const Chunk& chunk
             case OpCode::OP_PUSH_STRING: ip += 2; break;
             case OpCode::OP_PUSH_BOOL: ip += 1; break;
             case OpCode::OP_LOAD_LOCAL:
-            case OpCode::OP_STORE_LOCAL:
+            case OpCode::OP_STORE_LOCAL: {
+                uint16_t slot = static_cast<uint16_t>(chunk.code[ip] | (chunk.code[ip + 1] << 8));
+                if (slot + 1 > max_locals) max_locals = slot + 1;
+                ip += 2;
+                break;
+            }
             case OpCode::OP_LOAD_GLOBAL:
             case OpCode::OP_STORE_GLOBAL: ip += 2; break;
             case OpCode::OP_JUMP:
@@ -44,6 +64,7 @@ std::unique_ptr<MIRFunction> MIRFunction::build_from_bytecode(const Chunk& chunk
                 ip += 2;
                 size_t target = ip + offset;
                 leaders.insert(target);
+                if (target > max_target) max_target = target;
                 if (ip < chunk.code.size()) leaders.insert(ip);
                 break;
             }
@@ -53,35 +74,49 @@ std::unique_ptr<MIRFunction> MIRFunction::build_from_bytecode(const Chunk& chunk
                 ip += 2;
                 size_t target = ip + offset;
                 leaders.insert(target);
+                if (target > max_target) max_target = target;
                 if (ip < chunk.code.size()) leaders.insert(ip);
                 break;
             }
+            case OpCode::OP_GET_FIELD:
+            case OpCode::OP_SET_FIELD: ip += 2; break;
+            case OpCode::OP_NEW_INSTANCE: ip += 3; break;
             case OpCode::OP_CALL:
-            case OpCode::OP_INVOKE_METHOD: ip += 3; break;
-            case OpCode::OP_RET: {
+            case OpCode::OP_CALL_FAST_0:
+            case OpCode::OP_CALL_FAST_1:
+            case OpCode::OP_INVOKE_METHOD:
+            case OpCode::OP_INVOKE_METHOD_IC: ip += 3; break;
+            case OpCode::OP_NEW_ARRAY: ip += 2; break;
+            case OpCode::OP_BRANCH_3: ip += 6; break;
+            case OpCode::OP_TRY: ip += 2; break;
+            case OpCode::OP_RET:
+            case OpCode::OP_RET_FAST: {
                 if (ip < chunk.code.size()) leaders.insert(ip);
+                if (start_ip > 0 && ip > max_target && end_ip == chunk.code.size()) {
+                    end_ip = ip;
+                }
                 break;
             }
             default: break;
         }
     }
 
+    func->num_locals = static_cast<uint32_t>(max_locals);
+    func->next_vreg = func->num_locals;
+
     // Map byte offset to MIRBlock*
     std::map<size_t, MIRBlock*> offset_to_block;
     for (size_t l : leaders) {
+        if (l >= end_ip) continue;
         MIRBlock* blk = func->create_block("B_" + std::to_string(l));
         offset_to_block[l] = blk;
     }
 
-    // Simulated evaluation stack & locals
+    // Simulated evaluation stack
     std::vector<vreg_t> eval_stack;
-    std::vector<vreg_t> locals(func->num_locals);
-    for (size_t i = 0; i < locals.size(); ++i) {
-        locals[i] = func->new_vreg();
-    }
 
-    ip = 0;
-    MIRBlock* cur_block = offset_to_block[0];
+    ip = start_ip;
+    MIRBlock* cur_block = offset_to_block[start_ip];
 
     auto pop_val = [&]() -> vreg_t {
         if (eval_stack.empty()) {
@@ -92,7 +127,7 @@ std::unique_ptr<MIRFunction> MIRFunction::build_from_bytecode(const Chunk& chunk
         return v;
     };
 
-    while (ip < chunk.code.size()) {
+    while (ip < end_ip && ip < chunk.code.size()) {
         if (offset_to_block.count(ip) && offset_to_block[ip] != cur_block) {
             MIRBlock* next_blk = offset_to_block[ip];
             // Link fallthrough if current block doesn't terminate with jump/ret
@@ -105,6 +140,8 @@ std::unique_ptr<MIRFunction> MIRFunction::build_from_bytecode(const Chunk& chunk
                     cur_block->instructions.push_back(jmp);
                     cur_block->successors.push_back(next_blk->id);
                     next_blk->predecessors.push_back(cur_block->id);
+                } else {
+                    eval_stack.clear();
                 }
             }
             cur_block = next_blk;
@@ -143,16 +180,22 @@ std::unique_ptr<MIRFunction> MIRFunction::build_from_bytecode(const Chunk& chunk
             case OpCode::OP_LOAD_LOCAL: {
                 uint16_t slot = chunk.code[ip] | (chunk.code[ip + 1] << 8);
                 ip += 2;
-                vreg_t val = (slot < locals.size()) ? locals[slot] : func->new_vreg();
+                vreg_t val = (slot < func->num_locals) ? static_cast<vreg_t>(slot) : func->new_vreg();
                 eval_stack.push_back(val);
                 break;
             }
             case OpCode::OP_STORE_LOCAL: {
                 uint16_t slot = chunk.code[ip] | (chunk.code[ip + 1] << 8);
                 ip += 2;
-                vreg_t val = pop_val();
-                if (slot < locals.size()) {
-                    locals[slot] = val;
+                vreg_t val = eval_stack.empty() ? func->new_vreg() : eval_stack.back();
+                if (slot < func->num_locals) {
+                    vreg_t slot_vreg = static_cast<vreg_t>(slot);
+                    MIRInstruction mov;
+                    mov.opcode = MIROpcode::MOV;
+                    mov.dest = slot_vreg;
+                    mov.src1 = val;
+                    mov.bytecode_ip = static_cast<uint32_t>(cur_ip);
+                    cur_block->instructions.push_back(mov);
                 }
                 break;
             }
@@ -212,16 +255,31 @@ std::unique_ptr<MIRFunction> MIRFunction::build_from_bytecode(const Chunk& chunk
                 eval_stack.push_back(d);
                 break;
             }
-            case OpCode::OP_GT: {
+            case OpCode::OP_EQ: {
                 vreg_t b = pop_val();
                 vreg_t a = pop_val();
                 vreg_t d = func->new_vreg();
                 MIRInstruction inst;
-                inst.opcode = MIROpcode::INT_SUB; // compare via diff
+                inst.opcode = MIROpcode::INT_SUB;
                 inst.dest = d;
                 inst.src1 = a;
                 inst.src2 = b;
-                inst.cond = MIRCondition::GT;
+                inst.cond = MIRCondition::EQ;
+                inst.bytecode_ip = static_cast<uint32_t>(cur_ip);
+                cur_block->instructions.push_back(inst);
+                eval_stack.push_back(d);
+                break;
+            }
+            case OpCode::OP_NEQ: {
+                vreg_t b = pop_val();
+                vreg_t a = pop_val();
+                vreg_t d = func->new_vreg();
+                MIRInstruction inst;
+                inst.opcode = MIROpcode::INT_SUB;
+                inst.dest = d;
+                inst.src1 = a;
+                inst.src2 = b;
+                inst.cond = MIRCondition::NE;
                 inst.bytecode_ip = static_cast<uint32_t>(cur_ip);
                 cur_block->instructions.push_back(inst);
                 eval_stack.push_back(d);
@@ -237,6 +295,65 @@ std::unique_ptr<MIRFunction> MIRFunction::build_from_bytecode(const Chunk& chunk
                 inst.src1 = a;
                 inst.src2 = b;
                 inst.cond = MIRCondition::LT;
+                inst.bytecode_ip = static_cast<uint32_t>(cur_ip);
+                cur_block->instructions.push_back(inst);
+                eval_stack.push_back(d);
+                break;
+            }
+            case OpCode::OP_LE: {
+                vreg_t b = pop_val();
+                vreg_t a = pop_val();
+                vreg_t d = func->new_vreg();
+                MIRInstruction inst;
+                inst.opcode = MIROpcode::INT_SUB;
+                inst.dest = d;
+                inst.src1 = a;
+                inst.src2 = b;
+                inst.cond = MIRCondition::LE;
+                inst.bytecode_ip = static_cast<uint32_t>(cur_ip);
+                cur_block->instructions.push_back(inst);
+                eval_stack.push_back(d);
+                break;
+            }
+            case OpCode::OP_GT: {
+                vreg_t b = pop_val();
+                vreg_t a = pop_val();
+                vreg_t d = func->new_vreg();
+                MIRInstruction inst;
+                inst.opcode = MIROpcode::INT_SUB; // compare via diff
+                inst.dest = d;
+                inst.src1 = a;
+                inst.src2 = b;
+                inst.cond = MIRCondition::GT;
+                inst.bytecode_ip = static_cast<uint32_t>(cur_ip);
+                cur_block->instructions.push_back(inst);
+                eval_stack.push_back(d);
+                break;
+            }
+            case OpCode::OP_GE: {
+                vreg_t b = pop_val();
+                vreg_t a = pop_val();
+                vreg_t d = func->new_vreg();
+                MIRInstruction inst;
+                inst.opcode = MIROpcode::INT_SUB;
+                inst.dest = d;
+                inst.src1 = a;
+                inst.src2 = b;
+                inst.cond = MIRCondition::GE;
+                inst.bytecode_ip = static_cast<uint32_t>(cur_ip);
+                cur_block->instructions.push_back(inst);
+                eval_stack.push_back(d);
+                break;
+            }
+            case OpCode::OP_DIV: {
+                vreg_t b = pop_val();
+                vreg_t a = pop_val();
+                vreg_t d = func->new_vreg();
+                MIRInstruction inst;
+                inst.opcode = MIROpcode::INT_DIV;
+                inst.dest = d;
+                inst.src1 = a;
+                inst.src2 = b;
                 inst.bytecode_ip = static_cast<uint32_t>(cur_ip);
                 cur_block->instructions.push_back(inst);
                 eval_stack.push_back(d);
@@ -379,10 +496,147 @@ std::unique_ptr<MIRFunction> MIRFunction::build_from_bytecode(const Chunk& chunk
                 if (argc > 0) inst.src1 = args[0];
                 if (argc > 1) inst.src2 = args[1];
                 if (argc > 2) inst.src3 = args[2];
+                inst.extra_args = args;
                 inst.imm64 = fn_idx;
                 inst.bytecode_ip = static_cast<uint32_t>(cur_ip);
                 cur_block->instructions.push_back(inst);
                 eval_stack.push_back(d);
+                break;
+            }
+            case OpCode::OP_CALL_FAST_0:
+            case OpCode::OP_CALL_FAST_1: {
+                uint16_t fn_entry = static_cast<uint16_t>(chunk.code[ip] | (chunk.code[ip + 1] << 8));
+                ip += 2;
+                uint8_t frame_sz = chunk.code[ip++];
+                (void)frame_sz;
+                uint8_t argc = (op == OpCode::OP_CALL_FAST_0) ? 0 : 1;
+                std::vector<vreg_t> args(argc);
+                for (int i = static_cast<int>(argc) - 1; i >= 0; --i) {
+                    args[i] = pop_val();
+                }
+                vreg_t d = func->new_vreg();
+                MIRInstruction inst;
+                inst.opcode = MIROpcode::CALL_DIRECT;
+                inst.dest = d;
+                if (argc > 0) inst.src1 = args[0];
+                inst.extra_args = args;
+                inst.imm64 = fn_entry;
+                inst.bytecode_ip = static_cast<uint32_t>(cur_ip);
+                cur_block->instructions.push_back(inst);
+                eval_stack.push_back(d);
+                break;
+            }
+            case OpCode::OP_RET_FAST: {
+                vreg_t val = pop_val();
+                MIRInstruction inst;
+                inst.opcode = MIROpcode::RET;
+                inst.src1 = val;
+                inst.bytecode_ip = static_cast<uint32_t>(cur_ip);
+                cur_block->instructions.push_back(inst);
+                break;
+            }
+            case OpCode::OP_PUSH_STRING: {
+                uint16_t sid = static_cast<uint16_t>(chunk.code[ip] | (chunk.code[ip + 1] << 8));
+                ip += 2;
+                vreg_t d = func->new_vreg();
+                MIRInstruction inst;
+                inst.opcode = MIROpcode::CONST_INT;
+                inst.dest = d;
+                if (sid < chunk.string_table.size()) {
+                    inst.imm64 = static_cast<int64_t>(VMValue(chunk.string_table[sid]).raw_);
+                } else {
+                    inst.imm64 = sid;
+                }
+                inst.bytecode_ip = static_cast<uint32_t>(cur_ip);
+                cur_block->instructions.push_back(inst);
+                eval_stack.push_back(d);
+                break;
+            }
+            case OpCode::OP_TIME_NOW_US: {
+                vreg_t d = func->new_vreg();
+                MIRInstruction inst;
+                inst.opcode = MIROpcode::CALL_RUNTIME;
+                inst.dest = d;
+                inst.bytecode_ip = static_cast<uint32_t>(cur_ip);
+                cur_block->instructions.push_back(inst);
+                eval_stack.push_back(d);
+                break;
+            }
+            case OpCode::OP_PRINT:
+            case OpCode::OP_PRINTLN: {
+                vreg_t val = pop_val();
+                MIRInstruction inst;
+                inst.opcode = MIROpcode::CALL_RUNTIME;
+                inst.src1 = val;
+                inst.imm64 = (op == OpCode::OP_PRINTLN) ? 1 : 0;
+                inst.bytecode_ip = static_cast<uint32_t>(cur_ip);
+                cur_block->instructions.push_back(inst);
+                eval_stack.push_back(func->new_vreg());
+                break;
+            }
+            case OpCode::OP_NEW_INSTANCE: {
+                uint16_t tid = static_cast<uint16_t>(chunk.code[ip] | (chunk.code[ip + 1] << 8));
+                ip += 2;
+                uint8_t field_count = chunk.code[ip++];
+                for (int i = static_cast<int>(field_count) - 1; i >= 0; --i) {
+                    pop_val();
+                }
+                vreg_t d = func->new_vreg();
+                MIRInstruction inst;
+                inst.opcode = MIROpcode::ALLOC_OBJECT;
+                inst.dest = d;
+                inst.imm64 = (static_cast<uint64_t>(tid) << 32) | static_cast<uint64_t>(field_count);
+                inst.bytecode_ip = static_cast<uint32_t>(cur_ip);
+                cur_block->instructions.push_back(inst);
+                eval_stack.push_back(d);
+                break;
+            }
+            case OpCode::OP_NEW_ARRAY: {
+                uint16_t count = static_cast<uint16_t>(chunk.code[ip] | (chunk.code[ip + 1] << 8));
+                ip += 2;
+                for (int i = 0; i < count; ++i) {
+                    pop_val();
+                }
+                vreg_t d = func->new_vreg();
+                MIRInstruction inst;
+                inst.opcode = MIROpcode::CALL_RUNTIME;
+                inst.dest = d;
+                inst.imm64 = 0xAA02; // special tag for setun_jit_helper_new_array
+                inst.src1 = static_cast<vreg_t>(count);
+                inst.bytecode_ip = static_cast<uint32_t>(cur_ip);
+                cur_block->instructions.push_back(inst);
+                eval_stack.push_back(d);
+                break;
+            }
+            case OpCode::OP_GET_FIELD: {
+                uint16_t fid = static_cast<uint16_t>(chunk.code[ip] | (chunk.code[ip + 1] << 8));
+                ip += 2;
+                vreg_t obj = pop_val();
+                vreg_t d = func->new_vreg();
+                MIRInstruction inst;
+                inst.opcode = MIROpcode::LOAD_FIELD;
+                inst.dest = d;
+                inst.src1 = obj;
+                inst.imm64 = fid;
+                inst.effect = MemoryEffect::Read;
+                inst.bytecode_ip = static_cast<uint32_t>(cur_ip);
+                cur_block->instructions.push_back(inst);
+                eval_stack.push_back(d);
+                break;
+            }
+            case OpCode::OP_SET_FIELD: {
+                uint16_t fid = static_cast<uint16_t>(chunk.code[ip] | (chunk.code[ip + 1] << 8));
+                ip += 2;
+                vreg_t val = pop_val();
+                vreg_t obj = pop_val();
+                MIRInstruction inst;
+                inst.opcode = MIROpcode::STORE_FIELD;
+                inst.src1 = obj;
+                inst.src2 = val;
+                inst.imm64 = fid;
+                inst.effect = MemoryEffect::Write;
+                inst.bytecode_ip = static_cast<uint32_t>(cur_ip);
+                cur_block->instructions.push_back(inst);
                 break;
             }
             case OpCode::OP_INVOKE_METHOD: {
@@ -401,6 +655,7 @@ std::unique_ptr<MIRFunction> MIRFunction::build_from_bytecode(const Chunk& chunk
                 inst.src1 = receiver;
                 if (argc > 0) inst.src2 = args[0];
                 if (argc > 1) inst.src3 = args[1];
+                inst.extra_args = args;
                 inst.imm64 = mid;
                 inst.bytecode_ip = static_cast<uint32_t>(cur_ip);
                 cur_block->instructions.push_back(inst);
@@ -462,6 +717,9 @@ void MIRFunction::dump(std::ostream& os) const {
                 case MIROpcode::INVOKE_VIRTUAL:
                     os << "INVOKE_VIRTUAL method_id=" << inst.imm64 << " receiver=v" << inst.src1;
                     break;
+                case MIROpcode::ALLOC_OBJECT:
+                    os << "ALLOC_OBJECT type=" << (inst.imm64 >> 32) << " fields=" << (inst.imm64 & 0xFF);
+                    break;
                 case MIROpcode::LOAD_FIELD:
                     os << "LOAD_FIELD [v" << inst.src1 << " + " << inst.imm64 << "]";
                     break;
@@ -503,6 +761,16 @@ void MIRFunction::dump(std::ostream& os) const {
                     break;
                 case MIROpcode::TERNARY_MAX:
                     os << "TERNARY_MAX v" << inst.src1 << ", v" << inst.src2;
+                    break;
+                case MIROpcode::NOP: os << "NOP"; break;
+                case MIROpcode::CALL_RUNTIME:
+                    os << "CALL_RUNTIME src1=v" << inst.src1 << " imm64=" << inst.imm64;
+                    break;
+                case MIROpcode::LOAD_ELEMENT_RAW:
+                    os << "LOAD_ELEMENT_RAW v" << inst.src1 << "[v" << inst.src2 << "]";
+                    break;
+                case MIROpcode::STORE_ELEMENT_RAW:
+                    os << "STORE_ELEMENT_RAW v" << inst.src1 << "[v" << inst.src2 << "] = v" << inst.src3;
                     break;
                 case MIROpcode::JMP: os << "JMP B" << inst.target_block; break;
                 case MIROpcode::JCC: os << "JCC v" << inst.src1 << " -> B" << inst.target_block; break;

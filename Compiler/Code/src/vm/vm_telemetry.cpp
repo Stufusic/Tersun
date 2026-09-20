@@ -24,6 +24,7 @@ void VMTelemetryManager::reset() noexcept {
     object_ic_telemetry_ = ObjectFieldICTelemetry{};
     gc_telemetry_ = GCTelemetry{};
     vectorization_telemetry_ = VectorizationTelemetry{};
+    sra_telemetry_ = SRATelemetry{};
 }
 
 void VMTelemetryManager::start_startup() noexcept {
@@ -158,6 +159,18 @@ void VMTelemetryManager::dump_summary(std::ostream& out) const {
         << ", Generic Ops=" << vectorization_telemetry_.generic_numeric_ops << "\n";
     out << "  Memory Normalization : Normalized=" << vectorization_telemetry_.normalized_memory_access
         << ", Rejected=" << vectorization_telemetry_.rejected_memory_access << "\n";
+    out << "--------------------------------------------------------------------------------\n";
+    out << "  Escape & SRA Profile : Candidates=" << sra_telemetry_.allocation_candidates
+        << ", Eliminated=" << sra_telemetry_.allocation_eliminated
+        << ", Retained=" << sra_telemetry_.allocation_retained << "\n";
+    out << "  Escape Lattice State : NoEscape=" << sra_telemetry_.no_escape_count
+        << ", ArgEscape=" << sra_telemetry_.arg_escape_count
+        << ", RetEscape=" << sra_telemetry_.return_escape_count
+        << ", HeapEscape=" << sra_telemetry_.heap_escape_count
+        << ", Unknown=" << sra_telemetry_.unknown_escape_count << "\n";
+    out << "  Scalarized Transforms: Objects=" << sra_telemetry_.scalarized_objects
+        << ", Fields=" << sra_telemetry_.scalarized_fields
+        << ", Inlined Methods=" << sra_telemetry_.inlined_method_calls << "\n";
     out << "================================================================================\n\n";
 }
 
@@ -344,6 +357,19 @@ void VMTelemetryManager::dump_json(const std::string& path) const {
     f << "    \"typed_numeric_ops\": " << vectorization_telemetry_.typed_numeric_ops << ",\n";
     f << "    \"normalized_memory_access\": " << vectorization_telemetry_.normalized_memory_access << ",\n";
     f << "    \"rejected_memory_access\": " << vectorization_telemetry_.rejected_memory_access << "\n";
+    f << "  },\n";
+    f << "  \"sra_escape_analysis\": {\n";
+    f << "    \"allocation_candidates\": " << sra_telemetry_.allocation_candidates << ",\n";
+    f << "    \"allocation_eliminated\": " << sra_telemetry_.allocation_eliminated << ",\n";
+    f << "    \"allocation_retained\": " << sra_telemetry_.allocation_retained << ",\n";
+    f << "    \"no_escape_count\": " << sra_telemetry_.no_escape_count << ",\n";
+    f << "    \"arg_escape_count\": " << sra_telemetry_.arg_escape_count << ",\n";
+    f << "    \"return_escape_count\": " << sra_telemetry_.return_escape_count << ",\n";
+    f << "    \"heap_escape_count\": " << sra_telemetry_.heap_escape_count << ",\n";
+    f << "    \"unknown_escape_count\": " << sra_telemetry_.unknown_escape_count << ",\n";
+    f << "    \"scalarized_objects\": " << sra_telemetry_.scalarized_objects << ",\n";
+    f << "    \"scalarized_fields\": " << sra_telemetry_.scalarized_fields << ",\n";
+    f << "    \"inlined_method_calls\": " << sra_telemetry_.inlined_method_calls << "\n";
     f << "  }\n";
     f << "}\n";
 }

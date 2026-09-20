@@ -1,0 +1,54 @@
+{
+  "gate": "G6R.2.3",
+  "subgate_name": "W1 Call Frame Allocation Recycling / Direct Native Calling",
+  "workload": "W1 Fibonacci (n = 30)",
+  "total_recursive_calls": 2692537,
+  "max_call_depth": 30,
+  "checksum": 832040,
+  "checksum_verified": true,
+  "cross_tier_parity": "100% BIT-EXACT (Interpreter == JIT == AOT)",
+  "metrics": {
+    "interpreter": {
+      "execution_mode": "Bytecode Interpreter with FixedFrameArena",
+      "samples_us": [101590, 100605, 102923, 102504, 96372],
+      "mean_time_ms": 100.80,
+      "min_time_ms": 96.37,
+      "max_time_ms": 102.92,
+      "target_ms": 120.0,
+      "status": "PASS"
+    },
+    "optimizing_jit": {
+      "execution_mode": "Tier-2 Optimizing JIT with Direct Native Calling",
+      "samples_us": [4990, 5211, 5335, 5287, 5287],
+      "mean_time_ms": 5.22,
+      "min_time_ms": 4.99,
+      "max_time_ms": 5.34,
+      "speedup_vs_interp": 19.31,
+      "target_ms": 45.0,
+      "stretch_target_ms": 5.5,
+      "status": "PASS (MET STRETCH TARGET)"
+    },
+    "frame_microbenchmark": {
+      "dynamic_alloc_destroy_ns": 1.81,
+      "arena_alloc_destroy_ns": 0.72,
+      "arena_speedup": 2.53,
+      "lazy_init_speedup": 8.63,
+      "cost_decomposition": {
+        "initialization_waste_pct": 44.13,
+        "allocation_overhead_pct": 25.24,
+        "core_logic_and_transition_pct": 30.64
+      }
+    },
+    "deep_recursion_safety": {
+      "tested_depth": 2048,
+      "trap_depth": 2049,
+      "stack_overflow_caught": true,
+      "exception_unwinding_o1": true
+    },
+    "differential_regression": {
+      "total_tests": 33,
+      "passed_tests": 33,
+      "pass_rate_pct": 100.0
+    }
+  }
+}

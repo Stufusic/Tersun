@@ -105,6 +105,12 @@ void QEmitter::emit_gates_to_chunk(size_t from_index, qvm::QChunk& chunk) {
                 chunk.emit_byte(static_cast<uint8_t>(g.targets[0]));
                 chunk.emit_byte(static_cast<uint8_t>(g.targets[1]));
                 break;
+            case qvm::GateType::CPHASE:
+                chunk.emit_byte(static_cast<uint8_t>(qvm::QOpCode::OP_CPHASE));
+                chunk.emit_byte(static_cast<uint8_t>(g.targets[0]));
+                chunk.emit_byte(static_cast<uint8_t>(g.targets[1]));
+                chunk.emit_f64(g.param);
+                break;
             case qvm::GateType::TOFFOLI:
                 chunk.emit_byte(static_cast<uint8_t>(qvm::QOpCode::OP_TOFFOLI));
                 chunk.emit_byte(static_cast<uint8_t>(g.targets[0]));

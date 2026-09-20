@@ -242,8 +242,18 @@ TafpuNum tafpu_div(const TafpuNum& x1, const TafpuNum& x2, int32_t scale_L) {
     __int128_t num_a = (a1 * a2 - 3 * b1 * b2) * scale;
     __int128_t num_b = (b1 * a2 - a1 * b2) * scale;
 
-    int64_t a_res = static_cast<int64_t>(std::round(static_cast<double>(num_a) / static_cast<double>(denom128)));
-    int64_t b_res = static_cast<int64_t>(std::round(static_cast<double>(num_b) / static_cast<double>(denom128)));
+    auto round_div128 = [](__int128_t num, __int128_t den) -> int64_t {
+        if (den < 0) { num = -num; den = -den; }
+        __int128_t rem = num % den;
+        if (rem < 0) rem = -rem;
+        if (rem * 2 >= den) {
+            return static_cast<int64_t>((num >= 0) ? (num / den + 1) : (num / den - 1));
+        }
+        return static_cast<int64_t>(num / den);
+    };
+
+    int64_t a_res = round_div128(num_a, denom128);
+    int64_t b_res = round_div128(num_b, denom128);
 #else
     // Portable (MSVC-safe) path with checked arithmetic; throws on overflow.
     int64_t a2sq, b2sq, b2t, denom;

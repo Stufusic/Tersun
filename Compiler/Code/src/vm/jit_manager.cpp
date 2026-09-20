@@ -45,6 +45,28 @@ bool JITManager::compile_tier2(const Chunk& chunk, size_t func_ip, const Profile
 
     opt_obj->tier = JITTier::Tier2_Optimizing;
     code_cache_[func_ip] = opt_obj;
+    stats_.tier2_compilations++;
+
+    // Update runtime metadata so function_hot_table_ and loop_hot_table_ have direct native dispatch
+    if (runtime_metadata_.function_count() > 0) {
+        size_t fn_idx = func_ip;
+        for (size_t i = 0; i < chunk.function_table.size(); ++i) {
+            if (chunk.function_table[i] == func_ip) {
+                fn_idx = i;
+                break;
+            }
+        }
+        FunctionHotData& hot = runtime_metadata_.get_function_hot(fn_idx);
+        hot.native_entry = opt_obj->entry_point;
+        hot.tier = 2;
+        hot.flags |= JIT_FLAG_TIER2_READY;
+
+        FunctionHotData& hot_ip = runtime_metadata_.get_function_hot(func_ip);
+        hot_ip.native_entry = opt_obj->entry_point;
+        hot_ip.tier = 2;
+        hot_ip.flags |= JIT_FLAG_TIER2_READY;
+    }
+
     return true;
 }
 
@@ -134,6 +156,21 @@ bool JITManager::slow_tiering_coordinator_call(VM* vm, const Chunk& chunk, size_
                               << ", code_size=" << code_size << ")\n";
                 }
                 return true;
+            } else if (!policy_.force_tier1_only) {
+                // Tier-1 Baseline JIT failed (e.g. object opcodes): promote directly to Tier-2
+                auto& feedback = get_or_create_feedback(func_ip);
+                auto snapshot = feedback.freeze_snapshot();
+                if (compile_tier2(chunk, func_ip, snapshot.get())) {
+                    auto opt_obj = get_or_create(func_ip);
+                    hot.native_entry = opt_obj->entry_point;
+                    hot.tier = 2;
+                    hot.flags |= JIT_FLAG_TIER2_READY;
+                    if (policy_.trace_tiering) {
+                        std::cout << "[AutoTiering] Function func_ip=" << func_ip
+                                  << " promoted Tier-0 -> Tier-2 directly (calls=" << hot.invocation_counter << ")\n";
+                    }
+                    return true;
+                }
             }
         }
         return false;
@@ -231,6 +268,28 @@ bool JITManager::slow_tiering_coordinator_osr(VM* vm, const Chunk& chunk, size_t
                                   << " OSR Tier-0 -> Tier-1 (backedges=" << lhot.backedge_counter << ")\n";
                     }
                     return true;
+                }
+            } else if (!policy_.force_tier1_only) {
+                // Tier-1 unable to compile or has no OSR entry: try Tier-2 directly
+                auto& feedback = get_or_create_feedback(func_ip);
+                auto snapshot = feedback.freeze_snapshot();
+                if (compile_tier2(chunk, func_ip, snapshot.get())) {
+                    auto opt_obj = get_or_create(func_ip);
+                    if (opt_obj->has_osr_entry(loop_target)) {
+                        const auto* rec = opt_obj->osr_table.find_by_bytecode_ip(loop_target);
+                        if (rec) {
+                            lhot.osr_entry = reinterpret_cast<JITNativeEntryPoint>(
+                                const_cast<uint8_t*>(opt_obj->buffer.data() + rec->osr_native_entry_offset));
+                            lhot.tier = 2;
+                            lhot.flags |= JIT_FLAG_OSR_ELIGIBLE;
+                            stats_.tier2_osr_transitions++;
+                            if (policy_.trace_tiering) {
+                                std::cout << "[AutoTiering] Loop loop_ip=" << loop_target
+                                          << " OSR Tier-0 -> Tier-2 (backedges=" << lhot.backedge_counter << ")\n";
+                            }
+                            return true;
+                        }
+                    }
                 }
             }
         }

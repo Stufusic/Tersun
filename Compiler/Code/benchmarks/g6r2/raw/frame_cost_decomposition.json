@@ -1,0 +1,26 @@
+{
+  "subgate": "G6R.2.3",
+  "phase": "Phase 2.3-A",
+  "sample_size": 2000000,
+  "measurements": {
+    "dynamic_frame_create_destroy_ns": 1.8145,
+    "arena_frame_reuse_ns": 0.7165,
+    "arena_speedup": 2.53245,
+    "full_initialization_waste_ns": 2.1715,
+    "lazy_initialization_ns": 0.2515,
+    "lazy_init_speedup": 8.63419,
+    "interp_call_ret_transition_ns": 0.365,
+    "jit_native_direct_call_ns": 0.5025,
+    "jit_direct_call_speedup": 0.726368,
+    "recursive_chain_depth_10_ns": 0,
+    "recursive_chain_depth_30_ns": 0,
+    "recursive_chain_depth_100_ns": 0,
+    "recursive_chain_depth_500_ns": 0
+  },
+  "decomposition_percentages": {
+    "allocation_overhead_pct": 25.2356,
+    "initialization_waste_pct": 44.1278,
+    "transition_overhead_pct": 0,
+    "residual_core_logic_pct": 30.6366
+  }
+}

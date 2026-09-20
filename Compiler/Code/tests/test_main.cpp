@@ -98,6 +98,9 @@ void test_array_storage_suite();
 // Gate 6.0-G Cross-Tier Differential Verification (ST-12.1..ST-12.20)
 void test_cross_tier_differential_suite();
 
+// Gate 6R.2.4 Array Bounds Check Elimination (BCE) & Range Propagation
+void run_bce_safety_tests();
+
 } // namespace setun
 
 // Tersun 1.0.2 QVM Verification Suite
@@ -211,6 +214,9 @@ int run_all_tests() {
 
         std::cout << "\n[Gate 6.0-G Evolution] Testing Cross-Tier Differential Suite (ST-12.1..ST-12.20)...\n";
         setun::test_cross_tier_differential_suite();
+
+        std::cout << "\n[Gate 6R.2.4 Evolution] Testing BCE & Range Propagation Negative/Positive Safety...\n";
+        setun::run_bce_safety_tests();
 
         std::cout << "\n==========================================================\n";
         std::cout << "  ALL TESTS PASSED SUCCESSFULLY! (100% Verification)      \n";

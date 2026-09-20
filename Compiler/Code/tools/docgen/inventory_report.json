@@ -1,0 +1,2407 @@
+{
+  "compiler": {
+    "src_files": [
+      {
+        "filename": "cfg.cpp",
+        "relpath": "Code/src/compiler/cfg.cpp",
+        "lines": {
+          "total": 337,
+          "blank": 48,
+          "comment": 13,
+          "code": 276
+        },
+        "symbols": []
+      },
+      {
+        "filename": "emitter.cpp",
+        "relpath": "Code/src/compiler/emitter.cpp",
+        "lines": {
+          "total": 2068,
+          "blank": 192,
+          "comment": 92,
+          "code": 1784
+        },
+        "symbols": []
+      },
+      {
+        "filename": "ir_optimizer.cpp",
+        "relpath": "Code/src/compiler/ir_optimizer.cpp",
+        "lines": {
+          "total": 341,
+          "blank": 40,
+          "comment": 22,
+          "code": 279
+        },
+        "symbols": []
+      },
+      {
+        "filename": "ir_to_bytecode.cpp",
+        "relpath": "Code/src/compiler/ir_to_bytecode.cpp",
+        "lines": {
+          "total": 661,
+          "blank": 73,
+          "comment": 24,
+          "code": 564
+        },
+        "symbols": []
+      },
+      {
+        "filename": "lexer.cpp",
+        "relpath": "Code/src/compiler/lexer.cpp",
+        "lines": {
+          "total": 642,
+          "blank": 40,
+          "comment": 12,
+          "code": 590
+        },
+        "symbols": []
+      },
+      {
+        "filename": "llvm2qvm.cpp",
+        "relpath": "Code/src/compiler/llvm2qvm.cpp",
+        "lines": {
+          "total": 148,
+          "blank": 18,
+          "comment": 15,
+          "code": 115
+        },
+        "symbols": []
+      },
+      {
+        "filename": "llvm_emitter.cpp",
+        "relpath": "Code/src/compiler/llvm_emitter.cpp",
+        "lines": {
+          "total": 2100,
+          "blank": 122,
+          "comment": 23,
+          "code": 1955
+        },
+        "symbols": []
+      },
+      {
+        "filename": "module_resolver.cpp",
+        "relpath": "Code/src/compiler/module_resolver.cpp",
+        "lines": {
+          "total": 355,
+          "blank": 34,
+          "comment": 31,
+          "code": 290
+        },
+        "symbols": []
+      },
+      {
+        "filename": "monomorphizer.cpp",
+        "relpath": "Code/src/compiler/monomorphizer.cpp",
+        "lines": {
+          "total": 273,
+          "blank": 16,
+          "comment": 10,
+          "code": 247
+        },
+        "symbols": []
+      },
+      {
+        "filename": "opt_ir.cpp",
+        "relpath": "Code/src/compiler/opt_ir.cpp",
+        "lines": {
+          "total": 857,
+          "blank": 94,
+          "comment": 9,
+          "code": 754
+        },
+        "symbols": []
+      },
+      {
+        "filename": "parser.cpp",
+        "relpath": "Code/src/compiler/parser.cpp",
+        "lines": {
+          "total": 1457,
+          "blank": 123,
+          "comment": 40,
+          "code": 1294
+        },
+        "symbols": []
+      },
+      {
+        "filename": "q_emitter.cpp",
+        "relpath": "Code/src/compiler/q_emitter.cpp",
+        "lines": {
+          "total": 600,
+          "blank": 32,
+          "comment": 13,
+          "code": 555
+        },
+        "symbols": [
+          "IterItem"
+        ]
+      },
+      {
+        "filename": "tree_canonicalize.cpp",
+        "relpath": "Code/src/compiler/tree_canonicalize.cpp",
+        "lines": {
+          "total": 351,
+          "blank": 26,
+          "comment": 8,
+          "code": 317
+        },
+        "symbols": []
+      },
+      {
+        "filename": "tree_optimizer.cpp",
+        "relpath": "Code/src/compiler/tree_optimizer.cpp",
+        "lines": {
+          "total": 528,
+          "blank": 43,
+          "comment": 20,
+          "code": 465
+        },
+        "symbols": []
+      },
+      {
+        "filename": "type_checker.cpp",
+        "relpath": "Code/src/compiler/type_checker.cpp",
+        "lines": {
+          "total": 1285,
+          "blank": 124,
+          "comment": 50,
+          "code": 1111
+        },
+        "symbols": []
+      },
+      {
+        "filename": "types.cpp",
+        "relpath": "Code/src/compiler/types.cpp",
+        "lines": {
+          "total": 306,
+          "blank": 40,
+          "comment": 8,
+          "code": 258
+        },
+        "symbols": []
+      }
+    ],
+    "inc_files": [
+      {
+        "filename": "arena.hpp",
+        "relpath": "Code/include/compiler/arena.hpp",
+        "lines": {
+          "total": 127,
+          "blank": 18,
+          "comment": 8,
+          "code": 101
+        },
+        "symbols": [
+          "ArenaAllocator",
+          "CleanupNode"
+        ]
+      },
+      {
+        "filename": "ast.hpp",
+        "relpath": "Code/include/compiler/ast.hpp",
+        "lines": {
+          "total": 485,
+          "blank": 65,
+          "comment": 20,
+          "code": 400
+        },
+        "symbols": [
+          "Type",
+          "DataType",
+          "Expr",
+          "Stmt",
+          "IntLiteralExpr",
+          "TryteLiteralExpr",
+          "TafpuLiteralExpr",
+          "FloatLiteralExpr",
+          "StringLiteralExpr",
+          "BoolLiteralExpr",
+          "IdentifierExpr",
+          "UnaryOp",
+          "UnaryExpr",
+          "BinaryOp",
+          "BinaryExpr",
+          "AmbiguousTripleExpr",
+          "CallExpr",
+          "TafpuConstructExpr",
+          "FStringPart",
+          "FStringExpr",
+          "MemberAccessExpr",
+          "MethodCallExpr",
+          "IndexExpr",
+          "ComptimeExpr",
+          "ArrayLiteralExpr",
+          "Parameter",
+          "LambdaExpr",
+          "Expr",
+          "VarDeclStmt",
+          "AssignStmt",
+          "MemberAssignStmt",
+          "IndexAssignStmt",
+          "ExprStmt",
+          "BlockStmt",
+          "IfStmt",
+          "Branch3Stmt",
+          "WhileStmt",
+          "ForStmt",
+          "BreakContinueStmt",
+          "TryCatchStmt",
+          "ThrowStmt",
+          "ReturnStmt",
+          "FnDeclStmt",
+          "FieldDecl",
+          "MethodDecl",
+          "StructDeclStmt",
+          "ClassDeclStmt",
+          "InterfaceDeclStmt",
+          "EnumVariant",
+          "EnumDeclStmt",
+          "MatchArm",
+          "MatchStmt",
+          "ImportStmt",
+          "Stmt",
+          "Program"
+        ]
+      },
+      {
+        "filename": "cfg.hpp",
+        "relpath": "Code/include/compiler/cfg.hpp",
+        "lines": {
+          "total": 73,
+          "blank": 16,
+          "comment": 1,
+          "code": 56
+        },
+        "symbols": [
+          "BasicBlock",
+          "CFG"
+        ]
+      },
+      {
+        "filename": "compiler_arena.hpp",
+        "relpath": "Code/include/compiler/compiler_arena.hpp",
+        "lines": {
+          "total": 106,
+          "blank": 21,
+          "comment": 11,
+          "code": 74
+        },
+        "symbols": [
+          "CompilerPhase",
+          "CompilerArena",
+          "PhaseResetGuard",
+          "Target"
+        ]
+      },
+      {
+        "filename": "emitter.hpp",
+        "relpath": "Code/include/compiler/emitter.hpp",
+        "lines": {
+          "total": 150,
+          "blank": 23,
+          "comment": 15,
+          "code": 112
+        },
+        "symbols": [
+          "Chunk",
+          "BytecodeEmitter",
+          "LoopContext"
+        ]
+      },
+      {
+        "filename": "ir_optimizer.hpp",
+        "relpath": "Code/include/compiler/ir_optimizer.hpp",
+        "lines": {
+          "total": 40,
+          "blank": 9,
+          "comment": 1,
+          "code": 30
+        },
+        "symbols": [
+          "IROptimizer"
+        ]
+      },
+      {
+        "filename": "ir_to_bytecode.hpp",
+        "relpath": "Code/include/compiler/ir_to_bytecode.hpp",
+        "lines": {
+          "total": 71,
+          "blank": 14,
+          "comment": 7,
+          "code": 50
+        },
+        "symbols": [
+          "IRToBytecodeEmitter",
+          "UnresolvedJump",
+          "UnresolvedBranch3",
+          "UnresolvedCall"
+        ]
+      },
+      {
+        "filename": "lexer.hpp",
+        "relpath": "Code/include/compiler/lexer.hpp",
+        "lines": {
+          "total": 49,
+          "blank": 11,
+          "comment": 5,
+          "code": 33
+        },
+        "symbols": [
+          "Lexer"
+        ]
+      },
+      {
+        "filename": "llvm2qvm.hpp",
+        "relpath": "Code/include/compiler/llvm2qvm.hpp",
+        "lines": {
+          "total": 33,
+          "blank": 9,
+          "comment": 3,
+          "code": 21
+        },
+        "symbols": [
+          "LLVM2QVMTranslator"
+        ]
+      },
+      {
+        "filename": "llvm_emitter.hpp",
+        "relpath": "Code/include/compiler/llvm_emitter.hpp",
+        "lines": {
+          "total": 114,
+          "blank": 23,
+          "comment": 11,
+          "code": 80
+        },
+        "symbols": [
+          "TargetArch",
+          "TargetConfig",
+          "LLVMValue",
+          "StructFieldMeta",
+          "StructMeta",
+          "LLVMEmitter",
+          "IrLoop"
+        ]
+      },
+      {
+        "filename": "module_resolver.hpp",
+        "relpath": "Code/include/compiler/module_resolver.hpp",
+        "lines": {
+          "total": 39,
+          "blank": 10,
+          "comment": 3,
+          "code": 26
+        },
+        "symbols": [
+          "ModuleResolver"
+        ]
+      },
+      {
+        "filename": "monomorphizer.hpp",
+        "relpath": "Code/include/compiler/monomorphizer.hpp",
+        "lines": {
+          "total": 28,
+          "blank": 7,
+          "comment": 2,
+          "code": 19
+        },
+        "symbols": [
+          "Monomorphizer"
+        ]
+      },
+      {
+        "filename": "native_runtime.hpp",
+        "relpath": "Code/include/compiler/native_runtime.hpp",
+        "lines": {
+          "total": 479,
+          "blank": 44,
+          "comment": 16,
+          "code": 419
+        },
+        "symbols": [
+          "alignas",
+          "ArcHeader",
+          "FrameArena",
+          "CpuFeature"
+        ]
+      },
+      {
+        "filename": "opt_ir.hpp",
+        "relpath": "Code/include/compiler/opt_ir.hpp",
+        "lines": {
+          "total": 363,
+          "blank": 35,
+          "comment": 11,
+          "code": 317
+        },
+        "symbols": [
+          "CFG",
+          "IROp",
+          "IROperand",
+          "Kind",
+          "IRInstruction",
+          "IRFunction",
+          "IRModule",
+          "IRBuilder"
+        ]
+      },
+      {
+        "filename": "optimization_pass.hpp",
+        "relpath": "Code/include/compiler/optimization_pass.hpp",
+        "lines": {
+          "total": 30,
+          "blank": 8,
+          "comment": 2,
+          "code": 20
+        },
+        "symbols": [
+          "TreeContext"
+        ]
+      },
+      {
+        "filename": "packed_tensor.hpp",
+        "relpath": "Code/include/compiler/packed_tensor.hpp",
+        "lines": {
+          "total": 320,
+          "blank": 40,
+          "comment": 17,
+          "code": 263
+        },
+        "symbols": [
+          "AlignedBuffer",
+          "BitNetTryte8",
+          "alignas",
+          "alignas",
+          "TensorPrecision",
+          "PackedTensor"
+        ]
+      },
+      {
+        "filename": "parser.hpp",
+        "relpath": "Code/include/compiler/parser.hpp",
+        "lines": {
+          "total": 88,
+          "blank": 11,
+          "comment": 4,
+          "code": 73
+        },
+        "symbols": [
+          "Precedence",
+          "Parser"
+        ]
+      },
+      {
+        "filename": "q_emitter.hpp",
+        "relpath": "Code/include/compiler/q_emitter.hpp",
+        "lines": {
+          "total": 64,
+          "blank": 14,
+          "comment": 8,
+          "code": 42
+        },
+        "symbols": [
+          "QEmitter",
+          "UnrollContext"
+        ]
+      },
+      {
+        "filename": "std_tensor.hpp",
+        "relpath": "Code/include/compiler/std_tensor.hpp",
+        "lines": {
+          "total": 170,
+          "blank": 25,
+          "comment": 16,
+          "code": 129
+        },
+        "symbols": [
+          "SpecialAngle",
+          "Tensor"
+        ]
+      },
+      {
+        "filename": "symbol_table.hpp",
+        "relpath": "Code/include/compiler/symbol_table.hpp",
+        "lines": {
+          "total": 71,
+          "blank": 12,
+          "comment": 1,
+          "code": 58
+        },
+        "symbols": [
+          "Symbol",
+          "SymbolTable"
+        ]
+      },
+      {
+        "filename": "token.hpp",
+        "relpath": "Code/include/compiler/token.hpp",
+        "lines": {
+          "total": 154,
+          "blank": 14,
+          "comment": 8,
+          "code": 132
+        },
+        "symbols": [
+          "TokenType",
+          "SourceLocation",
+          "Token"
+        ]
+      },
+      {
+        "filename": "tree_canonicalize.hpp",
+        "relpath": "Code/include/compiler/tree_canonicalize.hpp",
+        "lines": {
+          "total": 37,
+          "blank": 8,
+          "comment": 3,
+          "code": 26
+        },
+        "symbols": [
+          "TreeNodeMetadata",
+          "TreeCanonicalizer"
+        ]
+      },
+      {
+        "filename": "tree_optimizer.hpp",
+        "relpath": "Code/include/compiler/tree_optimizer.hpp",
+        "lines": {
+          "total": 43,
+          "blank": 10,
+          "comment": 2,
+          "code": 31
+        },
+        "symbols": [
+          "TreeOptimizer"
+        ]
+      },
+      {
+        "filename": "type_checker.hpp",
+        "relpath": "Code/include/compiler/type_checker.hpp",
+        "lines": {
+          "total": 115,
+          "blank": 22,
+          "comment": 12,
+          "code": 81
+        },
+        "symbols": [
+          "TypeError",
+          "ScopedSymbol",
+          "TypeChecker"
+        ]
+      },
+      {
+        "filename": "types.hpp",
+        "relpath": "Code/include/compiler/types.hpp",
+        "lines": {
+          "total": 127,
+          "blank": 20,
+          "comment": 8,
+          "code": 99
+        },
+        "symbols": [
+          "TypeKind",
+          "Type",
+          "EnumVariantType",
+          "FieldTypeInfo",
+          "MethodTypeInfo",
+          "Type"
+        ]
+      }
+    ],
+    "stats": {
+      "total_files": 41,
+      "total_loc": 15685,
+      "code_loc": 13546
+    }
+  },
+  "vm": {
+    "src_files": [
+      {
+        "filename": "array_storage.cpp",
+        "relpath": "Code/src/vm/array_storage.cpp",
+        "lines": {
+          "total": 410,
+          "blank": 33,
+          "comment": 3,
+          "code": 374
+        },
+        "symbols": []
+      },
+      {
+        "filename": "baseline_jit.cpp",
+        "relpath": "Code/src/vm/baseline_jit.cpp",
+        "lines": {
+          "total": 820,
+          "blank": 87,
+          "comment": 36,
+          "code": 697
+        },
+        "symbols": []
+      },
+      {
+        "filename": "escape_analysis.cpp",
+        "relpath": "Code/src/vm/escape_analysis.cpp",
+        "lines": {
+          "total": 163,
+          "blank": 13,
+          "comment": 21,
+          "code": 129
+        },
+        "symbols": []
+      },
+      {
+        "filename": "field_ic.cpp",
+        "relpath": "Code/src/vm/field_ic.cpp",
+        "lines": {
+          "total": 29,
+          "blank": 7,
+          "comment": 5,
+          "code": 17
+        },
+        "symbols": []
+      },
+      {
+        "filename": "gc.cpp",
+        "relpath": "Code/src/vm/gc.cpp",
+        "lines": {
+          "total": 85,
+          "blank": 15,
+          "comment": 5,
+          "code": 65
+        },
+        "symbols": []
+      },
+      {
+        "filename": "gc_debug.cpp",
+        "relpath": "Code/src/vm/gc_debug.cpp",
+        "lines": {
+          "total": 76,
+          "blank": 12,
+          "comment": 0,
+          "code": 64
+        },
+        "symbols": []
+      },
+      {
+        "filename": "gc_engine.cpp",
+        "relpath": "Code/src/vm/gc_engine.cpp",
+        "lines": {
+          "total": 146,
+          "blank": 24,
+          "comment": 10,
+          "code": 112
+        },
+        "symbols": []
+      },
+      {
+        "filename": "gc_heap.cpp",
+        "relpath": "Code/src/vm/gc_heap.cpp",
+        "lines": {
+          "total": 163,
+          "blank": 30,
+          "comment": 9,
+          "code": 124
+        },
+        "symbols": []
+      },
+      {
+        "filename": "induction_variable.cpp",
+        "relpath": "Code/src/vm/induction_variable.cpp",
+        "lines": {
+          "total": 189,
+          "blank": 26,
+          "comment": 15,
+          "code": 148
+        },
+        "symbols": []
+      },
+      {
+        "filename": "inline_cache.cpp",
+        "relpath": "Code/src/vm/inline_cache.cpp",
+        "lines": {
+          "total": 9,
+          "blank": 3,
+          "comment": 2,
+          "code": 4
+        },
+        "symbols": []
+      },
+      {
+        "filename": "jit_buffer.cpp",
+        "relpath": "Code/src/vm/jit_buffer.cpp",
+        "lines": {
+          "total": 125,
+          "blank": 19,
+          "comment": 5,
+          "code": 101
+        },
+        "symbols": []
+      },
+      {
+        "filename": "jit_deopt.cpp",
+        "relpath": "Code/src/vm/jit_deopt.cpp",
+        "lines": {
+          "total": 115,
+          "blank": 16,
+          "comment": 10,
+          "code": 89
+        },
+        "symbols": []
+      },
+      {
+        "filename": "jit_engine.cpp",
+        "relpath": "Code/src/vm/jit_engine.cpp",
+        "lines": {
+          "total": 184,
+          "blank": 21,
+          "comment": 22,
+          "code": 141
+        },
+        "symbols": []
+      },
+      {
+        "filename": "jit_lir.cpp",
+        "relpath": "Code/src/vm/jit_lir.cpp",
+        "lines": {
+          "total": 43,
+          "blank": 3,
+          "comment": 0,
+          "code": 40
+        },
+        "symbols": []
+      },
+      {
+        "filename": "jit_manager.cpp",
+        "relpath": "Code/src/vm/jit_manager.cpp",
+        "lines": {
+          "total": 435,
+          "blank": 51,
+          "comment": 21,
+          "code": 363
+        },
+        "symbols": []
+      },
+      {
+        "filename": "jit_materialization.cpp",
+        "relpath": "Code/src/vm/jit_materialization.cpp",
+        "lines": {
+          "total": 76,
+          "blank": 5,
+          "comment": 3,
+          "code": 68
+        },
+        "symbols": []
+      },
+      {
+        "filename": "jit_osr.cpp",
+        "relpath": "Code/src/vm/jit_osr.cpp",
+        "lines": {
+          "total": 5,
+          "blank": 1,
+          "comment": 1,
+          "code": 3
+        },
+        "symbols": []
+      },
+      {
+        "filename": "jit_runtime_helpers.cpp",
+        "relpath": "Code/src/vm/jit_runtime_helpers.cpp",
+        "lines": {
+          "total": 239,
+          "blank": 22,
+          "comment": 3,
+          "code": 214
+        },
+        "symbols": []
+      },
+      {
+        "filename": "jit_safepoint.cpp",
+        "relpath": "Code/src/vm/jit_safepoint.cpp",
+        "lines": {
+          "total": 5,
+          "blank": 1,
+          "comment": 1,
+          "code": 3
+        },
+        "symbols": []
+      },
+      {
+        "filename": "linear_scan.cpp",
+        "relpath": "Code/src/vm/linear_scan.cpp",
+        "lines": {
+          "total": 231,
+          "blank": 26,
+          "comment": 12,
+          "code": 193
+        },
+        "symbols": [
+          "LoopRange"
+        ]
+      },
+      {
+        "filename": "machine_ir.cpp",
+        "relpath": "Code/src/vm/machine_ir.cpp",
+        "lines": {
+          "total": 753,
+          "blank": 19,
+          "comment": 4,
+          "code": 730
+        },
+        "symbols": []
+      },
+      {
+        "filename": "mir_optimizer.cpp",
+        "relpath": "Code/src/vm/mir_optimizer.cpp",
+        "lines": {
+          "total": 1039,
+          "blank": 130,
+          "comment": 81,
+          "code": 828
+        },
+        "symbols": []
+      },
+      {
+        "filename": "optimizing_jit.cpp",
+        "relpath": "Code/src/vm/optimizing_jit.cpp",
+        "lines": {
+          "total": 619,
+          "blank": 30,
+          "comment": 34,
+          "code": 555
+        },
+        "symbols": []
+      },
+      {
+        "filename": "runtime_metadata.cpp",
+        "relpath": "Code/src/vm/runtime_metadata.cpp",
+        "lines": {
+          "total": 54,
+          "blank": 10,
+          "comment": 0,
+          "code": 44
+        },
+        "symbols": []
+      },
+      {
+        "filename": "superinstruction.cpp",
+        "relpath": "Code/src/vm/superinstruction.cpp",
+        "lines": {
+          "total": 168,
+          "blank": 17,
+          "comment": 7,
+          "code": 144
+        },
+        "symbols": []
+      },
+      {
+        "filename": "tier_cost_model.cpp",
+        "relpath": "Code/src/vm/tier_cost_model.cpp",
+        "lines": {
+          "total": 141,
+          "blank": 26,
+          "comment": 13,
+          "code": 102
+        },
+        "symbols": []
+      },
+      {
+        "filename": "tos_cache.cpp",
+        "relpath": "Code/src/vm/tos_cache.cpp",
+        "lines": {
+          "total": 16,
+          "blank": 4,
+          "comment": 4,
+          "code": 8
+        },
+        "symbols": []
+      },
+      {
+        "filename": "type_descriptor.cpp",
+        "relpath": "Code/src/vm/type_descriptor.cpp",
+        "lines": {
+          "total": 191,
+          "blank": 16,
+          "comment": 7,
+          "code": 168
+        },
+        "symbols": []
+      },
+      {
+        "filename": "type_feedback.cpp",
+        "relpath": "Code/src/vm/type_feedback.cpp",
+        "lines": {
+          "total": 109,
+          "blank": 11,
+          "comment": 0,
+          "code": 98
+        },
+        "symbols": []
+      },
+      {
+        "filename": "vm.cpp",
+        "relpath": "Code/src/vm/vm.cpp",
+        "lines": {
+          "total": 4289,
+          "blank": 308,
+          "comment": 58,
+          "code": 3923
+        },
+        "symbols": []
+      },
+      {
+        "filename": "vm_execution_state.cpp",
+        "relpath": "Code/src/vm/vm_execution_state.cpp",
+        "lines": {
+          "total": 79,
+          "blank": 15,
+          "comment": 7,
+          "code": 57
+        },
+        "symbols": []
+      },
+      {
+        "filename": "vm_profiler.cpp",
+        "relpath": "Code/src/vm/vm_profiler.cpp",
+        "lines": {
+          "total": 148,
+          "blank": 13,
+          "comment": 2,
+          "code": 133
+        },
+        "symbols": [
+          "BigramEntry"
+        ]
+      },
+      {
+        "filename": "vm_telemetry.cpp",
+        "relpath": "Code/src/vm/vm_telemetry.cpp",
+        "lines": {
+          "total": 377,
+          "blank": 22,
+          "comment": 12,
+          "code": 343
+        },
+        "symbols": []
+      },
+      {
+        "filename": "x64_assembler.cpp",
+        "relpath": "Code/src/vm/x64_assembler.cpp",
+        "lines": {
+          "total": 537,
+          "blank": 65,
+          "comment": 18,
+          "code": 454
+        },
+        "symbols": []
+      }
+    ],
+    "inc_files": [
+      {
+        "filename": "array_storage.hpp",
+        "relpath": "Code/include/vm/array_storage.hpp",
+        "lines": {
+          "total": 93,
+          "blank": 17,
+          "comment": 12,
+          "code": 64
+        },
+        "symbols": [
+          "VMValue",
+          "ArrayRep",
+          "ArrayObject"
+        ]
+      },
+      {
+        "filename": "baseline_jit.hpp",
+        "relpath": "Code/include/vm/baseline_jit.hpp",
+        "lines": {
+          "total": 44,
+          "blank": 9,
+          "comment": 4,
+          "code": 31
+        },
+        "symbols": [
+          "BaselineJITCompiler"
+        ]
+      },
+      {
+        "filename": "escape_analysis.hpp",
+        "relpath": "Code/include/vm/escape_analysis.hpp",
+        "lines": {
+          "total": 91,
+          "blank": 12,
+          "comment": 6,
+          "code": 73
+        },
+        "symbols": [
+          "EscapeState",
+          "AllocSiteInfo",
+          "EscapeAnalysisResult",
+          "EscapeAnalysis"
+        ]
+      },
+      {
+        "filename": "field_ic.hpp",
+        "relpath": "Code/include/vm/field_ic.hpp",
+        "lines": {
+          "total": 73,
+          "blank": 14,
+          "comment": 10,
+          "code": 49
+        },
+        "symbols": [
+          "FieldICEntry",
+          "alignas"
+        ]
+      },
+      {
+        "filename": "fixed_frame_arena.hpp",
+        "relpath": "Code/include/vm/fixed_frame_arena.hpp",
+        "lines": {
+          "total": 106,
+          "blank": 21,
+          "comment": 9,
+          "code": 76
+        },
+        "symbols": [
+          "CallFrame",
+          "VMStackOverflowException",
+          "alignas"
+        ]
+      },
+      {
+        "filename": "gc.hpp",
+        "relpath": "Code/include/vm/gc.hpp",
+        "lines": {
+          "total": 69,
+          "blank": 13,
+          "comment": 6,
+          "code": 50
+        },
+        "symbols": [
+          "GcColor",
+          "GcObject",
+          "TriColorGC"
+        ]
+      },
+      {
+        "filename": "gc_debug.hpp",
+        "relpath": "Code/include/vm/gc_debug.hpp",
+        "lines": {
+          "total": 31,
+          "blank": 8,
+          "comment": 6,
+          "code": 17
+        },
+        "symbols": [
+          "GCDebug"
+        ]
+      },
+      {
+        "filename": "gc_engine.hpp",
+        "relpath": "Code/include/vm/gc_engine.hpp",
+        "lines": {
+          "total": 66,
+          "blank": 15,
+          "comment": 5,
+          "code": 46
+        },
+        "symbols": [
+          "VM",
+          "GCEngine"
+        ]
+      },
+      {
+        "filename": "gc_header.hpp",
+        "relpath": "Code/include/vm/gc_header.hpp",
+        "lines": {
+          "total": 95,
+          "blank": 19,
+          "comment": 6,
+          "code": 70
+        },
+        "symbols": [
+          "GCColor",
+          "GCFlags",
+          "GCHeader"
+        ]
+      },
+      {
+        "filename": "gc_heap.hpp",
+        "relpath": "Code/include/vm/gc_heap.hpp",
+        "lines": {
+          "total": 115,
+          "blank": 25,
+          "comment": 17,
+          "code": 73
+        },
+        "symbols": [
+          "FreeSlot",
+          "GCRegion",
+          "GCHeap"
+        ]
+      },
+      {
+        "filename": "gc_roots.hpp",
+        "relpath": "Code/include/vm/gc_roots.hpp",
+        "lines": {
+          "total": 88,
+          "blank": 17,
+          "comment": 6,
+          "code": 65
+        },
+        "symbols": [
+          "GCRootRegistry",
+          "LocalHandleScope"
+        ]
+      },
+      {
+        "filename": "induction_variable.hpp",
+        "relpath": "Code/include/vm/induction_variable.hpp",
+        "lines": {
+          "total": 65,
+          "blank": 14,
+          "comment": 6,
+          "code": 45
+        },
+        "symbols": [
+          "InductionVariable",
+          "NaturalLoop",
+          "InductionVariableAnalyzer"
+        ]
+      },
+      {
+        "filename": "inline_cache.hpp",
+        "relpath": "Code/include/vm/inline_cache.hpp",
+        "lines": {
+          "total": 233,
+          "blank": 33,
+          "comment": 8,
+          "code": 192
+        },
+        "symbols": [
+          "ICState",
+          "MethodICEntry",
+          "MethodIC",
+          "CallSiteIC",
+          "ChunkInlineCacheTable"
+        ]
+      },
+      {
+        "filename": "jit_buffer.hpp",
+        "relpath": "Code/include/vm/jit_buffer.hpp",
+        "lines": {
+          "total": 42,
+          "blank": 8,
+          "comment": 5,
+          "code": 29
+        },
+        "symbols": [
+          "JITCodeBuffer"
+        ]
+      },
+      {
+        "filename": "jit_deopt.hpp",
+        "relpath": "Code/include/vm/jit_deopt.hpp",
+        "lines": {
+          "total": 70,
+          "blank": 15,
+          "comment": 2,
+          "code": 53
+        },
+        "symbols": [
+          "VM",
+          "DeoptReason",
+          "DeoptRecord",
+          "DeoptTable"
+        ]
+      },
+      {
+        "filename": "jit_engine.hpp",
+        "relpath": "Code/include/vm/jit_engine.hpp",
+        "lines": {
+          "total": 41,
+          "blank": 11,
+          "comment": 3,
+          "code": 27
+        },
+        "symbols": [
+          "SetunJITEngine"
+        ]
+      },
+      {
+        "filename": "jit_frame.hpp",
+        "relpath": "Code/include/vm/jit_frame.hpp",
+        "lines": {
+          "total": 71,
+          "blank": 11,
+          "comment": 10,
+          "code": 50
+        },
+        "symbols": [
+          "VM",
+          "CallFrame",
+          "MachineState",
+          "JITExitReason",
+          "DeoptContinuation",
+          "JITExit",
+          "JITFrame"
+        ]
+      },
+      {
+        "filename": "jit_lir.hpp",
+        "relpath": "Code/include/vm/jit_lir.hpp",
+        "lines": {
+          "total": 72,
+          "blank": 9,
+          "comment": 0,
+          "code": 63
+        },
+        "symbols": [
+          "LIROpcode",
+          "LIRInstruction",
+          "LIRProgram"
+        ]
+      },
+      {
+        "filename": "jit_manager.hpp",
+        "relpath": "Code/include/vm/jit_manager.hpp",
+        "lines": {
+          "total": 200,
+          "blank": 30,
+          "comment": 2,
+          "code": 168
+        },
+        "symbols": [
+          "JITCodeStatus",
+          "CodeState",
+          "JITEntryKind",
+          "JITTier",
+          "JITCodeObject",
+          "TieringPolicy",
+          "JITStats",
+          "JITManager"
+        ]
+      },
+      {
+        "filename": "jit_materialization.hpp",
+        "relpath": "Code/include/vm/jit_materialization.hpp",
+        "lines": {
+          "total": 41,
+          "blank": 8,
+          "comment": 4,
+          "code": 29
+        },
+        "symbols": [
+          "VM",
+          "MaterializationKind",
+          "MaterializationEntry",
+          "MaterializationEngine"
+        ]
+      },
+      {
+        "filename": "jit_osr.hpp",
+        "relpath": "Code/include/vm/jit_osr.hpp",
+        "lines": {
+          "total": 93,
+          "blank": 18,
+          "comment": 3,
+          "code": 72
+        },
+        "symbols": [
+          "Location",
+          "Kind",
+          "OSRValueLocation",
+          "OSREntryRecord",
+          "OSREntryTable"
+        ]
+      },
+      {
+        "filename": "jit_runtime_helpers.hpp",
+        "relpath": "Code/include/vm/jit_runtime_helpers.hpp",
+        "lines": {
+          "total": 49,
+          "blank": 16,
+          "comment": 11,
+          "code": 22
+        },
+        "symbols": []
+      },
+      {
+        "filename": "jit_safepoint.hpp",
+        "relpath": "Code/include/vm/jit_safepoint.hpp",
+        "lines": {
+          "total": 52,
+          "blank": 10,
+          "comment": 0,
+          "code": 42
+        },
+        "symbols": [
+          "SafepointRecord",
+          "JITSafepointTable"
+        ]
+      },
+      {
+        "filename": "linear_scan.hpp",
+        "relpath": "Code/include/vm/linear_scan.hpp",
+        "lines": {
+          "total": 51,
+          "blank": 10,
+          "comment": 11,
+          "code": 30
+        },
+        "symbols": [
+          "LiveInterval",
+          "RegisterSet",
+          "RegisterAllocationResult",
+          "LinearScanAllocator"
+        ]
+      },
+      {
+        "filename": "machine_ir.hpp",
+        "relpath": "Code/include/vm/machine_ir.hpp",
+        "lines": {
+          "total": 208,
+          "blank": 29,
+          "comment": 16,
+          "code": 163
+        },
+        "symbols": [
+          "MIROpcode",
+          "MemoryEffect",
+          "MIRCondition",
+          "MIRGuardInfo",
+          "MIRInstruction",
+          "MIRBlock",
+          "Chunk",
+          "MIRFunction"
+        ]
+      },
+      {
+        "filename": "mir_optimizer.hpp",
+        "relpath": "Code/include/vm/mir_optimizer.hpp",
+        "lines": {
+          "total": 107,
+          "blank": 23,
+          "comment": 15,
+          "code": 69
+        },
+        "symbols": [
+          "Chunk",
+          "OptimizationFlags",
+          "OptimizationStats",
+          "MIROptimizer"
+        ]
+      },
+      {
+        "filename": "opcode.hpp",
+        "relpath": "Code/include/vm/opcode.hpp",
+        "lines": {
+          "total": 151,
+          "blank": 22,
+          "comment": 10,
+          "code": 119
+        },
+        "symbols": [
+          "OpCode"
+        ]
+      },
+      {
+        "filename": "opt_bytecode.hpp",
+        "relpath": "Code/include/vm/opt_bytecode.hpp",
+        "lines": {
+          "total": 658,
+          "blank": 50,
+          "comment": 65,
+          "code": 543
+        },
+        "symbols": [
+          "ICSite",
+          "OptimizedChunk",
+          "OptFlags",
+          "OptBytecodeOptimizer",
+          "JumpPatch"
+        ]
+      },
+      {
+        "filename": "optimizing_jit.hpp",
+        "relpath": "Code/include/vm/optimizing_jit.hpp",
+        "lines": {
+          "total": 38,
+          "blank": 8,
+          "comment": 5,
+          "code": 25
+        },
+        "symbols": [
+          "OptimizingJITCompiler"
+        ]
+      },
+      {
+        "filename": "runtime_metadata.hpp",
+        "relpath": "Code/include/vm/runtime_metadata.hpp",
+        "lines": {
+          "total": 108,
+          "blank": 19,
+          "comment": 7,
+          "code": 82
+        },
+        "symbols": [
+          "JITHotFlags",
+          "alignas",
+          "alignas",
+          "FunctionColdData",
+          "ChunkRuntimeMetadata"
+        ]
+      },
+      {
+        "filename": "stack.hpp",
+        "relpath": "Code/include/vm/stack.hpp",
+        "lines": {
+          "total": 78,
+          "blank": 14,
+          "comment": 1,
+          "code": 63
+        },
+        "symbols": [
+          "VMStack"
+        ]
+      },
+      {
+        "filename": "superinstruction.hpp",
+        "relpath": "Code/include/vm/superinstruction.hpp",
+        "lines": {
+          "total": 93,
+          "blank": 14,
+          "comment": 21,
+          "code": 58
+        },
+        "symbols": [
+          "SemanticBarrier",
+          "SuperInstructionRegistry",
+          "FusionTelemetry"
+        ]
+      },
+      {
+        "filename": "text.hpp",
+        "relpath": "Code/include/vm/text.hpp",
+        "lines": {
+          "total": 97,
+          "blank": 10,
+          "comment": 10,
+          "code": 77
+        },
+        "symbols": []
+      },
+      {
+        "filename": "tier_cost_model.hpp",
+        "relpath": "Code/include/vm/tier_cost_model.hpp",
+        "lines": {
+          "total": 70,
+          "blank": 10,
+          "comment": 7,
+          "code": 53
+        },
+        "symbols": [
+          "ExecutionMode",
+          "TierDecision",
+          "FeatureToggles",
+          "TierCostModel"
+        ]
+      },
+      {
+        "filename": "tos_cache.hpp",
+        "relpath": "Code/include/vm/tos_cache.hpp",
+        "lines": {
+          "total": 232,
+          "blank": 31,
+          "comment": 13,
+          "code": 188
+        },
+        "symbols": [
+          "TOSCache",
+          "TOSCache"
+        ]
+      },
+      {
+        "filename": "type_descriptor.hpp",
+        "relpath": "Code/include/vm/type_descriptor.hpp",
+        "lines": {
+          "total": 68,
+          "blank": 15,
+          "comment": 6,
+          "code": 47
+        },
+        "symbols": [
+          "WellKnownTypeID",
+          "GCTypeDescriptor",
+          "TypeRegistry"
+        ]
+      },
+      {
+        "filename": "type_feedback.hpp",
+        "relpath": "Code/include/vm/type_feedback.hpp",
+        "lines": {
+          "total": 138,
+          "blank": 25,
+          "comment": 4,
+          "code": 109
+        },
+        "symbols": [
+          "FeedbackState",
+          "BinaryOpFeedback",
+          "ShapeFeedback",
+          "MethodFeedback",
+          "ProfileSnapshot",
+          "TypeFeedbackVector"
+        ]
+      },
+      {
+        "filename": "value.hpp",
+        "relpath": "Code/include/vm/value.hpp",
+        "lines": {
+          "total": 712,
+          "blank": 80,
+          "comment": 28,
+          "code": 604
+        },
+        "symbols": [
+          "VMObject",
+          "VMClosure",
+          "VMValue",
+          "VTable",
+          "HeapPayload",
+          "Kind",
+          "HeapSubtype",
+          "alignas",
+          "Type",
+          "VMClosure",
+          "VMShape",
+          "VMObject"
+        ]
+      },
+      {
+        "filename": "value_nanbox.hpp",
+        "relpath": "Code/include/vm/value_nanbox.hpp",
+        "lines": {
+          "total": 157,
+          "blank": 28,
+          "comment": 11,
+          "code": 118
+        },
+        "symbols": [
+          "VMObject",
+          "VTable",
+          "VMClosure",
+          "alignas"
+        ]
+      },
+      {
+        "filename": "value_tagged.hpp",
+        "relpath": "Code/include/vm/value_tagged.hpp",
+        "lines": {
+          "total": 193,
+          "blank": 26,
+          "comment": 12,
+          "code": 155
+        },
+        "symbols": [
+          "VMObject",
+          "VTable",
+          "VMClosure",
+          "alignas",
+          "Type"
+        ]
+      },
+      {
+        "filename": "vm.hpp",
+        "relpath": "Code/include/vm/vm.hpp",
+        "lines": {
+          "total": 308,
+          "blank": 46,
+          "comment": 26,
+          "code": 236
+        },
+        "symbols": [
+          "JITFrame",
+          "JITManager",
+          "VMProfiler",
+          "FunctionHotData",
+          "LoopHotData",
+          "VMTelemetry",
+          "TryFrame",
+          "DispatchMode",
+          "VM"
+        ]
+      },
+      {
+        "filename": "vm_arena.hpp",
+        "relpath": "Code/include/vm/vm_arena.hpp",
+        "lines": {
+          "total": 167,
+          "blank": 26,
+          "comment": 15,
+          "code": 126
+        },
+        "symbols": [
+          "VMArena",
+          "SecondaryChunk"
+        ]
+      },
+      {
+        "filename": "vm_execution_state.hpp",
+        "relpath": "Code/include/vm/vm_execution_state.hpp",
+        "lines": {
+          "total": 133,
+          "blank": 26,
+          "comment": 40,
+          "code": 67
+        },
+        "symbols": [
+          "GCHeap",
+          "JITFrame",
+          "DeoptRecord",
+          "TransientTOSState",
+          "VMExceptionState",
+          "VMExecutionState"
+        ]
+      },
+      {
+        "filename": "vm_metrics.hpp",
+        "relpath": "Code/include/vm/vm_metrics.hpp",
+        "lines": {
+          "total": 138,
+          "blank": 21,
+          "comment": 2,
+          "code": 115
+        },
+        "symbols": [
+          "VMMemoryMetrics",
+          "rusage",
+          "VMTimer",
+          "VMProfilerBreakdown"
+        ]
+      },
+      {
+        "filename": "vm_profiler.hpp",
+        "relpath": "Code/include/vm/vm_profiler.hpp",
+        "lines": {
+          "total": 128,
+          "blank": 24,
+          "comment": 3,
+          "code": 101
+        },
+        "symbols": [
+          "ProfilerConfig",
+          "VMProfiler"
+        ]
+      },
+      {
+        "filename": "vm_telemetry.hpp",
+        "relpath": "Code/include/vm/vm_telemetry.hpp",
+        "lines": {
+          "total": 647,
+          "blank": 80,
+          "comment": 65,
+          "code": 502
+        },
+        "symbols": [
+          "ProfilingMode",
+          "WallClockTelemetry",
+          "JITEconomicsTelemetry",
+          "DispatchTelemetry",
+          "OpcodeTelemetry",
+          "StackExecutionStateTelemetry",
+          "TOSTelemetry",
+          "CallFrameTelemetry",
+          "ArrayTelemetry",
+          "FusionTelemetry",
+          "ObjectFieldICTelemetry",
+          "GCTelemetry",
+          "VectorizationTelemetry",
+          "SRATelemetry",
+          "VMTelemetryManager"
+        ]
+      },
+      {
+        "filename": "x64_assembler.hpp",
+        "relpath": "Code/include/vm/x64_assembler.hpp",
+        "lines": {
+          "total": 176,
+          "blank": 24,
+          "comment": 16,
+          "code": 136
+        },
+        "symbols": [
+          "X64Reg",
+          "YmmReg",
+          "X64Cond",
+          "X64Label",
+          "X64Assembler"
+        ]
+      }
+    ],
+    "stats": {
+      "total_files": 81,
+      "total_loc": 18824,
+      "code_loc": 15728
+    }
+  },
+  "tafpu": {
+    "src_files": [
+      {
+        "filename": "bitnet_engine.cpp",
+        "relpath": "Code/src/tafpu/bitnet_engine.cpp",
+        "lines": {
+          "total": 193,
+          "blank": 19,
+          "comment": 11,
+          "code": 163
+        },
+        "symbols": []
+      },
+      {
+        "filename": "tafpu.cpp",
+        "relpath": "Code/src/tafpu/tafpu.cpp",
+        "lines": {
+          "total": 362,
+          "blank": 32,
+          "comment": 30,
+          "code": 300
+        },
+        "symbols": []
+      },
+      {
+        "filename": "trit.cpp",
+        "relpath": "Code/src/tafpu/trit.cpp",
+        "lines": {
+          "total": 198,
+          "blank": 25,
+          "comment": 1,
+          "code": 172
+        },
+        "symbols": []
+      }
+    ],
+    "inc_files": [
+      {
+        "filename": "bitnet_engine.hpp",
+        "relpath": "Code/include/tafpu/bitnet_engine.hpp",
+        "lines": {
+          "total": 297,
+          "blank": 45,
+          "comment": 20,
+          "code": 232
+        },
+        "symbols": [
+          "ActivationType",
+          "PackedTernaryTensor",
+          "DenseLayer",
+          "BitNetEngine"
+        ]
+      },
+      {
+        "filename": "exception.hpp",
+        "relpath": "Code/include/tafpu/exception.hpp",
+        "lines": {
+          "total": 56,
+          "blank": 10,
+          "comment": 10,
+          "code": 36
+        },
+        "symbols": [
+          "SetunException",
+          "TafpuException",
+          "IsotropicDivisionException",
+          "TafpuOverflowException",
+          "TafpuInexactAlignmentException",
+          "VMException",
+          "CompilerException"
+        ]
+      },
+      {
+        "filename": "nn_ops.hpp",
+        "relpath": "Code/include/tafpu/nn_ops.hpp",
+        "lines": {
+          "total": 53,
+          "blank": 8,
+          "comment": 14,
+          "code": 31
+        },
+        "symbols": []
+      },
+      {
+        "filename": "normalization.hpp",
+        "relpath": "Code/include/tafpu/normalization.hpp",
+        "lines": {
+          "total": 107,
+          "blank": 16,
+          "comment": 15,
+          "code": 76
+        },
+        "symbols": []
+      },
+      {
+        "filename": "tafpu.hpp",
+        "relpath": "Code/include/tafpu/tafpu.hpp",
+        "lines": {
+          "total": 104,
+          "blank": 20,
+          "comment": 26,
+          "code": 58
+        },
+        "symbols": [
+          "alignas"
+        ]
+      },
+      {
+        "filename": "tmat.hpp",
+        "relpath": "Code/include/tafpu/tmat.hpp",
+        "lines": {
+          "total": 189,
+          "blank": 24,
+          "comment": 19,
+          "code": 146
+        },
+        "symbols": [
+          "tmat",
+          "AffineTransform4x4"
+        ]
+      },
+      {
+        "filename": "tquat.hpp",
+        "relpath": "Code/include/tafpu/tquat.hpp",
+        "lines": {
+          "total": 58,
+          "blank": 11,
+          "comment": 6,
+          "code": 41
+        },
+        "symbols": [
+          "tquat"
+        ]
+      },
+      {
+        "filename": "trit.hpp",
+        "relpath": "Code/include/tafpu/trit.hpp",
+        "lines": {
+          "total": 127,
+          "blank": 18,
+          "comment": 15,
+          "code": 94
+        },
+        "symbols": [
+          "Trit",
+          "TritAddResult",
+          "BtvpTraceStep"
+        ]
+      },
+      {
+        "filename": "tvec3.hpp",
+        "relpath": "Code/include/tafpu/tvec3.hpp",
+        "lines": {
+          "total": 129,
+          "blank": 21,
+          "comment": 24,
+          "code": 84
+        },
+        "symbols": [
+          "tvec3",
+          "ExactPhysicsBody"
+        ]
+      }
+    ],
+    "stats": {
+      "total_files": 12,
+      "total_loc": 1873,
+      "code_loc": 1433
+    }
+  },
+  "qvm": {
+    "src_files": [
+      {
+        "filename": "qcircuit_opt.cpp",
+        "relpath": "Code/src/qvm/qcircuit_opt.cpp",
+        "lines": {
+          "total": 211,
+          "blank": 23,
+          "comment": 17,
+          "code": 171
+        },
+        "symbols": []
+      },
+      {
+        "filename": "qgate.cpp",
+        "relpath": "Code/src/qvm/qgate.cpp",
+        "lines": {
+          "total": 747,
+          "blank": 81,
+          "comment": 33,
+          "code": 633
+        },
+        "symbols": []
+      },
+      {
+        "filename": "qreg.cpp",
+        "relpath": "Code/src/qvm/qreg.cpp",
+        "lines": {
+          "total": 205,
+          "blank": 28,
+          "comment": 5,
+          "code": 172
+        },
+        "symbols": []
+      },
+      {
+        "filename": "qvm.cpp",
+        "relpath": "Code/src/qvm/qvm.cpp",
+        "lines": {
+          "total": 546,
+          "blank": 56,
+          "comment": 11,
+          "code": 479
+        },
+        "symbols": []
+      }
+    ],
+    "inc_files": [
+      {
+        "filename": "qbackend.hpp",
+        "relpath": "Code/include/qvm/qbackend.hpp",
+        "lines": {
+          "total": 48,
+          "blank": 10,
+          "comment": 0,
+          "code": 38
+        },
+        "symbols": [
+          "BackendType",
+          "SimulationMetrics",
+          "QuantumBackend"
+        ]
+      },
+      {
+        "filename": "qbackend_auto.hpp",
+        "relpath": "Code/include/qvm/qbackend_auto.hpp",
+        "lines": {
+          "total": 66,
+          "blank": 12,
+          "comment": 0,
+          "code": 54
+        },
+        "symbols": [
+          "AutoBackend"
+        ]
+      },
+      {
+        "filename": "qbackend_mps.hpp",
+        "relpath": "Code/include/qvm/qbackend_mps.hpp",
+        "lines": {
+          "total": 250,
+          "blank": 29,
+          "comment": 16,
+          "code": 205
+        },
+        "symbols": [
+          "MPSTensor",
+          "MPSBackend"
+        ]
+      },
+      {
+        "filename": "qbackend_statevector.hpp",
+        "relpath": "Code/include/qvm/qbackend_statevector.hpp",
+        "lines": {
+          "total": 94,
+          "blank": 14,
+          "comment": 1,
+          "code": 79
+        },
+        "symbols": [
+          "StatevectorBackend"
+        ]
+      },
+      {
+        "filename": "qcircuit_opt.hpp",
+        "relpath": "Code/include/qvm/qcircuit_opt.hpp",
+        "lines": {
+          "total": 62,
+          "blank": 9,
+          "comment": 21,
+          "code": 32
+        },
+        "symbols": [
+          "FusedOpType",
+          "FusedCircuitOp",
+          "CircuitOptimizer",
+          "QFTPlanner"
+        ]
+      },
+      {
+        "filename": "qgate.hpp",
+        "relpath": "Code/include/qvm/qgate.hpp",
+        "lines": {
+          "total": 143,
+          "blank": 21,
+          "comment": 23,
+          "code": 99
+        },
+        "symbols": [
+          "GateType",
+          "QuantumGate",
+          "QuantumCircuit",
+          "DiagonalPhaseOp"
+        ]
+      },
+      {
+        "filename": "qopcode.hpp",
+        "relpath": "Code/include/qvm/qopcode.hpp",
+        "lines": {
+          "total": 95,
+          "blank": 16,
+          "comment": 13,
+          "code": 66
+        },
+        "symbols": [
+          "QOpCode",
+          "QChunk"
+        ]
+      },
+      {
+        "filename": "qreg.hpp",
+        "relpath": "Code/include/qvm/qreg.hpp",
+        "lines": {
+          "total": 145,
+          "blank": 27,
+          "comment": 31,
+          "code": 87
+        },
+        "symbols": [
+          "QubitState2Bit",
+          "PackedQubitWord",
+          "QubitRegister"
+        ]
+      },
+      {
+        "filename": "qsimd.hpp",
+        "relpath": "Code/include/qvm/qsimd.hpp",
+        "lines": {
+          "total": 60,
+          "blank": 9,
+          "comment": 10,
+          "code": 41
+        },
+        "symbols": []
+      },
+      {
+        "filename": "qvm.hpp",
+        "relpath": "Code/include/qvm/qvm.hpp",
+        "lines": {
+          "total": 51,
+          "blank": 11,
+          "comment": 6,
+          "code": 34
+        },
+        "symbols": [
+          "QVM"
+        ]
+      }
+    ],
+    "stats": {
+      "total_files": 14,
+      "total_loc": 2723,
+      "code_loc": 2190
+    }
+  },
+  "kernel": {
+    "src_files": [
+      {
+        "filename": "microkernel.cpp",
+        "relpath": "Code/src/kernel/microkernel.cpp",
+        "lines": {
+          "total": 95,
+          "blank": 12,
+          "comment": 3,
+          "code": 80
+        },
+        "symbols": []
+      }
+    ],
+    "inc_files": [
+      {
+        "filename": "microkernel.hpp",
+        "relpath": "Code/include/kernel/microkernel.hpp",
+        "lines": {
+          "total": 77,
+          "blank": 14,
+          "comment": 11,
+          "code": 52
+        },
+        "symbols": [
+          "TrytePagePermission",
+          "TrytePage",
+          "TaskPriority",
+          "TaskControlBlock",
+          "TernaryMicrokernel"
+        ]
+      }
+    ],
+    "stats": {
+      "total_files": 2,
+      "total_loc": 172,
+      "code_loc": 132
+    }
+  },
+  "hardware": {
+    "src_files": [
+      {
+        "filename": "verilog_emitter.cpp",
+        "relpath": "Code/src/hardware/verilog_emitter.cpp",
+        "lines": {
+          "total": 109,
+          "blank": 10,
+          "comment": 0,
+          "code": 99
+        },
+        "symbols": []
+      }
+    ],
+    "inc_files": [
+      {
+        "filename": "verilog_emitter.hpp",
+        "relpath": "Code/include/hardware/verilog_emitter.hpp",
+        "lines": {
+          "total": 16,
+          "blank": 4,
+          "comment": 3,
+          "code": 9
+        },
+        "symbols": [
+          "VerilogEmitter"
+        ]
+      }
+    ],
+    "stats": {
+      "total_files": 2,
+      "total_loc": 125,
+      "code_loc": 108
+    }
+  },
+  "tools": {
+    "src_files": [
+      {
+        "filename": "bindgen.cpp",
+        "relpath": "Code/src/tools/bindgen.cpp",
+        "lines": {
+          "total": 147,
+          "blank": 23,
+          "comment": 3,
+          "code": 121
+        },
+        "symbols": []
+      },
+      {
+        "filename": "debugger.cpp",
+        "relpath": "Code/src/tools/debugger.cpp",
+        "lines": {
+          "total": 95,
+          "blank": 13,
+          "comment": 0,
+          "code": 82
+        },
+        "symbols": []
+      },
+      {
+        "filename": "formatter.cpp",
+        "relpath": "Code/src/tools/formatter.cpp",
+        "lines": {
+          "total": 97,
+          "blank": 13,
+          "comment": 7,
+          "code": 77
+        },
+        "symbols": []
+      },
+      {
+        "filename": "lsp_server.cpp",
+        "relpath": "Code/src/tools/lsp_server.cpp",
+        "lines": {
+          "total": 177,
+          "blank": 18,
+          "comment": 4,
+          "code": 155
+        },
+        "symbols": []
+      },
+      {
+        "filename": "test_runner_stub.cpp",
+        "relpath": "Code/src/tools/test_runner_stub.cpp",
+        "lines": {
+          "total": 10,
+          "blank": 1,
+          "comment": 3,
+          "code": 6
+        },
+        "symbols": []
+      },
+      {
+        "filename": "tpm.cpp",
+        "relpath": "Code/src/tools/tpm.cpp",
+        "lines": {
+          "total": 166,
+          "blank": 23,
+          "comment": 4,
+          "code": 139
+        },
+        "symbols": []
+      }
+    ],
+    "inc_files": [
+      {
+        "filename": "bindgen.hpp",
+        "relpath": "Code/include/tools/bindgen.hpp",
+        "lines": {
+          "total": 34,
+          "blank": 7,
+          "comment": 0,
+          "code": 27
+        },
+        "symbols": [
+          "CFunctionDecl",
+          "CStructDecl",
+          "CBindgenResult",
+          "CBindgen"
+        ]
+      },
+      {
+        "filename": "debugger.hpp",
+        "relpath": "Code/include/tools/debugger.hpp",
+        "lines": {
+          "total": 38,
+          "blank": 9,
+          "comment": 0,
+          "code": 29
+        },
+        "symbols": [
+          "DebuggerState",
+          "VisualDebugger"
+        ]
+      },
+      {
+        "filename": "formatter.hpp",
+        "relpath": "Code/include/tools/formatter.hpp",
+        "lines": {
+          "total": 15,
+          "blank": 4,
+          "comment": 0,
+          "code": 11
+        },
+        "symbols": [
+          "SetunFormatter"
+        ]
+      },
+      {
+        "filename": "lsp_server.hpp",
+        "relpath": "Code/include/tools/lsp_server.hpp",
+        "lines": {
+          "total": 58,
+          "blank": 14,
+          "comment": 5,
+          "code": 39
+        },
+        "symbols": [
+          "LSPPosition",
+          "LSPRange",
+          "LSPDiagnostic",
+          "LSPCompletionItem",
+          "LSPServer"
+        ]
+      },
+      {
+        "filename": "tpm.hpp",
+        "relpath": "Code/include/tools/tpm.hpp",
+        "lines": {
+          "total": 31,
+          "blank": 6,
+          "comment": 3,
+          "code": 22
+        },
+        "symbols": [
+          "PackageManifest",
+          "TernaryPackageManager"
+        ]
+      }
+    ],
+    "stats": {
+      "total_files": 11,
+      "total_loc": 868,
+      "code_loc": 708
+    }
+  },
+  "graphics": {
+    "src_files": [
+      {
+        "filename": "setun2d_bridge.cpp",
+        "relpath": "Code/src/graphics/setun2d_bridge.cpp",
+        "lines": {
+          "total": 683,
+          "blank": 78,
+          "comment": 16,
+          "code": 589
+        },
+        "symbols": []
+      }
+    ],
+    "inc_files": [
+      {
+        "filename": "setun2d_bridge.hpp",
+        "relpath": "Code/include/graphics/setun2d_bridge.hpp",
+        "lines": {
+          "total": 132,
+          "blank": 22,
+          "comment": 8,
+          "code": 102
+        },
+        "symbols": [
+          "Setun2DBridge"
+        ]
+      }
+    ],
+    "stats": {
+      "total_files": 2,
+      "total_loc": 815,
+      "code_loc": 691
+    }
+  },
+  "ffi": {
+    "src_files": [
+      {
+        "filename": "libsetun_ffi.cpp",
+        "relpath": "Code/src/ffi/libsetun_ffi.cpp",
+        "lines": {
+          "total": 153,
+          "blank": 18,
+          "comment": 0,
+          "code": 135
+        },
+        "symbols": [
+          "SetunVM_T"
+        ]
+      }
+    ],
+    "inc_files": [
+      {
+        "filename": "libsetun_ffi.h",
+        "relpath": "Code/include/ffi/libsetun_ffi.h",
+        "lines": {
+          "total": 54,
+          "blank": 11,
+          "comment": 12,
+          "code": 31
+        },
+        "symbols": []
+      }
+    ],
+    "stats": {
+      "total_files": 2,
+      "total_loc": 207,
+      "code_loc": 166
+    }
+  }
+}

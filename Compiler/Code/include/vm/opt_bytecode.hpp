@@ -21,12 +21,21 @@ struct ICSite {
     uint16_t str_id{0};
 };
 
+struct MethodICSite {
+    uint32_t expected_shape{0};
+    uint32_t cached_entry{0};
+    uint16_t cached_frame_size{32};
+    uint16_t mid{0};
+    uint8_t argc{0};
+};
+
 // ============================================================================
 // Gate 4: In-Memory Optimized Chunk (oBC Layer - Tier-1 Execution Buffer)
 // Canonical .tbc remains completely immutable. Quickening & patching occur here.
 // ============================================================================
 struct OptimizedChunk : public Chunk {
     std::vector<ICSite> ic_sites;
+    std::vector<MethodICSite> method_ic_sites;
     std::vector<uint8_t> warmup_counters;
 
     void init_warmup() {
@@ -54,11 +63,12 @@ struct OptFlags {
     bool enable_field_ic{true};          // Shape-based Field Inline Cache (4D)
     bool enable_fast_frames{true};       // Zero dynamic allocation call frames (4E)
     bool enable_superinstructions{true}; // Gate 6.0-D: Phase 4 Superinstruction Fusion Framework
+    bool enable_fast_call{true};         // Gate 6R.3-B4: Fast CALL/RET ABI
 
-    static OptFlags all_enabled() { return OptFlags{true, true, true, true, true, true, true}; }
-    static OptFlags baseline_v3() { return OptFlags{false, false, false, false, false, false, false}; }
-    static OptFlags tier_a_only() { return OptFlags{true, false, false, false, false, false, false}; }
-    static OptFlags tier_b_only() { return OptFlags{true, true, false, false, false, false, false}; }
+    static OptFlags all_enabled() { return OptFlags{true, true, true, true, true, true, true, true}; }
+    static OptFlags baseline_v3() { return OptFlags{false, false, false, false, false, false, false, false}; }
+    static OptFlags tier_a_only() { return OptFlags{true, false, false, false, false, false, false, false}; }
+    static OptFlags tier_b_only() { return OptFlags{true, true, false, false, false, false, false, false}; }
 };
 
 class OptBytecodeOptimizer {
@@ -83,9 +93,16 @@ public:
                 return 3;
             case OpCode::OP_NEW_INSTANCE:
             case OpCode::OP_INVOKE_METHOD:
+            case OpCode::OP_INVOKE_METHOD_IC:
             case OpCode::OP_CALL:
+            case OpCode::OP_CALL_FAST_0:
+            case OpCode::OP_CALL_FAST_1:
             case OpCode::OP_CLOSURE:
                 return 4;
+            case OpCode::OP_QUICK_GT_INT:
+            case OpCode::OP_QUICK_GE_INT:
+            case OpCode::OP_RET_FAST:
+                return 1;
             case OpCode::OP_PUSH_BOOL:
             case OpCode::OP_CALL_INDIRECT:
                 return 2;
@@ -393,6 +410,23 @@ public:
             }
 
             // ----------------------------------------------------------------
+            // Pattern: Method Inline Cache (OP_INVOKE_METHOD_IC)
+            // ----------------------------------------------------------------
+            if (flags.enable_field_ic && op == static_cast<uint8_t>(OpCode::OP_INVOKE_METHOD) && ip + 3 < src.code.size()) {
+                uint16_t mid = static_cast<uint16_t>(src.code[ip + 1] | (src.code[ip + 2] << 8));
+                uint8_t argc = src.code[ip + 3];
+                uint16_t ic_idx = static_cast<uint16_t>(opt.method_ic_sites.size());
+                opt.method_ic_sites.push_back(MethodICSite{0, 0, 32, mid, argc});
+
+                opt.write_opcode(OpCode::OP_INVOKE_METHOD_IC, line);
+                opt.write_int16(static_cast<int16_t>(ic_idx), line);
+                opt.write_byte(argc, line);
+                for (size_t k = orig_ip; k < orig_ip + 4; ++k) pc_map[k] = opt_ip;
+                ip += 4;
+                continue;
+            }
+
+            // ----------------------------------------------------------------
             // Standard Opcode Copy with Relative Jump Recording
             // ----------------------------------------------------------------
             size_t inst_len = canonical_inst_len(op);
@@ -490,7 +524,10 @@ public:
                     return 3;
                 case OpCode::OP_NEW_INSTANCE:
                 case OpCode::OP_INVOKE_METHOD:
+                case OpCode::OP_INVOKE_METHOD_IC:
                 case OpCode::OP_CALL:
+                case OpCode::OP_CALL_FAST_0:
+                case OpCode::OP_CALL_FAST_1:
                 case OpCode::OP_CLOSURE:
                     return 4;
                 case OpCode::OP_PUSH_BOOL:
@@ -522,6 +559,10 @@ public:
                 case OpCode::OP_FUSED_MUL_ADD_F64:
                 case OpCode::OP_FUSED_MUL_ADD_TAFPU:
                     return 9;
+                case OpCode::OP_QUICK_GT_INT:
+                case OpCode::OP_QUICK_GE_INT:
+                case OpCode::OP_RET_FAST:
+                    return 1;
                 default:
                     return 1;
             }
@@ -642,6 +683,43 @@ public:
                 uint16_t needed = static_cast<uint16_t>(fn_max[f] + 1 + 8);
                 if (needed > opt.function_frame_sizes[f]) opt.function_frame_sizes[f] = needed;
             }
+        }
+
+        // ====================================================================
+        // Pass 3: Gate 6R.3-B4 Fast CALL / RET ABI Lowering
+        // ====================================================================
+        if (flags.enable_fast_call && flags.enable_fast_frames) {
+            size_t pass3_ip = 0;
+            while (pass3_ip < opt.code.size()) {
+                uint8_t op = opt.code[pass3_ip];
+                if (op == static_cast<uint8_t>(OpCode::OP_CALL) && pass3_ip + 3 < opt.code.size()) {
+                    uint16_t fn_idx = static_cast<uint16_t>(opt.code[pass3_ip + 1] | (opt.code[pass3_ip + 2] << 8));
+                    uint8_t argc = opt.code[pass3_ip + 3];
+                    if (fn_idx < opt.function_table.size()) {
+                        uint32_t fn_entry = opt.function_table[fn_idx];
+                        size_t frame_sz = opt.get_frame_size(fn_idx, argc);
+                        if (fn_entry <= 0xFFFF && frame_sz <= 0xFF && (argc == 0 || argc == 1)) {
+                            if (argc == 0) {
+                                opt.code[pass3_ip] = static_cast<uint8_t>(OpCode::OP_CALL_FAST_0);
+                            } else {
+                                opt.code[pass3_ip] = static_cast<uint8_t>(OpCode::OP_CALL_FAST_1);
+                            }
+                            opt.code[pass3_ip + 1] = static_cast<uint8_t>(fn_entry & 0xFF);
+                            opt.code[pass3_ip + 2] = static_cast<uint8_t>((fn_entry >> 8) & 0xFF);
+                            opt.code[pass3_ip + 3] = static_cast<uint8_t>(frame_sz);
+                        }
+                    }
+                } else if (op == static_cast<uint8_t>(OpCode::OP_RET)) {
+                    opt.code[pass3_ip] = static_cast<uint8_t>(OpCode::OP_RET_FAST);
+                }
+                pass3_ip += opt_inst_len(opt.code[pass3_ip]);
+            }
+        }
+
+        // Ensure bounds-check-free sentinel OP_HALT at the end of verified code
+        if (opt.code.empty() || opt.code.back() != static_cast<uint8_t>(OpCode::OP_HALT)) {
+            opt.code.push_back(static_cast<uint8_t>(OpCode::OP_HALT));
+            opt.lines.push_back(opt.lines.empty() ? 1 : opt.lines.back());
         }
 
         opt.init_warmup();

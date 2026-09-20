@@ -3,6 +3,7 @@
 #include "vm/value.hpp"
 #include "vm/opcode.hpp"
 #include "tafpu/exception.hpp"
+#include <chrono>
 
 namespace setun {
 
@@ -129,35 +130,106 @@ void* setun_jit_helper_array_raw_data(uint64_t raw_array_val) {
     VMValue val = VMValue::from_raw(raw_array_val);
     if (val.is_array()) {
         auto arr = val.as_array();
-        if (arr) return arr->raw_data();
+        if (arr) {
+            if (arr->rep == ArrayRep::Generic) {
+                arr->try_promote();
+            }
+            if (arr->rep == ArrayRep::I64) {
+                return arr->i64_data.data();
+            }
+            return arr->raw_data();
+        }
     }
     return nullptr;
 }
 
 int64_t setun_jit_helper_get_element_i64(uint64_t raw_array_val, int64_t idx) {
+    if (idx < 0) return 0;
     VMValue val = VMValue::from_raw(raw_array_val);
     if (val.is_array()) {
         auto arr = val.as_array();
         if (arr) {
-            if (arr->rep == ArrayRep::I64 && idx >= 0 && static_cast<size_t>(idx) < arr->i64_data.size()) {
+            if (arr->rep == ArrayRep::I64 && static_cast<size_t>(idx) < arr->i64_data.size()) {
                 return arr->i64_data[static_cast<size_t>(idx)];
             }
-            return arr->get(static_cast<size_t>(idx)).as_int();
+            if (static_cast<size_t>(idx) < arr->size()) {
+                return arr->get(static_cast<size_t>(idx)).as_int();
+            }
         }
     }
     return 0;
 }
 
 void setun_jit_helper_set_element_i64(uint64_t raw_array_val, int64_t idx, int64_t v) {
+    if (idx < 0) return;
     VMValue val = VMValue::from_raw(raw_array_val);
     if (val.is_array()) {
         auto arr = val.as_array();
         if (arr) {
-            if (arr->rep == ArrayRep::I64 && idx >= 0 && static_cast<size_t>(idx) < arr->i64_data.size()) {
+            if (arr->rep == ArrayRep::I64 && static_cast<size_t>(idx) < arr->i64_data.size()) {
                 arr->i64_data[static_cast<size_t>(idx)] = v;
                 return;
             }
-            arr->set(static_cast<size_t>(idx), VMValue(v));
+            if (static_cast<size_t>(idx) < arr->size()) {
+                arr->set(static_cast<size_t>(idx), VMValue(v));
+            }
+        }
+    }
+}
+
+uint64_t setun_jit_helper_new_array(uint64_t count) {
+    auto arr = std::make_shared<ArrayObject>();
+    arr->rep = ArrayRep::I64;
+    arr->i64_data.resize(count, 0);
+    return VMValue(arr).raw_;
+}
+
+void setun_jit_helper_array_push(uint64_t raw_array_val, int64_t val) {
+    VMValue v = VMValue::from_raw(raw_array_val);
+    if (v.is_array()) {
+        auto arr = v.as_array();
+        if (arr) {
+            if (arr->rep == ArrayRep::I64) {
+                arr->i64_data.push_back(val);
+            } else {
+                arr->push_back(VMValue(val));
+                arr->try_promote();
+            }
+        }
+    }
+}
+
+static const auto g_process_start = std::chrono::steady_clock::now();
+
+int64_t setun_jit_helper_time_now_us() {
+    auto now = std::chrono::steady_clock::now();
+    return std::chrono::duration_cast<std::chrono::microseconds>(now - g_process_start).count();
+}
+
+void setun_jit_helper_print(uint64_t val_raw, int32_t is_println) {
+    VMValue val = VMValue::from_raw(val_raw);
+    if (val.is_string()) {
+        if (is_println) {
+            std::cout << val.to_string() << "\n";
+            std::cout.flush();
+        } else {
+            std::cout << val.to_string();
+        }
+    } else if (val.is_int()) {
+        if (is_println) {
+            std::cout << val.as_int() << "\n";
+            std::cout.flush();
+        } else {
+            std::cout << val.as_int();
+        }
+    } else {
+        // Unboxed int64_t from Tier-2 JIT native register
+        int64_t raw_i = static_cast<int64_t>(val_raw);
+        if (is_println) {
+            std::cout << raw_i << "\n";
+            std::cout.flush();
+        } else {
+            std::cout << raw_i;
         }
     }
 }

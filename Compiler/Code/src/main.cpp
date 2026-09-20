@@ -169,6 +169,29 @@ int cmd_run(const std::string& path, DispatchMode mode = DispatchMode::REGISTER_
             jit_mgr->policy().trace_tiering = trace_tiering;
             jit_mgr->policy().enable_auto_tiering = !force_tier1;
             jit_mgr->policy().force_tier1_only = force_tier1;
+
+            if (!force_tier1) {
+                size_t n_funcs = std::max<size_t>(128, chunk.function_table.size() + 16);
+                size_t p2_funcs = 128;
+                while (p2_funcs < n_funcs) p2_funcs <<= 1;
+                jit_mgr->runtime_metadata().initialize(p2_funcs, 128,
+                                                      jit_mgr->policy().tier1_invocation_threshold,
+                                                      jit_mgr->policy().tier2_invocation_threshold,
+                                                      jit_mgr->policy().tier1_backedge_threshold);
+                for (size_t f = 0; f < chunk.function_table.size(); ++f) {
+                    uint32_t f_entry = chunk.function_table[f];
+                    bool ok = jit_mgr->compile_tier2(chunk, f_entry);
+                    if (trace_tiering) {
+                        std::cout << "[Tier-2 Pre-arm] fn " << f << " @ " << f_entry << " -> " << (ok ? "OK" : "FAIL") << "\n";
+                    }
+                }
+                if (chunk.function_table.empty()) {
+                    bool ok = jit_mgr->compile_tier2(chunk, 0);
+                    if (trace_tiering) {
+                        std::cout << "[Tier-2 Pre-arm] fn 0 @ 0 -> " << (ok ? "OK" : "FAIL") << "\n";
+                    }
+                }
+            }
             vm.set_jit_manager(jit_mgr);
         }
 
@@ -1051,6 +1074,7 @@ int main(int argc, char* argv[]) {
             else if (arg == "--no-quickening") opt_flags.enable_quickening = false;
             else if (arg == "--no-field-ic") opt_flags.enable_field_ic = false;
             else if (arg == "--no-fast-frames") opt_flags.enable_fast_frames = false;
+            else if (arg == "--no-fast-call") opt_flags.enable_fast_call = false;
             else if (arg == "--opt-v3") {
                 opt_flags.enable_locals = false;
                 opt_flags.enable_array_indexing = false;
@@ -1058,6 +1082,7 @@ int main(int argc, char* argv[]) {
                 opt_flags.enable_quickening = false;
                 opt_flags.enable_field_ic = false;
                 opt_flags.enable_fast_frames = false;
+                opt_flags.enable_fast_call = false;
             }
             else if (arg == "--opt-tier-a") {
                 opt_flags.enable_locals = true;

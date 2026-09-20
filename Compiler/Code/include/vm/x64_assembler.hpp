@@ -90,6 +90,8 @@ public:
     void mov_reg_reg(X64Reg dst, X64Reg src);
     void mov_reg_mem(X64Reg dst, X64Reg base, int32_t disp);
     void mov_mem_reg(X64Reg base, int32_t disp, X64Reg src);
+    void mov_reg_mem_sib(X64Reg dst, X64Reg base, X64Reg index, uint8_t scale = 3, int32_t disp = 0);
+    void mov_mem_sib_reg(X64Reg base, X64Reg index, uint8_t scale, int32_t disp, X64Reg src);
     void mov_mem_imm32(X64Reg base, int32_t disp, int32_t imm);
 
     void lea_reg_mem(X64Reg dst, X64Reg base, int32_t disp);
@@ -124,6 +126,7 @@ public:
     // Control Flow
     void jmp(X64Label& label);
     void jcc(X64Cond cond, X64Label& label);
+    void call(X64Label& label);
     void call_reg(X64Reg r);
     void call_ptr(const void* target_fn, X64Reg scratch = X64Reg::RAX);
     void ret();

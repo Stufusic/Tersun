@@ -135,6 +135,24 @@ void X64Assembler::mov_mem_reg(X64Reg base, int32_t disp, X64Reg src) {
     emit_mem_disp(s & 7, base, disp);
 }
 
+void X64Assembler::mov_reg_mem_sib(X64Reg dst, X64Reg base, X64Reg index, uint8_t scale, int32_t disp) {
+    uint8_t d = static_cast<uint8_t>(dst);
+    uint8_t idx = static_cast<uint8_t>(index);
+    uint8_t b = static_cast<uint8_t>(base);
+    emit_rex(true, (d >= 8 ? 1 : 0), (idx >= 8 ? 1 : 0), (b >= 8 ? 1 : 0));
+    emit_u8(0x8B);
+    emit_mem_sib(d & 7, base, index, scale, disp);
+}
+
+void X64Assembler::mov_mem_sib_reg(X64Reg base, X64Reg index, uint8_t scale, int32_t disp, X64Reg src) {
+    uint8_t s = static_cast<uint8_t>(src);
+    uint8_t idx = static_cast<uint8_t>(index);
+    uint8_t b = static_cast<uint8_t>(base);
+    emit_rex(true, (s >= 8 ? 1 : 0), (idx >= 8 ? 1 : 0), (b >= 8 ? 1 : 0));
+    emit_u8(0x89);
+    emit_mem_sib(s & 7, base, index, scale, disp);
+}
+
 void X64Assembler::mov_mem_imm32(X64Reg base, int32_t disp, int32_t imm) {
     uint8_t b = static_cast<uint8_t>(base);
     emit_rex(true, 0, 0, (b >= 8 ? 1 : 0));
@@ -316,6 +334,17 @@ void X64Assembler::jmp(X64Label& label) {
 void X64Assembler::jcc(X64Cond cond, X64Label& label) {
     emit_u8(0x0F);
     emit_u8(0x80 + static_cast<uint8_t>(cond));
+    if (label.is_bound()) {
+        int32_t rel = label.offset - static_cast<int32_t>(current_offset() + 4);
+        emit_u32(static_cast<uint32_t>(rel));
+    } else {
+        label.fixups.push_back(current_offset());
+        emit_u32(0);
+    }
+}
+
+void X64Assembler::call(X64Label& label) {
+    emit_u8(0xE8);
     if (label.is_bound()) {
         int32_t rel = label.offset - static_cast<int32_t>(current_offset() + 4);
         emit_u32(static_cast<uint32_t>(rel));

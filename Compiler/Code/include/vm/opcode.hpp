@@ -54,6 +54,9 @@ enum class OpCode : uint8_t {
 
     OP_CALL            = 0x60, // uint16_t fn_id, uint8_t argc
     OP_RET             = 0x61,
+    OP_CALL_FAST_0     = 0x62, // uint16_t fn_entry, uint8_t frame_sz
+    OP_CALL_FAST_1     = 0x63, // uint16_t fn_entry, uint8_t frame_sz
+    OP_RET_FAST        = 0x64,
 
     OP_PRINT           = 0x70,
     OP_PRINTLN         = 0x71,
@@ -142,6 +145,11 @@ enum class OpCode : uint8_t {
     OP_FUSED_MUL_ADD_I64           = 0xCB, // uint16_t slotA, uint16_t slotB, uint16_t slotC, uint16_t slotDest
     OP_FUSED_MUL_ADD_F64           = 0xCC, // uint16_t slotA, uint16_t slotB, uint16_t slotC, uint16_t slotDest
     OP_FUSED_MUL_ADD_TAFPU         = 0xCD, // uint16_t slotA, uint16_t slotB, uint16_t slotC, uint16_t slotDest
+
+    // Gate 6R.3-B5: Fast Comparison Quickening & Method Inline Cache
+    OP_QUICK_GT_INT                = 0xCE,
+    OP_QUICK_GE_INT                = 0xCF,
+    OP_INVOKE_METHOD_IC            = 0xD0, // uint16_t method_ic_index, uint8_t argc
 
     OP_HALT            = 0xFF
 };

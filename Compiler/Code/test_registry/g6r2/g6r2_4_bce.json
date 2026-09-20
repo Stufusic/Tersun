@@ -1,0 +1,73 @@
+{
+  "seal_id": "SEAL-G6R-2.4-BCE-20260920",
+  "gate": "G6R.2.4",
+  "title": "W2 Array Bounds Check Elimination (BCE) & Range Propagation",
+  "status": "SEALED",
+  "timestamp": "2026-09-20T12:35:00+07:00",
+  "git_commit_target": "HEAD",
+  "workload": "W2 Sieve of Eratosthenes (N = 100,000)",
+  "bit_exact_checksum": 9592,
+  "definition_of_done_verification": {
+    "dod_1_induction_variable_analysis": {
+      "status": "PASS",
+      "implementation": "LoopNaturalLoop detection + LinearInductionVariable step analysis (step=p, mult=p*p)",
+      "induction_step_proven": true
+    },
+    "dod_2_range_propagation_proof": {
+      "status": "PASS",
+      "implementation": "Forward range analysis over [mult <= n] with invariant array size >= n + 1",
+      "safety_proven": true
+    },
+    "dod_3_preheader_hoisting": {
+      "status": "PASS",
+      "implementation": "Hoisted CALL_RUNTIME setun_jit_helper_array_raw_data to outermost enclosing loop preheader",
+      "inner_loop_runtime_calls": 0,
+      "raw_pointer_register": "R15 (callee-saved)"
+    },
+    "dod_4_raw_memory_lowering": {
+      "status": "PASS",
+      "implementation": "STORE_ELEMENT_RAW lowered to unchecked SIB store: mov %rdx, (%r15, %r9, 8)",
+      "bounds_checks_in_inner_loop": 0,
+      "spill_slots": 0
+    },
+    "dod_5_safety_test_suite": {
+      "status": "PASS",
+      "artifact": "tests/test_bce_safety.cpp",
+      "sha256": "E93C057586669F3CB24ECA46180FE1D16232D0D32FE81B4E7ACE9898B5A0EC50",
+      "total_safety_tests": 6,
+      "passed_safety_tests": 6,
+      "negative_tests_rejected_correctly": 4,
+      "positive_tests_transformed_correctly": 2
+    },
+    "dod_6_disassembly_proof": {
+      "status": "PASS",
+      "artifact": "benchmarks/g6r2/disassembly/W2/jit_bce.asm",
+      "sha256": "A8B136B75FDDFC16E9FDF11CC5861B7C8BCD15E29E55F597CA343649694FDD9E",
+      "inner_loop_offset": "0x320 - 0x362",
+      "instruction_level_proof": "4b 89 14 cf: mov %rdx, (%r15, %r9, 8)"
+    },
+    "dod_7_correctness_checksum": {
+      "status": "PASS",
+      "expected": 9592,
+      "interpreter": 9592,
+      "jit": 9592,
+      "parity": "100% BIT-EXACT"
+    },
+    "dod_8_regression_suite": {
+      "status": "PASS",
+      "suite": "setunc_test.exe",
+      "total_differential_tests": 33,
+      "passed_differential_tests": 33,
+      "pass_rate_pct": 100.0
+    },
+    "dod_9_performance_metrics": {
+      "status": "PASS",
+      "target_ms": 4.50,
+      "actual_jit_time_us": 3755,
+      "actual_jit_time_ms": 3.755,
+      "speedup_vs_target_pct": 16.56,
+      "telemetry_artifact": "benchmarks/g6r2/raw/w2_bce_telemetry.json",
+      "telemetry_sha256": "61E64C944166E1175A1096CB76E3893ACCC7AE087EF0BF5CF82017016CAA711D"
+    }
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "seal_id": "SEAL-G6R-2.3-FRAME-20260919",
+  "gate": "G6R.2.3",
+  "title": "W1 Call Frame Allocation Recycling / Frame Memory Reuse / Direct Native Calling",
+  "status": "SEALED",
+  "timestamp": "2026-09-19T21:23:00+07:00",
+  "git_commit_target": "HEAD",
+  "workload": "W1 Fibonacci (n = 30)",
+  "bit_exact_checksum": 832040,
+  "definition_of_done_verification": {
+    "dod_1_microbenchmark": {
+      "status": "PASS",
+      "artifact": "benchmarks/g6r2/microbench/frame_microbench.cpp",
+      "sha256": "805C2A4161825B1B9616CBE9D38D1A3028515DAD9EBA51AAADF49A147C1D995A",
+      "arena_speedup": "2.53x",
+      "lazy_init_speedup": "8.63x"
+    },
+    "dod_2_cost_decomposition": {
+      "status": "PASS",
+      "artifact": "benchmarks/g6r2/raw/frame_cost_decomposition.json",
+      "sha256": "2C27ED7A033168C9E867F6A3688C82CDC8FA36753B2017C938263FD4987AAC88",
+      "initialization_waste_pct": 44.13,
+      "allocation_overhead_pct": 25.24,
+      "core_logic_and_transition_pct": 30.64
+    },
+    "dod_3_frame_reuse_strategy": {
+      "status": "PASS",
+      "implementation": "FixedFrameArena with 2048 pre-allocated activation frames & O(1) depth counter"
+    },
+    "dod_4_lazy_initialization": {
+      "status": "PASS",
+      "implementation": "Only parameter slots initialized on call; unused local slots preserved without zeroing"
+    },
+    "dod_5_direct_native_calling": {
+      "status": "PASS",
+      "artifact": "benchmarks/g6r2/disassembly/W1/jit_call.asm",
+      "sha256": "21B0237B4E350A1FA94159EBF9288E37FA4D51529836837EEC149A17AE466DA5",
+      "trampoline_unboxing": "0x00 - 0x4d",
+      "direct_recursive_entry": "0x4e",
+      "callee_saved_regs_preserved": ["RBX", "RSI", "RDI", "R12", "R13", "R14", "R15"]
+    },
+    "dod_6_deep_recursion_safety": {
+      "status": "PASS",
+      "trap_depth": 2048,
+      "stack_overflow_caught": true,
+      "o1_unwinding_verified": true
+    },
+    "dod_7_correctness_checksum": {
+      "status": "PASS",
+      "expected": 832040,
+      "interpreter": 832040,
+      "jit": 832040,
+      "parity": "100% BIT-EXACT"
+    },
+    "dod_8_regression_suite": {
+      "status": "PASS",
+      "suite": "setunc_test.exe",
+      "total_differential_tests": 33,
+      "passed_differential_tests": 33,
+      "pass_rate_pct": 100.0
+    },
+    "dod_9_w1_performance_targets": {
+      "status": "PASS",
+      "interpreter_mean_ms": 100.80,
+      "interpreter_target_ms": 120.0,
+      "jit_mean_ms": 5.22,
+      "jit_target_ms": 45.0,
+      "jit_stretch_target_ms": 5.5,
+      "jit_speedup_vs_interp": "19.31x"
+    },
+    "dod_10_telemetry_and_seal": {
+      "status": "PASS",
+      "telemetry_artifact": "benchmarks/g6r2/raw/w1_frame_telemetry.json",
+      "telemetry_sha256": "D220E473ED167B5537711C18BFF3A500EC8303E37BF9A652C01D4038889BE0CF"
+    }
+  },
+  "verified_source_hashes": {
+    "src/vm/optimizing_jit.cpp": "85315E19DBF7B29471E457C0E39FB3C23379D03BA621377138D20900ABE0A9D6",
+    "src/vm/machine_ir.cpp": "9F29431688D6C070E1C10BA3A1737C2CF3615DBD700F23AA205A6319F67D7574",
+    "src/vm/x64_assembler.cpp": "AAD6CA3CA1505829F1B583E497479FD93E91A8B16FF7270ABC68D372FDC45545"
+  }
+}

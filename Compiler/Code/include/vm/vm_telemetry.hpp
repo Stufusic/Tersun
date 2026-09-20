@@ -321,6 +321,23 @@ struct VectorizationTelemetry {
 };
 
 // -----------------------------------------------------------------------------
+// 10. Escape Analysis & SRA Telemetry (W4 G6R.2.2 critical)
+// -----------------------------------------------------------------------------
+struct SRATelemetry {
+    uint64_t allocation_candidates{0};
+    uint64_t allocation_eliminated{0};
+    uint64_t allocation_retained{0};
+    uint64_t no_escape_count{0};
+    uint64_t arg_escape_count{0};
+    uint64_t return_escape_count{0};
+    uint64_t heap_escape_count{0};
+    uint64_t unknown_escape_count{0};
+    uint64_t scalarized_objects{0};
+    uint64_t scalarized_fields{0};
+    uint64_t inlined_method_calls{0};
+};
+
+// -----------------------------------------------------------------------------
 // Master Telemetry Manager
 // -----------------------------------------------------------------------------
 class VMTelemetryManager {
@@ -555,6 +572,33 @@ public:
         }
     }
 
+    // Escape Analysis & SRA tracing (Group 10 - G6R.2.2)
+    inline void record_sra_census(uint64_t candidates, uint64_t eliminated, uint64_t retained,
+                                  uint64_t no_escape, uint64_t arg_esc, uint64_t ret_esc,
+                                  uint64_t heap_esc, uint64_t unk_esc) noexcept {
+        if (mode_ != ProfilingMode::OFF) {
+            sra_telemetry_.allocation_candidates += candidates;
+            sra_telemetry_.allocation_eliminated += eliminated;
+            sra_telemetry_.allocation_retained += retained;
+            sra_telemetry_.no_escape_count += no_escape;
+            sra_telemetry_.arg_escape_count += arg_esc;
+            sra_telemetry_.return_escape_count += ret_esc;
+            sra_telemetry_.heap_escape_count += heap_esc;
+            sra_telemetry_.unknown_escape_count += unk_esc;
+        }
+    }
+    inline void record_sra_scalarized(uint64_t objects, uint64_t fields) noexcept {
+        if (mode_ != ProfilingMode::OFF) {
+            sra_telemetry_.scalarized_objects += objects;
+            sra_telemetry_.scalarized_fields += fields;
+        }
+    }
+    inline void record_inlined_method_call() noexcept {
+        if (mode_ != ProfilingMode::OFF) {
+            sra_telemetry_.inlined_method_calls++;
+        }
+    }
+
     // Accessors
     [[nodiscard]] const WallClockTelemetry& wall_clock() const noexcept { return wall_clock_; }
     [[nodiscard]] const JITEconomicsTelemetry& jit() const noexcept { return jit_telemetry_; }
@@ -569,6 +613,8 @@ public:
     [[nodiscard]] const GCTelemetry& gc() const noexcept { return gc_telemetry_; }
     [[nodiscard]] const VectorizationTelemetry& vectorization() const noexcept { return vectorization_telemetry_; }
     [[nodiscard]] VectorizationTelemetry& vectorization_mut() noexcept { return vectorization_telemetry_; }
+    [[nodiscard]] const SRATelemetry& sra() const noexcept { return sra_telemetry_; }
+    [[nodiscard]] SRATelemetry& sra_mut() noexcept { return sra_telemetry_; }
 
     void sync_external_metrics(uint64_t total_ops, const uint64_t* op_counts, uint64_t stack_r, uint64_t stack_w, uint64_t calls, uint64_t rets, uint64_t arr_flat_r, uint64_t arr_flat_w, uint64_t arr_gen_r, uint64_t arr_gen_w, uint64_t ic_h, uint64_t ic_m, uint64_t superinsts, uint64_t deopts, uint64_t jit_compiles, double jit_compile_ms) noexcept;
 
@@ -591,6 +637,7 @@ private:
     ObjectFieldICTelemetry object_ic_telemetry_;
     GCTelemetry gc_telemetry_;
     VectorizationTelemetry vectorization_telemetry_;
+    SRATelemetry sra_telemetry_;
 
     std::chrono::high_resolution_clock::time_point t_startup_start_;
     std::chrono::high_resolution_clock::time_point t_program_start_;

@@ -1,7 +1,9 @@
 #include "vm/vm.hpp"
 #include "vm/vm_profiler.hpp"
+#include "vm/vm_telemetry.hpp"
 #include "vm/jit_frame.hpp"
 #include "vm/jit_manager.hpp"
+#include "vm/jit_runtime_helpers.hpp"
 #include "vm/runtime_metadata.hpp"
 #include "vm/text.hpp"
 #include "graphics/setun2d_bridge.hpp"
@@ -180,6 +182,9 @@ void VM::init_dispatch_table() {
 
     dispatch_table_[static_cast<uint8_t>(OpCode::OP_CALL)] = &VM::handle_call;
     dispatch_table_[static_cast<uint8_t>(OpCode::OP_RET)] = &VM::handle_ret;
+    dispatch_table_[static_cast<uint8_t>(OpCode::OP_CALL_FAST_0)] = &VM::handle_call_fast_0;
+    dispatch_table_[static_cast<uint8_t>(OpCode::OP_CALL_FAST_1)] = &VM::handle_call_fast_1;
+    dispatch_table_[static_cast<uint8_t>(OpCode::OP_RET_FAST)] = &VM::handle_ret_fast;
 
     dispatch_table_[static_cast<uint8_t>(OpCode::OP_PRINT)] = &VM::handle_print;
     dispatch_table_[static_cast<uint8_t>(OpCode::OP_PRINTLN)] = &VM::handle_println;
@@ -215,6 +220,9 @@ void VM::init_dispatch_table() {
     dispatch_table_[static_cast<uint8_t>(OpCode::OP_NEW_INSTANCE)] = &VM::handle_new_instance;
     dispatch_table_[static_cast<uint8_t>(OpCode::OP_SET_FIELD)] = &VM::handle_set_field;
     dispatch_table_[static_cast<uint8_t>(OpCode::OP_INVOKE_METHOD)] = &VM::handle_invoke_method;
+    dispatch_table_[static_cast<uint8_t>(OpCode::OP_INVOKE_METHOD_IC)] = &VM::handle_invoke_method_ic;
+    dispatch_table_[static_cast<uint8_t>(OpCode::OP_QUICK_GT_INT)] = &VM::handle_quick_gt_int;
+    dispatch_table_[static_cast<uint8_t>(OpCode::OP_QUICK_GE_INT)] = &VM::handle_quick_ge_int;
     dispatch_table_[static_cast<uint8_t>(OpCode::OP_SET_INDEX)] = &VM::handle_set_index;
     dispatch_table_[static_cast<uint8_t>(OpCode::OP_NEW_ARRAY)] = &VM::handle_new_array;
     dispatch_table_[static_cast<uint8_t>(OpCode::OP_TRY)] = &VM::handle_try;
@@ -351,6 +359,9 @@ void VM::run_switch(const Chunk& chunk) {
                 case OpCode::OP_BRANCH_3: handle_branch_3(chunk); break;
                 case OpCode::OP_CALL: handle_call(chunk); break;
                 case OpCode::OP_RET: handle_ret(chunk); break;
+                case OpCode::OP_CALL_FAST_0: handle_call_fast_0(chunk); break;
+                case OpCode::OP_CALL_FAST_1: handle_call_fast_1(chunk); break;
+                case OpCode::OP_RET_FAST: handle_ret_fast(chunk); break;
                 case OpCode::OP_PRINT: handle_print(chunk); break;
                 case OpCode::OP_PRINTLN: handle_println(chunk); break;
                 case OpCode::OP_TRACE: handle_trace(chunk); break;
@@ -383,6 +394,9 @@ void VM::run_switch(const Chunk& chunk) {
                 case OpCode::OP_NEW_INSTANCE: handle_new_instance(chunk); break;
                 case OpCode::OP_SET_FIELD: handle_set_field(chunk); break;
                 case OpCode::OP_INVOKE_METHOD: handle_invoke_method(chunk); break;
+                case OpCode::OP_INVOKE_METHOD_IC: handle_invoke_method_ic(chunk); break;
+                case OpCode::OP_QUICK_GT_INT: handle_quick_gt_int(chunk); break;
+                case OpCode::OP_QUICK_GE_INT: handle_quick_ge_int(chunk); break;
                 case OpCode::OP_SET_INDEX: handle_set_index(chunk); break;
                 case OpCode::OP_NEW_ARRAY: handle_new_array(chunk); break;
                 case OpCode::OP_TRY: handle_try(chunk); break;
@@ -468,6 +482,9 @@ void VM::run_threaded(const Chunk& chunk) {
         OP_TARGET(OP_BRANCH_3);
         OP_TARGET(OP_CALL);
         OP_TARGET(OP_RET);
+        OP_TARGET(OP_CALL_FAST_0);
+        OP_TARGET(OP_CALL_FAST_1);
+        OP_TARGET(OP_RET_FAST);
         OP_TARGET(OP_PRINT);
         OP_TARGET(OP_PRINTLN);
         OP_TARGET(OP_TRACE);
@@ -500,6 +517,9 @@ void VM::run_threaded(const Chunk& chunk) {
         OP_TARGET(OP_NEW_INSTANCE);
         OP_TARGET(OP_SET_FIELD);
         OP_TARGET(OP_INVOKE_METHOD);
+        OP_TARGET(OP_INVOKE_METHOD_IC);
+        OP_TARGET(OP_QUICK_GT_INT);
+        OP_TARGET(OP_QUICK_GE_INT);
         OP_TARGET(OP_SET_INDEX);
         OP_TARGET(OP_NEW_ARRAY);
         OP_TARGET(OP_TRY);
@@ -576,6 +596,9 @@ void VM::run_threaded(const Chunk& chunk) {
     WRAP_OP(OP_BRANCH_3, handle_branch_3(chunk));
     WRAP_OP(OP_CALL, handle_call(chunk));
     WRAP_OP(OP_RET, handle_ret(chunk));
+    WRAP_OP(OP_CALL_FAST_0, handle_call_fast_0(chunk));
+    WRAP_OP(OP_CALL_FAST_1, handle_call_fast_1(chunk));
+    WRAP_OP(OP_RET_FAST, handle_ret_fast(chunk));
     WRAP_OP(OP_PRINT, handle_print(chunk));
     WRAP_OP(OP_PRINTLN, handle_println(chunk));
     WRAP_OP(OP_TRACE, handle_trace(chunk));
@@ -608,6 +631,9 @@ void VM::run_threaded(const Chunk& chunk) {
     WRAP_OP(OP_NEW_INSTANCE, handle_new_instance(chunk));
     WRAP_OP(OP_SET_FIELD, handle_set_field(chunk));
     WRAP_OP(OP_INVOKE_METHOD, handle_invoke_method(chunk));
+    WRAP_OP(OP_INVOKE_METHOD_IC, handle_invoke_method_ic(chunk));
+    WRAP_OP(OP_QUICK_GT_INT, handle_quick_gt_int(chunk));
+    WRAP_OP(OP_QUICK_GE_INT, handle_quick_ge_int(chunk));
     WRAP_OP(OP_SET_INDEX, handle_set_index(chunk));
     WRAP_OP(OP_NEW_ARRAY, handle_new_array(chunk));
     WRAP_OP(OP_TRY, handle_try(chunk));
@@ -632,6 +658,18 @@ void VM::run_threaded(const Chunk& chunk) {
 void VM::run_cached(const Chunk& chunk) {
     OptimizedChunk opt = OptBytecodeOptimizer::optimize(chunk, opt_flags_);
     run_optimized(opt);
+}
+
+[[gnu::noinline, gnu::cold]]
+static void cold_throw_unknown_opcode(size_t ip_offset) {
+    std::ostringstream oss;
+    oss << "VM Exception: Unknown opcode at offset " << (ip_offset - 1);
+    throw VMException(oss.str());
+}
+
+[[gnu::noinline, gnu::cold]]
+static void cold_throw_range_step_zero() {
+    throw VMException("range() step cannot be zero");
 }
 
 void VM::run_optimized(OptimizedChunk& chunk) {
@@ -668,7 +706,6 @@ void VM::run_optimized(OptimizedChunk& chunk) {
     size_t init_depth = stack_.size();
     uint8_t* code_base = chunk.code.data();
     uint8_t* ip = code_base + ip_;
-    uint8_t* code_end = code_base + chunk.code.size();
     VMValue* sp = stack_.data() + init_depth;
     VMValue* stack_end = stack_.data() + stack_.capacity();
     size_t toplevel_size = chunk.toplevel_frame_size;
@@ -723,6 +760,9 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         OP_TARGET_C(OP_BRANCH_3);
         OP_TARGET_C(OP_CALL);
         OP_TARGET_C(OP_RET);
+        OP_TARGET_C(OP_CALL_FAST_0);
+        OP_TARGET_C(OP_CALL_FAST_1);
+        OP_TARGET_C(OP_RET_FAST);
         OP_TARGET_C(OP_PRINT);
         OP_TARGET_C(OP_PRINTLN);
         OP_TARGET_C(OP_TRACE);
@@ -782,8 +822,11 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         OP_TARGET_C(OP_QUICK_LT_INT);
         OP_TARGET_C(OP_QUICK_LE_INT);
         OP_TARGET_C(OP_QUICK_EQ_INT);
+        OP_TARGET_C(OP_QUICK_GT_INT);
+        OP_TARGET_C(OP_QUICK_GE_INT);
         OP_TARGET_C(OP_GET_FIELD_IC);
         OP_TARGET_C(OP_SET_FIELD_IC);
+        OP_TARGET_C(OP_INVOKE_METHOD_IC);
 
         // Gate 6.0-D: Phase 4 Superinstruction Fusion Framework
         OP_TARGET_C(OP_STORE_LOCAL_POP);
@@ -804,21 +847,59 @@ void VM::run_optimized(OptimizedChunk& chunk) {
     VMValue r_tos1{};
     uint8_t r_depth = 0;
 
+#if defined(TERSUN_VM_INSTRUMENTED)
+    #define VM_RECORD_DISPATCH() telemetry_.total_dispatches++
+    #define VM_RECORD_SUPER() telemetry_.superinstructions_executed++
+    #define VM_RECORD_QUICK_HIT() telemetry_.quick_hits++
+    #define VM_RECORD_DEOPT() telemetry_.deopt_count++
+    #define VM_RECORD_IC_HIT() telemetry_.ic_hits++
+    #define VM_RECORD_IC_MISS() telemetry_.ic_misses++
+    #define VM_RECORD_LOOP_ITER() telemetry_.loop_fast_iterations++
+    #define VM_RECORD_PROFILER_OP(op) if (UNLIKELY(profiler_ != nullptr)) profiler_->record_opcode(op)
+    #define VM_RECORD_PROFILER_READ(n) if (UNLIKELY(profiler_ != nullptr)) profiler_->record_stack_read(n)
+    #define VM_RECORD_PROFILER_WRITE(n) if (UNLIKELY(profiler_ != nullptr)) profiler_->record_stack_write(n)
+    #define VM_RECORD_PROFILER_ARRAY_GENERIC_READ() if (UNLIKELY(profiler_ != nullptr)) profiler_->record_array_generic_read()
+    #define VM_RECORD_PROFILER_ARRAY_GENERIC_WRITE() if (UNLIKELY(profiler_ != nullptr)) profiler_->record_array_generic_write()
+    #define VM_RECORD_PROFILER_ARRAY_FLAT_READ() if (UNLIKELY(profiler_ != nullptr)) profiler_->record_array_flat_read()
+    #define VM_RECORD_PROFILER_ARRAY_FLAT_WRITE() if (UNLIKELY(profiler_ != nullptr)) profiler_->record_array_flat_write()
+    #define VM_RECORD_PROFILER_CALL(depth) if (UNLIKELY(profiler_ != nullptr)) profiler_->record_call(depth)
+    #define VM_RECORD_PROFILER_RET() if (UNLIKELY(profiler_ != nullptr)) profiler_->record_return()
+
     #define DISPATCH_C() \
         do { \
-            if (__builtin_expect(!running_ || ip >= code_end, 0)) goto c_lbl_exit; \
-            telemetry_.total_dispatches++; \
-            if (__builtin_expect(profiler_ != nullptr, 0)) { \
-                profiler_->record_opcode(*ip); \
-            } \
+            if (__builtin_expect(!running_, 0)) goto c_lbl_exit; \
+            VM_RECORD_DISPATCH(); \
+            VM_RECORD_PROFILER_OP(*ip); \
             goto *lbl_table[*ip++]; \
         } while(0)
+#else
+    #define VM_RECORD_DISPATCH() do {} while(0)
+    #define VM_RECORD_SUPER() do {} while(0)
+    #define VM_RECORD_QUICK_HIT() do {} while(0)
+    #define VM_RECORD_DEOPT() do {} while(0)
+    #define VM_RECORD_IC_HIT() do {} while(0)
+    #define VM_RECORD_IC_MISS() do {} while(0)
+    #define VM_RECORD_LOOP_ITER() do {} while(0)
+    #define VM_RECORD_PROFILER_OP(op) do {} while(0)
+    #define VM_RECORD_PROFILER_READ(n) do {} while(0)
+    #define VM_RECORD_PROFILER_WRITE(n) do {} while(0)
+    #define VM_RECORD_PROFILER_ARRAY_GENERIC_READ() do {} while(0)
+    #define VM_RECORD_PROFILER_ARRAY_GENERIC_WRITE() do {} while(0)
+    #define VM_RECORD_PROFILER_ARRAY_FLAT_READ() do {} while(0)
+    #define VM_RECORD_PROFILER_ARRAY_FLAT_WRITE() do {} while(0)
+    #define VM_RECORD_PROFILER_CALL(depth) do {} while(0)
+    #define VM_RECORD_PROFILER_RET() do {} while(0)
+
+    #define DISPATCH_C() \
+        do { \
+            if (__builtin_expect(!running_, 0)) goto c_lbl_exit; \
+            goto *lbl_table[*ip++]; \
+        } while(0)
+#endif
 
     #define ENSURE_STACK(n) \
         do { \
-            if (__builtin_expect(profiler_ != nullptr, 0)) { \
-                profiler_->record_stack_write(n); \
-            } \
+            VM_RECORD_PROFILER_WRITE(n); \
             if (__builtin_expect(sp + (n) >= stack_end, 0)) { \
                 size_t cur = static_cast<size_t>(sp - stack_.data()); \
                 stack_.reserve(stack_.capacity() * 2); \
@@ -854,7 +935,7 @@ void VM::run_optimized(OptimizedChunk& chunk) {
                 r_tos0 = r_tos1; \
                 r_depth = 1; \
             } else { \
-                if (UNLIKELY(profiler_ != nullptr)) profiler_->record_stack_read(1); \
+                VM_RECORD_PROFILER_READ(1); \
                 dest = *--sp; \
             } \
         } while (0)
@@ -867,7 +948,7 @@ void VM::run_optimized(OptimizedChunk& chunk) {
                 r_tos0 = r_tos1; \
                 r_depth = 1; \
             } else { \
-                if (UNLIKELY(profiler_ != nullptr)) profiler_->record_stack_read(1); \
+                VM_RECORD_PROFILER_READ(1); \
                 --sp; \
             } \
         } while (0)
@@ -877,7 +958,7 @@ void VM::run_optimized(OptimizedChunk& chunk) {
     #define DUP_TOS() \
         do { \
             if (r_depth == 0) { \
-                if (UNLIKELY(profiler_ != nullptr)) profiler_->record_stack_read(1); \
+                VM_RECORD_PROFILER_READ(1); \
                 r_tos0 = *(sp - 1); \
                 r_depth = 1; \
             } else if (r_depth == 1) { \
@@ -898,11 +979,11 @@ void VM::run_optimized(OptimizedChunk& chunk) {
                 r_depth = 0; \
             } else if (r_depth == 1) { \
                 b = r_tos0; \
-                if (UNLIKELY(profiler_ != nullptr)) profiler_->record_stack_read(1); \
+                VM_RECORD_PROFILER_READ(1); \
                 a = *--sp; \
                 r_depth = 0; \
             } else { \
-                if (UNLIKELY(profiler_ != nullptr)) profiler_->record_stack_read(2); \
+                VM_RECORD_PROFILER_READ(2); \
                 b = *--sp; \
                 a = *--sp; \
             } \
@@ -916,10 +997,10 @@ void VM::run_optimized(OptimizedChunk& chunk) {
                 r_depth = 1; \
             } else if (r_depth == 1) { \
                 b = r_tos0; \
-                if (UNLIKELY(profiler_ != nullptr)) profiler_->record_stack_read(1); \
+                VM_RECORD_PROFILER_READ(1); \
                 a = *--sp; \
             } else { \
-                if (UNLIKELY(profiler_ != nullptr)) profiler_->record_stack_read(2); \
+                VM_RECORD_PROFILER_READ(2); \
                 b = *--sp; \
                 a = *--sp; \
                 r_depth = 1; \
@@ -1171,7 +1252,7 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         if (r_depth >= 1) {
             r_tos0 = r_tos0.neg();
         } else {
-            if (UNLIKELY(profiler_ != nullptr)) profiler_->record_stack_read(1);
+            VM_RECORD_PROFILER_READ(1);
             r_tos0 = (*--sp).neg();
             r_depth = 1;
         }
@@ -1298,6 +1379,11 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         BINARY_OP_FETCH(a, b);
         if (__builtin_expect(VMValue::is_both_immediate_int(a, b), 1)) {
             r_tos0 = VMValue(a.as_immediate_int_fast() > b.as_immediate_int_fast());
+            size_t site_ip = static_cast<size_t>(ip - 1 - code_base);
+            if (__builtin_expect(opt_flags_.enable_quickening && site_ip < chunk.warmup_counters.size(), 1)) {
+                uint8_t& counter = chunk.warmup_counters[site_ip];
+                if (++counter >= 8) code_base[site_ip] = static_cast<uint8_t>(OpCode::OP_QUICK_GT_INT);
+            }
             DISPATCH_C();
         }
         bool res;
@@ -1315,6 +1401,11 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         BINARY_OP_FETCH(a, b);
         if (__builtin_expect(VMValue::is_both_immediate_int(a, b), 1)) {
             r_tos0 = VMValue(a.as_immediate_int_fast() >= b.as_immediate_int_fast());
+            size_t site_ip = static_cast<size_t>(ip - 1 - code_base);
+            if (__builtin_expect(opt_flags_.enable_quickening && site_ip < chunk.warmup_counters.size(), 1)) {
+                uint8_t& counter = chunk.warmup_counters[site_ip];
+                if (++counter >= 8) code_base[site_ip] = static_cast<uint8_t>(OpCode::OP_QUICK_GE_INT);
+            }
             DISPATCH_C();
         }
         bool res;
@@ -1330,13 +1421,17 @@ void VM::run_optimized(OptimizedChunk& chunk) {
     c_lbl_OP_JUMP: {
         int16_t offset = static_cast<int16_t>(ip[0] | (ip[1] << 8));
         if (__builtin_expect(offset < 0, 0)) {
-            FLUSH_TOS();
-            stack_.set_top(static_cast<size_t>(sp - stack_.data()));
-            gc_engine_.safepoint(*this);
-            sp = stack_.data() + stack_.size();
+            if (__builtin_expect(gc_engine_.should_collect(), 0)) {
+                FLUSH_TOS();
+                stack_.set_top(static_cast<size_t>(sp - stack_.data()));
+                gc_engine_.collect_garbage(*this);
+                sp = stack_.data() + stack_.size();
+            }
 
             // Gate 5.9.1: Auto-Tiering Fast OSR Dispatch
             if (auto_tiering_enabled_ && loop_hot_table_) {
+                FLUSH_TOS();
+                stack_.set_top(static_cast<size_t>(sp - stack_.data()));
                 size_t loop_target = static_cast<size_t>(ip + 2 + offset - code_base);
                 size_t lidx = loop_target & loop_hot_mask_;
                 LoopHotData& lhot = loop_hot_table_[lidx];
@@ -1352,10 +1447,12 @@ void VM::run_optimized(OptimizedChunk& chunk) {
                     frame.prev_jit_frame = active_jit_frame_;
                     active_jit_frame_ = &frame;
 
+                    tersun::VMTelemetryManager::instance().record_jit_osr();
                     int64_t raw_res = lhot.osr_entry(this, &frame);
                     active_jit_frame_ = frame.prev_jit_frame;
 
                     if (__builtin_expect(frame.deopt_code > 0, 0)) {
+                        tersun::VMTelemetryManager::instance().record_jit_deopt();
                         jit_manager_->handle_deopt_feedback(call_stack_.empty() ? 0 : call_stack_.back().func_entry,
                                                             static_cast<uint32_t>(loop_target),
                                                             static_cast<DeoptReason>(frame.deopt_reason));
@@ -1499,7 +1596,6 @@ void VM::run_optimized(OptimizedChunk& chunk) {
     }
 
     c_lbl_OP_CALL: {
-        FLUSH_TOS();
         uint16_t fn_idx = static_cast<uint16_t>(ip[0] | (ip[1] << 8));
         ip += 2;
         uint32_t fn_entry = 0;
@@ -1533,8 +1629,18 @@ void VM::run_optimized(OptimizedChunk& chunk) {
                     locals_.resize(new_local_base + callee_frame_size);
                 }
                 for (int i = static_cast<int>(argc) - 1; i >= 0; --i) {
-                    locals_[new_local_base + i] = *--sp;
+                    if (r_depth == 1) {
+                        locals_[new_local_base + i] = r_tos0;
+                        r_depth = 0;
+                    } else if (r_depth == 2) {
+                        locals_[new_local_base + i] = r_tos0;
+                        r_tos0 = r_tos1;
+                        r_depth = 1;
+                    } else {
+                        locals_[new_local_base + i] = *--sp;
+                    }
                 }
+                FLUSH_TOS();
 
                 JITFrame frame;
                 frame.vm = this;
@@ -1546,10 +1652,12 @@ void VM::run_optimized(OptimizedChunk& chunk) {
                 frame.prev_jit_frame = active_jit_frame_;
                 active_jit_frame_ = &frame;
 
+                tersun::VMTelemetryManager::instance().record_jit_invocation();
                 int64_t raw_res = hot.native_entry(this, &frame);
                 active_jit_frame_ = frame.prev_jit_frame;
 
                 if (__builtin_expect(frame.deopt_code > 0, 0)) {
+                    tersun::VMTelemetryManager::instance().record_jit_deopt();
                     jit_manager_->handle_deopt_feedback(fn_entry, 0, static_cast<DeoptReason>(frame.deopt_reason));
                     call_stack_.push_back(CallFrame{static_cast<size_t>(ip - code_base), new_local_base, static_cast<size_t>(sp - stack_.data()), callee_frame_size, fn_entry});
                     stack_.set_top(static_cast<size_t>(sp - stack_.data()));
@@ -1593,12 +1701,20 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         }
 
         for (int i = static_cast<int>(argc) - 1; i >= 0; --i) {
-            locals_[new_local_base + i] = *--sp;
+            if (r_depth == 1) {
+                locals_[new_local_base + i] = r_tos0;
+                r_depth = 0;
+            } else if (r_depth == 2) {
+                locals_[new_local_base + i] = r_tos0;
+                r_tos0 = r_tos1;
+                r_depth = 1;
+            } else {
+                locals_[new_local_base + i] = *--sp;
+            }
         }
+        FLUSH_TOS();
 
-        if (UNLIKELY(profiler_ != nullptr)) {
-            profiler_->record_call(call_stack_.size() + 1);
-        }
+        VM_RECORD_PROFILER_CALL(call_stack_.size() + 1);
         call_stack_.push_back(CallFrame{static_cast<size_t>(ip - code_base), new_local_base, static_cast<size_t>(sp - stack_.data()), callee_frame_size, fn_entry});
         stack_.set_top(static_cast<size_t>(sp - stack_.data()));
         gc_engine_.safepoint(*this);
@@ -1615,21 +1731,98 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         }
         CallFrame frame = call_stack_.back();
         call_stack_.pop_back();
-        if (UNLIKELY(profiler_ != nullptr)) {
-            profiler_->record_return();
-        }
+        VM_RECORD_PROFILER_RET();
         VMValue ret_val;
-        POP_TOS_VAL(ret_val);
-        r_depth = 0;
+        if (r_depth >= 1) {
+            ret_val = r_tos0;
+        } else if (sp > stack_.data()) {
+            ret_val = *--sp;
+        }
         if (opt_flags_.enable_fast_frames) {
             local_top_ = frame.local_base;
         } else {
             locals_.resize(frame.local_base);
         }
         sp = stack_.data() + frame.stack_depth;
-        PUSH_TOS(ret_val);
+        r_tos0 = ret_val;
+        r_depth = 1;
         local_base = call_stack_.empty() ? 0 : call_stack_.back().local_base;
         ip = code_base + frame.return_ip;
+        DISPATCH_C();
+    }
+
+    c_lbl_OP_CALL_FAST_0: {
+        uint16_t fn_entry = static_cast<uint16_t>(ip[0] | (ip[1] << 8));
+        uint8_t frame_sz = ip[2];
+        ip += 3;
+        FLUSH_TOS();
+        size_t new_local_base = local_top_;
+        local_top_ += frame_sz;
+        if (__builtin_expect(local_top_ + 64 >= locals_.size(), 0)) {
+            locals_.resize(locals_.size() * 2);
+        }
+        VM_RECORD_PROFILER_CALL(call_stack_.size() + 1);
+        size_t cur_sp_depth = static_cast<size_t>(sp - stack_.data());
+        call_stack_.push_back(CallFrame{static_cast<size_t>(ip - code_base), new_local_base, cur_sp_depth, frame_sz, fn_entry});
+        if (__builtin_expect(gc_engine_.should_collect(), 0)) {
+            stack_.set_top(cur_sp_depth);
+            gc_engine_.safepoint(*this);
+            sp = stack_.data() + stack_.size();
+        }
+        local_base = new_local_base;
+        ip = code_base + fn_entry;
+        DISPATCH_C();
+    }
+
+    c_lbl_OP_CALL_FAST_1: {
+        uint16_t fn_entry = static_cast<uint16_t>(ip[0] | (ip[1] << 8));
+        uint8_t frame_sz = ip[2];
+        ip += 3;
+        size_t new_local_base = local_top_;
+        local_top_ += frame_sz;
+        if (__builtin_expect(local_top_ + 64 >= locals_.size(), 0)) {
+            locals_.resize(locals_.size() * 2);
+        }
+        if (r_depth == 1) {
+            locals_[new_local_base] = r_tos0;
+            r_depth = 0;
+        } else if (r_depth == 2) {
+            locals_[new_local_base] = r_tos0;
+            *sp++ = r_tos1;
+            r_depth = 0;
+        } else {
+            locals_[new_local_base] = *--sp;
+        }
+        VM_RECORD_PROFILER_CALL(call_stack_.size() + 1);
+        size_t cur_sp_depth = static_cast<size_t>(sp - stack_.data());
+        call_stack_.push_back(CallFrame{static_cast<size_t>(ip - code_base), new_local_base, cur_sp_depth, frame_sz, fn_entry});
+        if (__builtin_expect(gc_engine_.should_collect(), 0)) {
+            stack_.set_top(cur_sp_depth);
+            gc_engine_.safepoint(*this);
+            sp = stack_.data() + stack_.size();
+        }
+        local_base = new_local_base;
+        ip = code_base + fn_entry;
+        DISPATCH_C();
+    }
+
+    c_lbl_OP_RET_FAST: {
+        if (__builtin_expect(call_stack_.empty(), 0)) {
+            running_ = false;
+            goto c_lbl_exit;
+        }
+        const CallFrame& frame = call_stack_.back();
+        if (r_depth == 0) {
+            r_tos0 = *--sp;
+        }
+        r_depth = 1;
+        local_top_ = frame.local_base;
+        sp = stack_.data() + frame.stack_depth;
+        size_t ret_ip = frame.return_ip;
+        call_stack_.pop_back();
+        VM_RECORD_PROFILER_RET();
+        local_base = call_stack_.empty() ? 0 : call_stack_.back().local_base;
+        ip = code_base + ret_ip;
         DISPATCH_C();
     }
 
@@ -1651,7 +1844,10 @@ void VM::run_optimized(OptimizedChunk& chunk) {
     DELEGATE_OP(OP_PRINTLN, handle_println);
     DELEGATE_OP(OP_TRACE, handle_trace);
     DELEGATE_OP(OP_ASSERT_EQ, handle_assert_eq);
-    DELEGATE_OP(OP_HALT, handle_halt);
+    c_lbl_OP_HALT: {
+        running_ = false;
+        goto c_lbl_exit;
+    }
     DELEGATE_OP(OP_GFX_INIT, handle_gfx_init);
     DELEGATE_OP(OP_GFX_IS_RUNNING, handle_gfx_is_running);
     DELEGATE_OP(OP_GFX_CLEAR, handle_gfx_clear);
@@ -1823,7 +2019,7 @@ void VM::run_optimized(OptimizedChunk& chunk) {
             int64_t sum = cur.as_immediate_int_fast() + imm;
             if (__builtin_expect(sum >= VMValue::MIN_INT48 && sum <= VMValue::MAX_INT48, 1)) {
                 cur = VMValue::from_raw(VMValue::TAG_INT | (static_cast<uint64_t>(sum) & VMValue::PAYLOAD_MASK));
-                telemetry_.superinstructions_executed++;
+                VM_RECORD_SUPER();
                 DISPATCH_C();
             }
         }
@@ -1841,30 +2037,30 @@ void VM::run_optimized(OptimizedChunk& chunk) {
                 if (__builtin_expect(i >= 0 && static_cast<size_t>(i) < arr->size(), 1)) {
                     switch (arr->rep) {
                         case ArrayRep::I64:
-                            if (UNLIKELY(profiler_ != nullptr)) profiler_->record_array_flat_read();
+                            VM_RECORD_PROFILER_ARRAY_FLAT_READ();
                             PUSH_TOS(VMValue(arr->i64_data[i]));
-                            telemetry_.superinstructions_executed++;
+                            VM_RECORD_SUPER();
                             DISPATCH_C();
                         case ArrayRep::F64:
-                            if (UNLIKELY(profiler_ != nullptr)) profiler_->record_array_flat_read();
+                            VM_RECORD_PROFILER_ARRAY_FLAT_READ();
                             PUSH_TOS(VMValue(arr->f64_data[i]));
-                            telemetry_.superinstructions_executed++;
+                            VM_RECORD_SUPER();
                             DISPATCH_C();
                         case ArrayRep::U8:
-                            if (UNLIKELY(profiler_ != nullptr)) profiler_->record_array_flat_read();
+                            VM_RECORD_PROFILER_ARRAY_FLAT_READ();
                             PUSH_TOS(VMValue(static_cast<int64_t>(arr->u8_data[i])));
-                            telemetry_.superinstructions_executed++;
+                            VM_RECORD_SUPER();
                             DISPATCH_C();
                         case ArrayRep::TAFPU:
-                            if (UNLIKELY(profiler_ != nullptr)) profiler_->record_array_flat_read();
+                            VM_RECORD_PROFILER_ARRAY_FLAT_READ();
                             PUSH_TOS(VMValue(arr->tafpu_data[i]));
-                            telemetry_.superinstructions_executed++;
+                            VM_RECORD_SUPER();
                             DISPATCH_C();
                         case ArrayRep::Generic:
                         default:
-                            if (UNLIKELY(profiler_ != nullptr)) profiler_->record_array_generic_read();
+                            VM_RECORD_PROFILER_ARRAY_GENERIC_READ();
                             PUSH_TOS(arr->generic_data[i]);
-                            telemetry_.superinstructions_executed++;
+                            VM_RECORD_SUPER();
                             DISPATCH_C();
                     }
                 }
@@ -1914,17 +2110,17 @@ void VM::run_optimized(OptimizedChunk& chunk) {
                     switch (arr->rep) {
                         case ArrayRep::I64:
                             if (__builtin_expect(val.is_immediate_int(), 1)) {
-                                if (UNLIKELY(profiler_ != nullptr)) profiler_->record_array_flat_write();
+                                VM_RECORD_PROFILER_ARRAY_FLAT_WRITE();
                                 arr->i64_data[i] = val.as_immediate_int_fast();
-                                telemetry_.superinstructions_executed++;
+                                VM_RECORD_SUPER();
                                 DISPATCH_C();
                             }
                             break;
                         case ArrayRep::F64:
                             if (val.is_float()) {
-                                if (UNLIKELY(profiler_ != nullptr)) profiler_->record_array_flat_write();
+                                VM_RECORD_PROFILER_ARRAY_FLAT_WRITE();
                                 arr->f64_data[i] = val.as_float();
-                                telemetry_.superinstructions_executed++;
+                                VM_RECORD_SUPER();
                                 DISPATCH_C();
                             }
                             break;
@@ -1932,31 +2128,31 @@ void VM::run_optimized(OptimizedChunk& chunk) {
                             if (val.is_immediate_int()) {
                                 int64_t iv = val.as_immediate_int_fast();
                                 if (iv >= 0 && iv <= 255) {
-                                    if (UNLIKELY(profiler_ != nullptr)) profiler_->record_array_flat_write();
+                                    VM_RECORD_PROFILER_ARRAY_FLAT_WRITE();
                                     arr->u8_data[i] = static_cast<uint8_t>(iv);
-                                    telemetry_.superinstructions_executed++;
+                                    VM_RECORD_SUPER();
                                     DISPATCH_C();
                                 }
                             }
                             break;
                         case ArrayRep::TAFPU:
                             if (val.is_tafpu()) {
-                                if (UNLIKELY(profiler_ != nullptr)) profiler_->record_array_flat_write();
+                                VM_RECORD_PROFILER_ARRAY_FLAT_WRITE();
                                 arr->tafpu_data[i] = val.as_tafpu();
-                                telemetry_.superinstructions_executed++;
+                                VM_RECORD_SUPER();
                                 DISPATCH_C();
                             }
                             break;
                         case ArrayRep::Generic:
                         default:
-                            if (UNLIKELY(profiler_ != nullptr)) profiler_->record_array_generic_write();
+                            VM_RECORD_PROFILER_ARRAY_GENERIC_WRITE();
                             arr->generic_data[i] = val;
-                            telemetry_.superinstructions_executed++;
+                            VM_RECORD_SUPER();
                             DISPATCH_C();
                     }
                     arr->set(static_cast<size_t>(i), val);
-                    if (UNLIKELY(profiler_ != nullptr)) profiler_->record_array_generic_write();
-                    telemetry_.superinstructions_executed++;
+                    VM_RECORD_PROFILER_ARRAY_GENERIC_WRITE();
+                    VM_RECORD_SUPER();
                     DISPATCH_C();
                 }
             }
@@ -1990,14 +2186,14 @@ void VM::run_optimized(OptimizedChunk& chunk) {
 
         if (__builtin_expect(step_val == 0, 0)) {
             SYNC_TO_VM();
-            throw VMException("range() step cannot be zero");
+            cold_throw_range_step_zero();
         }
 
         bool active = (step_val > 0) ? (var_val < stop_val) : (var_val > stop_val);
         if (!active) {
             ip += exit_dist;
         } else {
-            telemetry_.loop_fast_iterations++;
+            VM_RECORD_LOOP_ITER();
         }
         DISPATCH_C();
     }
@@ -2009,11 +2205,11 @@ void VM::run_optimized(OptimizedChunk& chunk) {
             int64_t sum = a.as_immediate_int_fast() + b.as_immediate_int_fast();
             if (__builtin_expect(sum >= VMValue::MIN_INT48 && sum <= VMValue::MAX_INT48, 1)) {
                 r_tos0 = VMValue::from_raw(VMValue::TAG_INT | (static_cast<uint64_t>(sum) & VMValue::PAYLOAD_MASK));
-                telemetry_.quick_hits++;
+                VM_RECORD_QUICK_HIT();
                 DISPATCH_C();
             }
         }
-        telemetry_.deopt_count++;
+        VM_RECORD_DEOPT();
         size_t site_ip = static_cast<size_t>(ip - 1 - code_base);
         code_base[site_ip] = static_cast<uint8_t>(OpCode::OP_ADD);
         r_tos0 = a.add(b);
@@ -2027,11 +2223,11 @@ void VM::run_optimized(OptimizedChunk& chunk) {
             int64_t diff = a.as_immediate_int_fast() - b.as_immediate_int_fast();
             if (__builtin_expect(diff >= VMValue::MIN_INT48 && diff <= VMValue::MAX_INT48, 1)) {
                 r_tos0 = VMValue::from_raw(VMValue::TAG_INT | (static_cast<uint64_t>(diff) & VMValue::PAYLOAD_MASK));
-                telemetry_.quick_hits++;
+                VM_RECORD_QUICK_HIT();
                 DISPATCH_C();
             }
         }
-        telemetry_.deopt_count++;
+        VM_RECORD_DEOPT();
         size_t site_ip = static_cast<size_t>(ip - 1 - code_base);
         code_base[site_ip] = static_cast<uint8_t>(OpCode::OP_SUB);
         r_tos0 = a.sub(b);
@@ -2045,11 +2241,11 @@ void VM::run_optimized(OptimizedChunk& chunk) {
             int64_t prod = a.as_immediate_int_fast() * b.as_immediate_int_fast();
             if (__builtin_expect(prod >= VMValue::MIN_INT48 && prod <= VMValue::MAX_INT48, 1)) {
                 r_tos0 = VMValue::from_raw(VMValue::TAG_INT | (static_cast<uint64_t>(prod) & VMValue::PAYLOAD_MASK));
-                telemetry_.quick_hits++;
+                VM_RECORD_QUICK_HIT();
                 DISPATCH_C();
             }
         }
-        telemetry_.deopt_count++;
+        VM_RECORD_DEOPT();
         size_t site_ip = static_cast<size_t>(ip - 1 - code_base);
         code_base[site_ip] = static_cast<uint8_t>(OpCode::OP_MUL);
         r_tos0 = a.mul(b);
@@ -2061,10 +2257,10 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         BINARY_OP_FETCH(a, b);
         if (__builtin_expect(VMValue::is_both_immediate_int(a, b), 1)) {
             r_tos0 = VMValue(a.as_immediate_int_fast() < b.as_immediate_int_fast());
-            telemetry_.quick_hits++;
+            VM_RECORD_QUICK_HIT();
             DISPATCH_C();
         }
-        telemetry_.deopt_count++;
+        VM_RECORD_DEOPT();
         size_t site_ip = static_cast<size_t>(ip - 1 - code_base);
         code_base[site_ip] = static_cast<uint8_t>(OpCode::OP_LT);
         bool res;
@@ -2082,10 +2278,10 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         BINARY_OP_FETCH(a, b);
         if (__builtin_expect(VMValue::is_both_immediate_int(a, b), 1)) {
             r_tos0 = VMValue(a.as_immediate_int_fast() <= b.as_immediate_int_fast());
-            telemetry_.quick_hits++;
+            VM_RECORD_QUICK_HIT();
             DISPATCH_C();
         }
-        telemetry_.deopt_count++;
+        VM_RECORD_DEOPT();
         size_t site_ip = static_cast<size_t>(ip - 1 - code_base);
         code_base[site_ip] = static_cast<uint8_t>(OpCode::OP_LE);
         bool res;
@@ -2103,10 +2299,10 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         BINARY_OP_FETCH(a, b);
         if (__builtin_expect(VMValue::is_both_immediate_int(a, b), 1)) {
             r_tos0 = VMValue(a.raw_ == b.raw_);
-            telemetry_.quick_hits++;
+            VM_RECORD_QUICK_HIT();
             DISPATCH_C();
         }
-        telemetry_.deopt_count++;
+        VM_RECORD_DEOPT();
         size_t site_ip = static_cast<size_t>(ip - 1 - code_base);
         code_base[site_ip] = static_cast<uint8_t>(OpCode::OP_EQ);
         bool res;
@@ -2119,21 +2315,83 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         DISPATCH_C();
     }
 
+    c_lbl_OP_QUICK_GT_INT: {
+        VMValue a, b;
+        BINARY_OP_FETCH(a, b);
+        if (__builtin_expect(VMValue::is_both_immediate_int(a, b), 1)) {
+            r_tos0 = VMValue(a.as_immediate_int_fast() > b.as_immediate_int_fast());
+            VM_RECORD_QUICK_HIT();
+            DISPATCH_C();
+        }
+        VM_RECORD_DEOPT();
+        size_t site_ip = static_cast<size_t>(ip - 1 - code_base);
+        code_base[site_ip] = static_cast<uint8_t>(OpCode::OP_GT);
+        bool res;
+        if (a.is_int() && b.is_int()) res = (a.as_int() > b.as_int());
+        else if (a.is_float() || b.is_float()) res = (a.as_float() > b.as_float());
+        else if (a.is_string() || b.is_string()) res = (a.to_string() > b.to_string());
+        else if (a.is_tafpu() || b.is_tafpu()) res = (tafpu_cmp(a.as_tafpu(), b.as_tafpu()) > 0);
+        else res = (a.as_int() > b.as_int());
+        r_tos0 = VMValue(res);
+        DISPATCH_C();
+    }
+
+    c_lbl_OP_QUICK_GE_INT: {
+        VMValue a, b;
+        BINARY_OP_FETCH(a, b);
+        if (__builtin_expect(VMValue::is_both_immediate_int(a, b), 1)) {
+            r_tos0 = VMValue(a.as_immediate_int_fast() >= b.as_immediate_int_fast());
+            VM_RECORD_QUICK_HIT();
+            DISPATCH_C();
+        }
+        VM_RECORD_DEOPT();
+        size_t site_ip = static_cast<size_t>(ip - 1 - code_base);
+        code_base[site_ip] = static_cast<uint8_t>(OpCode::OP_GE);
+        bool res;
+        if (a.is_int() && b.is_int()) res = (a.as_int() >= b.as_int());
+        else if (a.is_float() || b.is_float()) res = (a.as_float() >= b.as_float());
+        else if (a.is_string() || b.is_string()) res = (a.to_string() >= b.to_string());
+        else if (a.is_tafpu() || b.is_tafpu()) res = (tafpu_cmp(a.as_tafpu(), b.as_tafpu()) >= 0);
+        else res = (a.as_int() >= b.as_int());
+        r_tos0 = VMValue(res);
+        DISPATCH_C();
+    }
+
     c_lbl_OP_GET_FIELD_IC: {
         uint16_t ic_idx = static_cast<uint16_t>(ip[0] | (ip[1] << 8));
         ip += 2;
         ICSite& ic = chunk.ic_sites[ic_idx];
+
+        // Super-fast path: TOS in register r_tos0
+        if (__builtin_expect(r_depth >= 1, 1)) {
+            if (__builtin_expect(r_tos0.is_object(), 1)) {
+                auto* vmo = r_tos0.payload()->obj.get();
+                if (__builtin_expect(vmo && vmo->shape && vmo->shape->shape_id == ic.expected_shape && ic.expected_shape != 0, 1)) {
+                    r_tos0 = vmo->fields_array[ic.cached_slot];
+                    VM_RECORD_IC_HIT();
+                    DISPATCH_C();
+                }
+            }
+        } else {
+            VMValue obj = *(sp - 1);
+            if (__builtin_expect(obj.is_object(), 1)) {
+                auto* vmo = obj.payload()->obj.get();
+                if (__builtin_expect(vmo && vmo->shape && vmo->shape->shape_id == ic.expected_shape && ic.expected_shape != 0, 1)) {
+                    sp--;
+                    PUSH_TOS(vmo->fields_array[ic.cached_slot]);
+                    VM_RECORD_IC_HIT();
+                    DISPATCH_C();
+                }
+            }
+        }
+
+        // Slow path: miss or non-object
         VMValue obj;
         POP_TOS_VAL(obj);
 
         if (__builtin_expect(obj.is_object(), 1)) {
             auto* vmo = obj.payload()->obj.get();
-            if (__builtin_expect(vmo && vmo->shape && vmo->shape->shape_id == ic.expected_shape && ic.expected_shape != 0, 1)) {
-                PUSH_TOS(vmo->fields_array[ic.cached_slot]);
-                telemetry_.ic_hits++;
-                DISPATCH_C();
-            }
-            telemetry_.ic_misses++;
+            VM_RECORD_IC_MISS();
             if (vmo) {
                 const std::string& fname = chunk.string_table[ic.str_id];
                 if (fname == "len" || fname == "length") {
@@ -2187,6 +2445,23 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         uint16_t ic_idx = static_cast<uint16_t>(ip[0] | (ip[1] << 8));
         ip += 2;
         ICSite& ic = chunk.ic_sites[ic_idx];
+
+        // Super-fast path: r_depth == 2 (target in r_tos1, val in r_tos0)
+        if (__builtin_expect(r_depth == 2, 1)) {
+            if (__builtin_expect(r_tos1.is_object(), 1)) {
+                auto* vmo = r_tos1.payload()->obj.get();
+                if (__builtin_expect(vmo && vmo->shape && vmo->shape->shape_id == ic.expected_shape && ic.expected_shape != 0, 1)) {
+                    if (__builtin_expect(ic.cached_slot < vmo->fields_array.size(), 1)) {
+                        vmo->fields_array[ic.cached_slot] = r_tos0;
+                        r_depth = 0;
+                        VM_RECORD_IC_HIT();
+                        DISPATCH_C();
+                    }
+                }
+            }
+        }
+
+        // Fallback pop
         VMValue target, val;
         POP_TWO_TOS(target, val);
 
@@ -2195,11 +2470,11 @@ void VM::run_optimized(OptimizedChunk& chunk) {
             if (__builtin_expect(vmo && vmo->shape && vmo->shape->shape_id == ic.expected_shape && ic.expected_shape != 0, 1)) {
                 if (ic.cached_slot < vmo->fields_array.size()) {
                     vmo->fields_array[ic.cached_slot] = val;
-                    telemetry_.ic_hits++;
+                    VM_RECORD_IC_HIT();
                     DISPATCH_C();
                 }
             }
-            telemetry_.ic_misses++;
+            VM_RECORD_IC_MISS();
             if (vmo) {
                 const std::string& fname = chunk.string_table[ic.str_id];
                 vmo->set_field(fname, val);
@@ -2215,30 +2490,194 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         DISPATCH_C();
     }
 
+    c_lbl_OP_INVOKE_METHOD_IC: {
+        uint16_t ic_idx = static_cast<uint16_t>(ip[0] | (ip[1] << 8));
+        uint8_t argc = ip[2];
+        ip += 3;
+        MethodICSite& ic = chunk.method_ic_sites[ic_idx];
+
+        // Probe target receiver without destroying stack
+        VMValue target;
+        if (argc == 0) {
+            target = (r_depth >= 1) ? r_tos0 : *(sp - 1);
+        } else if (argc == 1) {
+            target = (r_depth == 2) ? r_tos1 : ((r_depth == 1) ? *(sp - 1) : *(sp - 2));
+        } else {
+            if (r_depth == 0) target = *(sp - 1 - argc);
+            else if (r_depth == 1) target = *(sp - argc);
+            else target = *(sp - argc + 1);
+        }
+
+        if (__builtin_expect(target.is_object(), 1)) {
+            auto* vmo = target.payload()->obj.get();
+            if (vmo && vmo->shape) {
+                // Check IC Hit
+                if (__builtin_expect(vmo->shape->shape_id == ic.expected_shape && ic.expected_shape != 0, 1)) {
+                    VM_RECORD_IC_HIT();
+                    size_t new_local_base = local_top_;
+                    local_top_ += ic.cached_frame_size;
+                    if (__builtin_expect(local_top_ + 64 >= locals_.size(), 0)) {
+                        locals_.resize(locals_.size() * 2);
+                    }
+
+                    if (argc == 0) {
+                        if (r_depth == 1) {
+                            locals_[new_local_base] = r_tos0;
+                            r_depth = 0;
+                        } else if (r_depth == 2) {
+                            locals_[new_local_base] = r_tos0;
+                            *sp++ = r_tos1;
+                            r_depth = 0;
+                        } else {
+                            locals_[new_local_base] = *--sp;
+                        }
+                    } else if (argc == 1) {
+                        if (r_depth == 2) {
+                            locals_[new_local_base] = r_tos1;
+                            locals_[new_local_base + 1] = r_tos0;
+                            r_depth = 0;
+                        } else if (r_depth == 1) {
+                            locals_[new_local_base + 1] = r_tos0;
+                            locals_[new_local_base] = *--sp;
+                            r_depth = 0;
+                        } else {
+                            locals_[new_local_base + 1] = *--sp;
+                            locals_[new_local_base] = *--sp;
+                        }
+                    } else {
+                        FLUSH_TOS();
+                        for (int k = static_cast<int>(argc) - 1; k >= 0; --k) {
+                            locals_[new_local_base + 1 + k] = *--sp;
+                        }
+                        locals_[new_local_base] = *--sp;
+                    }
+
+                    VM_RECORD_PROFILER_CALL(call_stack_.size() + 1);
+                    size_t cur_sp_depth = static_cast<size_t>(sp - stack_.data());
+                    call_stack_.push_back(CallFrame{static_cast<size_t>(ip - code_base), new_local_base, cur_sp_depth, ic.cached_frame_size, ic.cached_entry});
+                    if (__builtin_expect(gc_engine_.should_collect(), 0)) {
+                        stack_.set_top(cur_sp_depth);
+                        gc_engine_.safepoint(*this);
+                        sp = stack_.data() + stack_.size();
+                    }
+                    local_base = new_local_base;
+                    ip = code_base + ic.cached_entry;
+                    DISPATCH_C();
+                }
+
+                // IC Miss / Warmup: resolve method if vtable exists
+                if (vmo->vtable && ic.mid < chunk.string_table.size()) {
+                    const std::string& mname = chunk.string_table[ic.mid];
+                    auto it = vmo->vtable->methods.find(mname);
+                    if (it != vmo->vtable->methods.end()) {
+                        uint32_t fn_entry = 0;
+                        if (chunk.function_table.empty()) {
+                            fn_entry = it->second;
+                        } else if (it->second < chunk.function_table.size()) {
+                            fn_entry = chunk.function_table[it->second];
+                        }
+                        size_t callee_frame_size = 32;
+                        if (!chunk.function_frame_sizes.empty() && it->second < chunk.function_frame_sizes.size()) {
+                            callee_frame_size = chunk.function_frame_sizes[it->second];
+                        }
+                        if (callee_frame_size < static_cast<size_t>(argc) + 1 + 8) {
+                            callee_frame_size = static_cast<size_t>(argc) + 1 + 8;
+                        }
+
+                        // Populate IC
+                        ic.expected_shape = vmo->shape->shape_id;
+                        ic.cached_entry = fn_entry;
+                        ic.cached_frame_size = static_cast<uint16_t>(callee_frame_size);
+
+                        // Direct call
+                        size_t new_local_base = local_top_;
+                        local_top_ += callee_frame_size;
+                        if (__builtin_expect(local_top_ + 64 >= locals_.size(), 0)) {
+                            locals_.resize(locals_.size() * 2);
+                        }
+                        if (argc == 0) {
+                            if (r_depth == 1) {
+                                locals_[new_local_base] = r_tos0;
+                                r_depth = 0;
+                            } else if (r_depth == 2) {
+                                locals_[new_local_base] = r_tos0;
+                                *sp++ = r_tos1;
+                                r_depth = 0;
+                            } else {
+                                locals_[new_local_base] = *--sp;
+                            }
+                        } else if (argc == 1) {
+                            if (r_depth == 2) {
+                                locals_[new_local_base] = r_tos1;
+                                locals_[new_local_base + 1] = r_tos0;
+                                r_depth = 0;
+                            } else if (r_depth == 1) {
+                                locals_[new_local_base + 1] = r_tos0;
+                                locals_[new_local_base] = *--sp;
+                                r_depth = 0;
+                            } else {
+                                locals_[new_local_base + 1] = *--sp;
+                                locals_[new_local_base] = *--sp;
+                            }
+                        } else {
+                            FLUSH_TOS();
+                            for (int k = static_cast<int>(argc) - 1; k >= 0; --k) {
+                                locals_[new_local_base + 1 + k] = *--sp;
+                            }
+                            locals_[new_local_base] = *--sp;
+                        }
+
+                        VM_RECORD_PROFILER_CALL(call_stack_.size() + 1);
+                        size_t cur_sp_depth = static_cast<size_t>(sp - stack_.data());
+                        call_stack_.push_back(CallFrame{static_cast<size_t>(ip - code_base), new_local_base, cur_sp_depth, static_cast<uint16_t>(callee_frame_size), fn_entry});
+                        if (__builtin_expect(gc_engine_.should_collect(), 0)) {
+                            stack_.set_top(cur_sp_depth);
+                            gc_engine_.safepoint(*this);
+                            sp = stack_.data() + stack_.size();
+                        }
+                        local_base = new_local_base;
+                        ip = code_base + fn_entry;
+                        DISPATCH_C();
+                    }
+                }
+            }
+        }
+
+        // Slow fallback for builtins, arrays, syscalls, etc.
+        SYNC_TO_VM();
+        try {
+            handle_invoke_method_direct(chunk, ic.mid, argc);
+        } catch (const VMException& e) {
+            goto c_lbl_catch;
+        }
+        SYNC_FROM_VM();
+        DISPATCH_C();
+    }
+
     // ========================================================================
     // Gate 6.0-D: Phase 4 Superinstruction Handlers
     // ========================================================================
     c_lbl_OP_STORE_LOCAL_0_POP: {
         POP_TOS_VAL(locals_[local_base + 0]);
-        telemetry_.superinstructions_executed++;
+        VM_RECORD_SUPER();
         DISPATCH_C();
     }
 
     c_lbl_OP_STORE_LOCAL_1_POP: {
         POP_TOS_VAL(locals_[local_base + 1]);
-        telemetry_.superinstructions_executed++;
+        VM_RECORD_SUPER();
         DISPATCH_C();
     }
 
     c_lbl_OP_STORE_LOCAL_2_POP: {
         POP_TOS_VAL(locals_[local_base + 2]);
-        telemetry_.superinstructions_executed++;
+        VM_RECORD_SUPER();
         DISPATCH_C();
     }
 
     c_lbl_OP_STORE_LOCAL_3_POP: {
         POP_TOS_VAL(locals_[local_base + 3]);
-        telemetry_.superinstructions_executed++;
+        VM_RECORD_SUPER();
         DISPATCH_C();
     }
 
@@ -2254,7 +2693,7 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         }
         if (__builtin_expect(idx >= locals_.size(), 0)) locals_.resize(idx + 32);
         POP_TOS_VAL(locals_[idx]);
-        telemetry_.superinstructions_executed++;
+        VM_RECORD_SUPER();
         DISPATCH_C();
     }
 
@@ -2282,7 +2721,7 @@ void VM::run_optimized(OptimizedChunk& chunk) {
             r_tos0 = vb;
             r_depth = 2;
         }
-        telemetry_.superinstructions_executed++;
+        VM_RECORD_SUPER();
         DISPATCH_C();
     }
 
@@ -2305,12 +2744,12 @@ void VM::run_optimized(OptimizedChunk& chunk) {
             int64_t sum = va.as_immediate_int_fast() + vb.as_immediate_int_fast();
             if (__builtin_expect(sum >= VMValue::MIN_INT48 && sum <= VMValue::MAX_INT48, 1)) {
                 locals_[idx] = VMValue::from_raw(VMValue::TAG_INT | (static_cast<uint64_t>(sum) & VMValue::PAYLOAD_MASK));
-                telemetry_.superinstructions_executed++;
+                VM_RECORD_SUPER();
                 DISPATCH_C();
             }
         }
         locals_[idx] = va.add(vb);
-        telemetry_.superinstructions_executed++;
+        VM_RECORD_SUPER();
         DISPATCH_C();
     }
 
@@ -2338,7 +2777,7 @@ void VM::run_optimized(OptimizedChunk& chunk) {
             int64_t res = ia * ib + ic;
             if (__builtin_expect(res >= VMValue::MIN_INT48 && res <= VMValue::MAX_INT48, 1)) {
                 locals_[idx] = VMValue::from_raw(VMValue::TAG_INT | (static_cast<uint64_t>(res) & VMValue::PAYLOAD_MASK));
-                telemetry_.superinstructions_executed++;
+                VM_RECORD_SUPER();
                 DISPATCH_C();
             }
         }
@@ -2359,7 +2798,7 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         } else {
             locals_[idx] = va.mul(vb).add(vc);
         }
-        telemetry_.superinstructions_executed++;
+        VM_RECORD_SUPER();
         DISPATCH_C();
     }
 
@@ -2392,7 +2831,7 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         } else {
             locals_[idx] = VMValue(std::fma(va.as_float(), vb.as_float(), vc.as_float()));
         }
-        telemetry_.superinstructions_executed++;
+        VM_RECORD_SUPER();
         DISPATCH_C();
     }
 
@@ -2417,15 +2856,13 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         TafpuNum b_num = vb.is_tafpu() ? vb.as_tafpu() : (vb.is_int() ? TafpuNum{vb.as_int(), 0, 0} : TafpuNum{static_cast<int64_t>(vb.as_float()), 0, 0});
         TafpuNum c_num = vc.is_tafpu() ? vc.as_tafpu() : (vc.is_int() ? TafpuNum{vc.as_int(), 0, 0} : TafpuNum{static_cast<int64_t>(vc.as_float()), 0, 0});
         locals_[idx] = VMValue(tafpu_fma_exact(c_num, a_num, b_num));
-        telemetry_.superinstructions_executed++;
+        VM_RECORD_SUPER();
         DISPATCH_C();
     }
 
     c_lbl_unknown: {
         SYNC_TO_VM();
-        std::ostringstream oss;
-        oss << "VM Exception: Unknown opcode at offset " << (ip_ - 1);
-        throw VMException(oss.str());
+        cold_throw_unknown_opcode(ip_);
     }
 
     c_lbl_catch: {
@@ -2462,6 +2899,22 @@ void VM::run_optimized(OptimizedChunk& chunk) {
     #undef SYNC_TO_VM
     #undef SYNC_FROM_VM
     #undef DELEGATE_OP
+    #undef VM_RECORD_DISPATCH
+    #undef VM_RECORD_SUPER
+    #undef VM_RECORD_QUICK_HIT
+    #undef VM_RECORD_DEOPT
+    #undef VM_RECORD_IC_HIT
+    #undef VM_RECORD_IC_MISS
+    #undef VM_RECORD_LOOP_ITER
+    #undef VM_RECORD_PROFILER_OP
+    #undef VM_RECORD_PROFILER_READ
+    #undef VM_RECORD_PROFILER_WRITE
+    #undef VM_RECORD_PROFILER_ARRAY_GENERIC_READ
+    #undef VM_RECORD_PROFILER_ARRAY_GENERIC_WRITE
+    #undef VM_RECORD_PROFILER_ARRAY_FLAT_READ
+    #undef VM_RECORD_PROFILER_ARRAY_FLAT_WRITE
+    #undef VM_RECORD_PROFILER_CALL
+    #undef VM_RECORD_PROFILER_RET
 #else
     run_switch(chunk);
 #endif
@@ -3107,6 +3560,65 @@ void VM::handle_ret(const Chunk&) {
     stack_.push(ret_val);
 }
 
+void VM::handle_call_fast_0(const Chunk& chunk) {
+    uint16_t fn_entry = static_cast<uint16_t>(read_int16(chunk));
+    uint8_t frame_sz = read_byte(chunk);
+    size_t new_local_base;
+    if (opt_flags_.enable_fast_frames) {
+        new_local_base = local_top_;
+        local_top_ += frame_sz;
+        if (__builtin_expect(local_top_ + 64 >= locals_.size(), 0)) {
+            locals_.resize(locals_.size() * 2);
+        }
+    } else {
+        new_local_base = locals_.size();
+        locals_.resize(new_local_base + frame_sz);
+    }
+    call_stack_.push_back(CallFrame{ip_, new_local_base, stack_.size(), frame_sz, fn_entry});
+    gc_engine_.safepoint(*this);
+    ip_ = fn_entry;
+}
+
+void VM::handle_call_fast_1(const Chunk& chunk) {
+    uint16_t fn_entry = static_cast<uint16_t>(read_int16(chunk));
+    uint8_t frame_sz = read_byte(chunk);
+    size_t new_local_base;
+    if (opt_flags_.enable_fast_frames) {
+        new_local_base = local_top_;
+        local_top_ += frame_sz;
+        if (__builtin_expect(local_top_ + 64 >= locals_.size(), 0)) {
+            locals_.resize(locals_.size() * 2);
+        }
+    } else {
+        new_local_base = locals_.size();
+        locals_.resize(new_local_base + frame_sz);
+    }
+    locals_[new_local_base] = stack_.pop();
+    call_stack_.push_back(CallFrame{ip_, new_local_base, stack_.size(), frame_sz, fn_entry});
+    gc_engine_.safepoint(*this);
+    ip_ = fn_entry;
+}
+
+void VM::handle_ret_fast(const Chunk&) {
+    if (__builtin_expect(call_stack_.empty(), 0)) {
+        running_ = false;
+        return;
+    }
+    VMValue ret_val = stack_.pop();
+    CallFrame frame = call_stack_.back();
+    call_stack_.pop_back();
+
+    if (opt_flags_.enable_fast_frames) {
+        local_top_ = frame.local_base;
+    } else {
+        locals_.resize(frame.local_base);
+    }
+
+    stack_.truncate(frame.stack_depth);
+    ip_ = frame.return_ip;
+    stack_.push(ret_val);
+}
+
 void VM::handle_print(const Chunk&) {
     VMValue val = stack_.pop();
     std::string s = val.to_string();
@@ -3357,8 +3869,7 @@ void VM::handle_nn_free_layer(const Chunk&) {
 }
 
 void VM::handle_time_now_us(const Chunk&) {
-    auto now = std::chrono::steady_clock::now();
-    int64_t us = std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count();
+    int64_t us = setun_jit_helper_time_now_us();
     stack_.push(VMValue{us});
 }
 
@@ -3506,10 +4017,8 @@ void VM::handle_set_field(const Chunk& chunk) {
     }
 }
 
-void VM::handle_invoke_method(const Chunk& chunk) {
+void VM::handle_invoke_method_direct(const Chunk& chunk, uint16_t mid, uint8_t argc) {
     uint32_t call_site_ip = (ip_ > 0) ? static_cast<uint32_t>(ip_ - 1) : 0;
-    uint16_t mid = static_cast<uint16_t>(read_int16(chunk));
-    uint8_t argc = read_byte(chunk);
     std::string method_name = (mid < chunk.string_table.size()) ? chunk.string_table[mid] : "";
 
     std::vector<VMValue> args(argc);
@@ -4095,6 +4604,28 @@ void VM::handle_invoke_method(const Chunk& chunk) {
 
     // Default fallback
     stack_.push(VMValue());
+}
+
+void VM::handle_invoke_method(const Chunk& chunk) {
+    uint16_t mid = static_cast<uint16_t>(read_int16(chunk));
+    uint8_t argc = read_byte(chunk);
+    handle_invoke_method_direct(chunk, mid, argc);
+}
+
+void VM::handle_invoke_method_ic(const Chunk& chunk) {
+    uint16_t ic_idx = static_cast<uint16_t>(read_int16(chunk));
+    uint8_t argc = read_byte(chunk);
+    const auto* opt_chunk = static_cast<const OptimizedChunk*>(&chunk);
+    uint16_t mid = (opt_chunk && ic_idx < opt_chunk->method_ic_sites.size()) ? opt_chunk->method_ic_sites[ic_idx].mid : 0;
+    handle_invoke_method_direct(chunk, mid, argc);
+}
+
+void VM::handle_quick_gt_int(const Chunk& chunk) {
+    handle_gt(chunk);
+}
+
+void VM::handle_quick_ge_int(const Chunk& chunk) {
+    handle_ge(chunk);
 }
 
 void VM::handle_set_index(const Chunk&) {

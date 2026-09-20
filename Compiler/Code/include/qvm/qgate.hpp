@@ -21,6 +21,7 @@ enum class GateType {
     // 2-Qubit Entangling
     CNOT,
     CZ,
+    CPHASE,
     SWAP,
     // 3-Qubit Universal
     TOFFOLI,
@@ -35,13 +36,15 @@ enum class GateType {
 struct QuantumGate {
     GateType type;
     std::vector<size_t> targets; // [0] = target or control, [1] = target, etc.
-    double param{0.0};          // Angle for rotation gates (Rx, Ry, Rz)
+    double param{0.0};          // Angle for rotation gates (Rx, Ry, Rz, CPHASE)
     std::string comment;
 
     QuantumGate(GateType t, size_t target)
         : type(t), targets{target} {}
     QuantumGate(GateType t, size_t ctrl, size_t target)
         : type(t), targets{ctrl, target} {}
+    QuantumGate(GateType t, size_t ctrl, size_t target, double theta)
+        : type(t), targets{ctrl, target}, param(theta) {}
     QuantumGate(GateType t, size_t c1, size_t c2, size_t target)
         : type(t), targets{c1, c2, target} {}
     QuantumGate(GateType t, size_t target, double theta)
@@ -71,17 +74,15 @@ public:
     QuantumCircuit& cz(size_t ctrl, size_t target);
     QuantumCircuit& swap(size_t q1, size_t q2);
 
-    // Controlled-Phase, expanded at build time into the standard primitive
-    // decomposition (RZ on the control, CNOT, RZ on the target, CNOT, RZ on
-    // the target) so execute()/QASM/Q-ISA bytecode need no new gate kind.
-    // Exact up to the global phase e^{-i*theta/4}.
+    // Native Controlled-Phase: CP(theta) = diag(1, 1, 1, e^{i*theta}).
+    // Single-pass diagonal transformation on amplitudes with both control & target bits set.
     QuantumCircuit& cphase(size_t ctrl, size_t target, double theta);
 
     // 3-Qubit Gate Application
     QuantumCircuit& toffoli(size_t c1, size_t c2, size_t target);
 
     // Algorithm builders (operate on qubits [0, n), qubit q = bit q of the
-    // basis index). Both expand into primitive gates only.
+    // basis index).
     // QFT: |j> -> (1/sqrt(N)) * sum_k e^{2*pi*i*j*k/N} |k>.
     QuantumCircuit& qft(size_t n);
     // Grover search: marks |target> with R = floor(pi/4 * sqrt(N)) iterations
@@ -96,8 +97,9 @@ public:
     // Execute the circuit on a QubitRegister
     void execute(QubitRegister& reg) const;
 
-    // Export circuit to OpenQASM 3.0 string
-    std::string to_openqasm(const std::string& circuit_name = "tersun_quantum_circuit") const;
+    // Export circuit to OpenQASM 3.0 string (decompose_cphase controls primitive vs native cp)
+    std::string to_openqasm(const std::string& circuit_name = "tersun_quantum_circuit",
+                            bool decompose_cphase = true) const;
 
 private:
     size_t num_qubits_{0};
@@ -106,6 +108,7 @@ private:
 
 // Direct gate application functions on a QubitRegister
 namespace GateOps {
+    // 1-Qubit Specialized Kernels
     void apply_h(QubitRegister& reg, size_t q);
     void apply_x(QubitRegister& reg, size_t q);
     void apply_y(QubitRegister& reg, size_t q);
@@ -116,10 +119,21 @@ namespace GateOps {
     void apply_ry(QubitRegister& reg, size_t q, double theta);
     void apply_rz(QubitRegister& reg, size_t q, double theta);
 
+    // 2-Qubit & Multi-Qubit Controlled Gates (Branch-Free Strided Planners)
     void apply_cnot(QubitRegister& reg, size_t ctrl, size_t target);
     void apply_cz(QubitRegister& reg, size_t ctrl, size_t target);
+    void apply_cphase(QubitRegister& reg, size_t ctrl, size_t target, double theta);
     void apply_swap(QubitRegister& reg, size_t q1, size_t q2);
     void apply_toffoli(QubitRegister& reg, size_t c1, size_t c2, size_t target);
+
+    // Gate QVM-OPT 2: Diagonal Phase Fusion Op
+    struct DiagonalPhaseOp {
+        uint64_t control_mask{0};
+        uint64_t target_mask{0};
+        double phase_cos{1.0};
+        double phase_sin{0.0};
+    };
+    void apply_diagonal_phase_layer(QubitRegister& reg, const std::vector<DiagonalPhaseOp>& ops);
 
     void apply_ternary_cycle(QubitRegister& reg, size_t q);
     void apply_ternary_invert(QubitRegister& reg, size_t q);

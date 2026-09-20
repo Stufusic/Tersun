@@ -64,6 +64,9 @@ std::string_view opcode_name(OpCode op) {
         case OpCode::OP_BRANCH_3: return "OP_BRANCH_3";
         case OpCode::OP_CALL: return "OP_CALL";
         case OpCode::OP_RET: return "OP_RET";
+        case OpCode::OP_CALL_FAST_0: return "OP_CALL_FAST_0";
+        case OpCode::OP_CALL_FAST_1: return "OP_CALL_FAST_1";
+        case OpCode::OP_RET_FAST: return "OP_RET_FAST";
         case OpCode::OP_PRINT: return "OP_PRINT";
         case OpCode::OP_PRINTLN: return "OP_PRINTLN";
         case OpCode::OP_TRACE: return "OP_TRACE";
@@ -132,6 +135,9 @@ std::string_view opcode_name(OpCode op) {
         case OpCode::OP_FUSED_MUL_ADD_I64: return "OP_FUSED_MUL_ADD_I64";
         case OpCode::OP_FUSED_MUL_ADD_F64: return "OP_FUSED_MUL_ADD_F64";
         case OpCode::OP_FUSED_MUL_ADD_TAFPU: return "OP_FUSED_MUL_ADD_TAFPU";
+        case OpCode::OP_QUICK_GT_INT: return "OP_QUICK_GT_INT";
+        case OpCode::OP_QUICK_GE_INT: return "OP_QUICK_GE_INT";
+        case OpCode::OP_INVOKE_METHOD_IC: return "OP_INVOKE_METHOD_IC";
         case OpCode::OP_HALT: return "OP_HALT";
     }
     return "UNKNOWN_OP";

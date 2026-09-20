@@ -10,6 +10,7 @@ class StatevectorBackend : public QuantumBackend {
 public:
     explicit StatevectorBackend(size_t num_qubits = 16)
         : reg_(num_qubits) {
+        reg_.promote_to_statevector();
         metrics_.backend_used = BackendType::STATEVECTOR_EXACT;
         metrics_.num_qubits = num_qubits;
         metrics_.estimated_fidelity = 1.0;
@@ -21,6 +22,7 @@ public:
 
     void reset(size_t num_qubits) override {
         reg_ = QubitRegister(num_qubits);
+        reg_.promote_to_statevector();
         metrics_ = SimulationMetrics{};
         metrics_.backend_used = BackendType::STATEVECTOR_EXACT;
         metrics_.num_qubits = num_qubits;
@@ -40,9 +42,10 @@ public:
             case GateType::RX: GateOps::apply_rx(reg_, gate.targets[0], gate.param); break;
             case GateType::RY: GateOps::apply_ry(reg_, gate.targets[0], gate.param); break;
             case GateType::RZ: GateOps::apply_rz(reg_, gate.targets[0], gate.param); break;
-            case GateType::CNOT: GateOps::apply_cnot(reg_, gate.targets[0], gate.targets[1]); break;
-            case GateType::CZ:   GateOps::apply_cz(reg_, gate.targets[0], gate.targets[1]); break;
-            case GateType::SWAP: GateOps::apply_swap(reg_, gate.targets[0], gate.targets[1]); break;
+            case GateType::CNOT:   GateOps::apply_cnot(reg_, gate.targets[0], gate.targets[1]); break;
+            case GateType::CZ:     GateOps::apply_cz(reg_, gate.targets[0], gate.targets[1]); break;
+            case GateType::CPHASE: GateOps::apply_cphase(reg_, gate.targets[0], gate.targets[1], gate.param); break;
+            case GateType::SWAP:   GateOps::apply_swap(reg_, gate.targets[0], gate.targets[1]); break;
             case GateType::TOFFOLI: GateOps::apply_toffoli(reg_, gate.targets[0], gate.targets[1], gate.targets[2]); break;
             case GateType::TERNARY_CYCLE:  GateOps::apply_ternary_cycle(reg_, gate.targets[0]); break;
             case GateType::TERNARY_INVERT: GateOps::apply_ternary_invert(reg_, gate.targets[0]); break;
@@ -52,6 +55,7 @@ public:
     }
 
     void execute_circuit(const QuantumCircuit& circuit) override {
+        reg_.promote_to_statevector();
         auto t0 = std::chrono::steady_clock::now();
         circuit.execute(reg_);
         auto t1 = std::chrono::steady_clock::now();

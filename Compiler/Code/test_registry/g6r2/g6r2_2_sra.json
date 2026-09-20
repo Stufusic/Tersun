@@ -1,0 +1,42 @@
+{
+  "gate": "G6R.2.2",
+  "status": "SEALED",
+  "timestamp": "2026-09-19T20:10:00+07:00",
+  "baseline_seal": "test_registry/g6r2/g6r2_1_vectorization.json",
+  "baseline_sha256": "A4216602339506E2D77821DA482ECB5934C2E07182BD023ABBD6896EC2B9A81F",
+  "binary_sha256": "71ABDCDB84883C843FE1E290E14926B3E244ADE60758124D97CF45E15D20080D",
+  "test_binary_sha256": "49148D0AA115AC7BD50169A6333CEACD61B8D44CCB559942817D941E3767A542",
+  "validation": {
+    "differential_33_tests": "PASS",
+    "w4_correctness": "PASS",
+    "w4_checksum": "541096364",
+    "w4_runtime_ms": 0.940,
+    "w4_runtime_target_ms": 1.80,
+    "w4_runtime_status": "PASS",
+    "convergence_ratio_vs_aot": 1.15,
+    "heap_allocations_eliminated": 200000,
+    "heap_allocated_bytes": 0,
+    "escape_candidates": 200000,
+    "no_escape_count": 1,
+    "scalarized_objects": 1,
+    "scalarized_fields": 4,
+    "inlined_method_calls": 6,
+    "register_spill_count": 0,
+    "regression_w1": "PASS",
+    "regression_w2": "PASS",
+    "regression_w3": "PASS"
+  },
+  "causal_proofs": {
+    "W4": {
+      "status": "VALIDATED",
+      "mechanism": "Intra-procedural Escape Analysis & Scalar Replacement of Aggregates (SRA) with Monomorphic Inlining & Loop-Carried Register Allocation",
+      "disassembly_artifact": "benchmarks/g6r2/disassembly/W4/jit_sra.asm",
+      "telemetry_artifact": "benchmarks/g6r2/raw/w4_jit_sra_telemetry.json"
+    }
+  },
+  "artifacts": {
+    "w4_jit_sra": "benchmarks/g6r2/disassembly/W4/jit_sra.asm",
+    "w4_telemetry": "benchmarks/g6r2/raw/w4_jit_sra_telemetry.json",
+    "master_dossier": "Doc/g6r/g6r2_2_w4_escape_analysis_sra.md"
+  }
+}

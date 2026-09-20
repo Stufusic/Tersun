@@ -32,6 +32,7 @@ enum class QOpCode : uint8_t {
     OP_CNOT         = 0x20, // CNOT ctrl_q, target_q
     OP_CZ           = 0x21, // CZ ctrl_q, target_q
     OP_SWAP         = 0x22, // SWAP q1, q2
+    OP_CPHASE       = 0x23, // CPHASE ctrl_q, target_q, theta_f64
     OP_TOFFOLI      = 0x25, // TOFFOLI c1, c2, target_q
 
     // Ternary Algebraic Gates

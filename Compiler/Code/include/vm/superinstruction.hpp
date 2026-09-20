@@ -23,10 +23,14 @@ public:
         switch (op) {
             // Function call and method invocation boundaries (frame & TOS changes)
             case OpCode::OP_CALL:
+            case OpCode::OP_CALL_FAST_0:
+            case OpCode::OP_CALL_FAST_1:
             case OpCode::OP_INVOKE_METHOD:
+            case OpCode::OP_INVOKE_METHOD_IC:
             case OpCode::OP_CALL_INDIRECT:
             case OpCode::OP_CLOSURE:
             case OpCode::OP_RET:
+            case OpCode::OP_RET_FAST:
 
             // Dynamic allocation boundaries (GC Safepoint requires canonical stack)
             case OpCode::OP_NEW_INSTANCE:

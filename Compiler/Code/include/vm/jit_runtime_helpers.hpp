@@ -35,6 +35,14 @@ int64_t setun_jit_helper_deopt_machine(VM* vm, JITFrame* frame, MachineState* ma
 void* setun_jit_helper_array_raw_data(uint64_t raw_array_val);
 int64_t setun_jit_helper_get_element_i64(uint64_t raw_array_val, int64_t idx);
 void setun_jit_helper_set_element_i64(uint64_t raw_array_val, int64_t idx, int64_t val);
+uint64_t setun_jit_helper_new_array(uint64_t count);
+void setun_jit_helper_array_push(uint64_t raw_array_val, int64_t val);
+
+// High-resolution timestamp helper for JIT
+int64_t setun_jit_helper_time_now_us();
+
+// Direct printing helper for JIT
+void setun_jit_helper_print(uint64_t val_raw, int32_t is_println);
 
 } // extern "C"
 

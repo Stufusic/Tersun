@@ -65,7 +65,10 @@ std::unordered_set<size_t> SuperInstructionRegistry::collect_jump_targets(const 
             }
             case OpCode::OP_NEW_INSTANCE:
             case OpCode::OP_INVOKE_METHOD:
+            case OpCode::OP_INVOKE_METHOD_IC:
             case OpCode::OP_CALL:
+            case OpCode::OP_CALL_FAST_0:
+            case OpCode::OP_CALL_FAST_1:
             case OpCode::OP_CLOSURE:
                 inst_len = 4;
                 break;
@@ -140,7 +143,10 @@ bool SuperInstructionRegistry::can_fuse_range(const Chunk& chunk,
                 break;
             case OpCode::OP_NEW_INSTANCE:
             case OpCode::OP_INVOKE_METHOD:
+            case OpCode::OP_INVOKE_METHOD_IC:
             case OpCode::OP_CALL:
+            case OpCode::OP_CALL_FAST_0:
+            case OpCode::OP_CALL_FAST_1:
             case OpCode::OP_CLOSURE:
                 inst_len = 4;
                 break;

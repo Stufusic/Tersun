@@ -175,6 +175,10 @@ void test_array_storage_suite() {
         vm.run_cached(chunk);
 
         assert(vm.locals()[1].as_int() == 99);
+        std::cout << "DEBUG: array_flat_writes=" << profiler->array_flat_writes()
+                  << " array_flat_reads=" << profiler->array_flat_reads()
+                  << " array_generic_writes=" << profiler->array_generic_writes()
+                  << " array_generic_reads=" << profiler->array_generic_reads() << "\n";
         assert(profiler->array_flat_writes() >= 1);
         assert(profiler->array_flat_reads() >= 1);
         std::cout << "    -> Profiler captured flat array hits: reads=" << profiler->array_flat_reads()

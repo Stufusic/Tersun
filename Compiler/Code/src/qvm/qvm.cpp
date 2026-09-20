@@ -207,6 +207,14 @@ std::string QChunk::disassemble(const std::string& name) const {
                 note("SWAP");
                 break;
             }
+            case QOpCode::OP_CPHASE: {
+                uint8_t ctrl = read_u8();
+                uint8_t tgt  = read_u8();
+                double ang   = read_f64();
+                oss << "OP_CPHASE        | ctrl=q[" << (int)ctrl << "], target=q[" << (int)tgt << "], theta=" << ang << " rad\n";
+                note("CPHASE");
+                break;
+            }
             case QOpCode::OP_TOFFOLI: {
                 uint8_t c1 = read_u8();
                 uint8_t c2 = read_u8();
@@ -439,6 +447,17 @@ int64_t QVM::run(const QChunk& chunk) {
                 uint8_t q1 = read_u8();
                 uint8_t q2 = read_u8();
                 GateOps::apply_swap(qreg_, q1, q2);
+                break;
+            }
+
+            case QOpCode::OP_CPHASE: {
+                uint8_t ctrl = read_u8();
+                uint8_t target = read_u8();
+                uint64_t bits = 0;
+                for (int k = 0; k < 8; ++k) bits |= (static_cast<uint64_t>(read_u8()) << (k * 8));
+                double ang = 0.0;
+                std::memcpy(&ang, &bits, sizeof(double));
+                GateOps::apply_cphase(qreg_, ctrl, target, ang);
                 break;
             }
 
