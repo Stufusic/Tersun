@@ -77,6 +77,7 @@ Sau khi hoàn thành toàn bộ hệ thống giáo trình, người học đạt
 - **CLO-5 (Balanced Ternary & Non-Von Neumann Architecture)**: Nắm vững hệ số tam phân cân bằng $\{-1, 0, 1\}$, giải thuật cộng BTVP không lan truyền sóng nhớ, số học đại số TAFPU trên trường số thực $\mathbb{Q}(\sqrt{3})$, phép nhân tích chập không cần nhân (Multiplication-Free GEMM) ứng dụng cho Ternary AI/BitNet.
 - **CLO-6 (JIT Compilation & On-Stack Replacement)**: Nắm vững kiến trúc JIT Compiler, cơ chế phát hiện vòng lặp nóng `OP_LOOP_START`, thay thế khung ngăn xếp tại chỗ (On-Stack Replacement - OSR) và cơ chế giải tỏa suy đoán an toàn (Speculative Deoptimization / Bailout).
 - **CLO-7 (Quantum Computation & Hilbert State Simulation)**: Hiểu và mô phỏng được trạng thái lượng tử quy mô lớn đa Qubit/Qutrit, thuật toán Grover, biến đổi Fourier lượng tử (QFT), cơ chế biến đổi bước nhảy tại chỗ không cấp phát bộ nhớ phụ (In-place Strided Transformation) và chạm trần phần cực đại $N=29\text{ Qubits}$ ($536\text{M}$ amplitudes).
+- **CLO-8 (Native LLM Runtime & Attention Execution Engine)**: Nắm vững kiến trúc thực thi mô hình Transformer / BitNet b1.58 bản địa, triển khai Tokenizer Byte-Level BPE không cấp phát, bộ lấy mẫu 7 bước Sampler (Repetition/Presence/Frequency Penalties), vòng lặp sinh autoregressive duy trì bất biến Zero-Allocation (`malloc == 0`), thang tối ưu hóa 7 bậc Attention Ladder ($A_0 \to A_6$) với vi nhân SIMD AVX2/FMA, phân vùng song song đơn chủ quyền (Single Owner of Parallelism) qua `ParallelPlanner`, và đo đạc các chỉ số chuẩn TTFT, TPOT và Throughput.
 
 ---
 
@@ -89,16 +90,16 @@ Tùy theo định hướng chuyên môn, người học có thể lựa chọn 1
 │                                LỘ TRÌNH 1: SYSTEM & COMPILER TRACK                     │
 │               (Dành cho Kỹ sư Hệ thống, Trình biên dịch & Máy ảo cấp thấp)             │
 │                                                                                        │
-│  Sys.Vol 1 (Ch.1-10)    ──►   Sys.Vol 2 (Ch.11-20)     ──►    Sys.Vol 3 (Ch.21-24)     │
-│  [Frontend & SSA IR]           [TVM, GC, AOT, LLVM]            [Diagnostics, JIT, QVM] │
+│  Sys.Vol 1 (Ch.1-10)    ──►   Sys.Vol 2 (Ch.11-20)     ──►    Sys.Vol 3 (Ch.21-28)     │
+│  [Frontend & SSA IR]           [TVM, GC, AOT, LLVM]            [Diagnostics, LLM, SIMD]│
 └────────────────────────────────────────────────────────────────────────────────────────┘
 
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
 │                                LỘ TRÌNH 2: APPLICATION & TERNARY TRACK                 │
 │                 (Dành cho Lập trình viên Hệ thống, AI Tam phân & Lượng tử)             │
 │                                                                                        │
-│  Prog.Vol 1 (Ch.1-22)   ──►   Prog.Vol 2 (Ch.23-30)    ──►    Prog.Vol 3 (Ch.31-38)    │
-│  [Core Lang & OOP]             [TAFPU, BitNet, Async]          [AOT, JIT/OSR, QVM N=29]│
+│  Prog.Vol 1 (Ch.1-22)   ──►   Prog.Vol 2 (Ch.23-30)    ──►    Prog.Vol 3 (Ch.31-40)    │
+│  [Core Lang & OOP]             [TAFPU, BitNet, Async]          [AOT, QVM, Native LLM]  │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
@@ -111,6 +112,7 @@ Tùy theo định hướng chuyên môn, người học có thể lựa chọn 1
 │                 Sys.Ch.16-17 (LLVM AOT) song hành Prog.Ch.33 (LLVM Lowering)           │
 │                 Sys.Ch.23 (JIT & OSR) song hành Prog.Ch.37 (OSR Hot Loops & Flat)      │
 │                 Sys.Ch.24 (QVM Stride) song hành Prog.Ch.38 (QVM N=29 & Grover)       │
+│                 Sys.Ch.25-28 (LLM Core & SIMD) song hành Prog.Ch.39-40 (BitNet AI REPL)│
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -169,24 +171,28 @@ Tùy theo định hướng chuyên môn, người học có thể lựa chọn 1
 
 ---
 
-#### 📘 [TẬP 3: ĐO LƯỜNG VI KIẾN TRÚC, TOOLCHAIN, JIT/OSR VÀ CỖ MÁY LƯỢNG TỬ QVM (VOL 3)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20HỆ%20THỐNG%20TERSUN%20_TỪ%20NỀN%20TẢNG%20ĐẾN%20KIẾN%20TRÚC%20NÂNG%20CAO%20VOL%203.md)
-*Dung lượng: 154.2 KB | 2,340 dòng phân tích cao cấp và phụ lục tổng kết.*
+#### 📘 [TẬP 3: ĐO LƯỜNG VI KIẾN TRÚC, TOOLCHAIN, JIT/OSR, CỖ MÁY LƯỢNG TỬ VÀ TẦNG THỰC THI LLM TỐI ƯU (VOL 3)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20HỆ%20THỐNG%20TERSUN%20_TỪ%20NỀN%20TẢNG%20ĐẾN%20KIẾN%20TRÚC%20NÂNG%20CAO%20VOL%203.md)
+*Dung lượng: 210+ KB | 28 Chương giải phẫu toàn diện hệ thống Tersun.*
 
 - **PHẦN VI: RUNTIME NÂNG CAO & CÔNG CỤ HỆ SINH THÁI (HOÀN TẤT)**:
   - [Chương 21: Hệ thống Phân tích Hiệu năng, Đo đạc Đoản mạch & Bộ Tự Chẩn đoán (Telemetry & Diagnostics)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20HỆ%20THỐNG%20TERSUN%20_TỪ%20NỀN%20TẢNG%20ĐẾN%20KIẾN%20TRÚC%20NÂNG%20CAO%20VOL%203.md#L5)
   - [Chương 22: Hệ sinh thái Công cụ, Trình Quản lý Gói & Tương lai Kiến trúc Tersun (TPM, LSP, Future)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20HỆ%20THỐNG%20TERSUN%20_TỪ%20NỀN%20TẢNG%20ĐẾN%20KIẾN%20TRÚC%20NÂNG%20CAO%20VOL%203.md#L704)
-- **PHẦN VII: TRÌNH BIÊN DỊCH JIT TỰ ĐỘNG, OSR RUNTIME & CỖ MÁY LƯỢNG TỬ ĐỘC LẬP QUY MÔ LỚN**:
   - [Chương 23: Kiến trúc JIT Compiler, Thay thế khung giữa vòng lặp (OSR) & Giải tỏa suy đoán an toàn (Speculative Deoptimization)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20HỆ%20THỐNG%20TERSUN%20_TỪ%20NỀN%20TẢNG%20ĐẾN%20KIẾN%20TRÚC%20NÂNG%20CAO%20VOL%203.md#L1450)
-  - [Chương 24: Cỗ máy lượng tử QVM độc lập, Biến đổi bước nhảy không cấp phát & Giới hạn phần cứng thực tế ($N=4\dots30$)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20HỆ%20THỐNG%20TERSUN%20_TỪ%20NỀN%20TẢNG%20ĐẾN%20KIẾN%20TRÚC%20NÂNG%20CAO%20VOL%203.md#L1820)
+  - [Chương 24: Cỗ máy lượng tử QVM độc lập, Biến đổi bước nhảy không cấp phát & Giới hạn phần cứng thực tế ($N=4\dots30$)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20HỆ%20THỐNG%20TERSUN%20_TỪ%20NỀN%20TẢNG%20ĐẾN%20KIẾN%20TRÚC%20NÂNG%20CAO%20VOL%203.md#L1566)
+- **PHẦN VII: TẦNG THỰC THI MÔ HÌNH NGÔN NGỮ LỚN BẢN ĐỊA & TỐI ƯU HÓA TÍNH TOÁN SONG SONG (GATE 7.4 & 7.5)**:
+  - [Chương 25: Kiến Trúc LLM Runtime Bản Địa: Tokenizer Byte-Level BPE, Hợp Đồng Sampler 7 Bước & StopMatcher Không Cấp Phát](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20HỆ%20THỐNG%20TERSUN%20_TỪ%20NỀN%20TẢNG%20ĐẾN%20KIẾN%20TRÚC%20NÂNG%20CAO%20VOL%203.md#ch25-llm-runtime)
+  - [Chương 26: Quản Trị Bộ Nhớ KV Cache, Bất Biến Zero-Allocation (malloc == 0) & Bằng Chứng Khử Phân Kỳ Vi Sai](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20HỆ%20THỐNG%20TERSUN%20_TỪ%20NỀN%20TẢNG%20ĐẾN%20KIẾN%20TRÚC%20NÂNG%20CAO%20VOL%203.md#ch26-kv-cache)
+  - [Chương 27: Thang Tối Ưu Hóa Attention 7 Bậc (A0 -> A6), Vi Nhân SIMD AVX2/FMA & Hợp Đồng Số Học 3 Tầng](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20HỆ%20THỐNG%20TERSUN%20_TỪ%20NỀN%20TẢNG%20ĐẾN%20KIẾN%20TRÚC%20NÂNG%20CAO%20VOL%203.md#ch27-attention-ladder)
+  - [Chương 28: Điều Phối Song Song Độc Quyền (Single Owner of Parallelism), Shape-Aware BitLinear & Đo Đạc Đoản Mạch TTFT/TPOT](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20HỆ%20THỐNG%20TERSUN%20_TỪ%20NỀN%20TẢNG%20ĐẾN%20KIẾN%20TRÚC%20NÂNG%20CAO%20VOL%203.md#ch28-parallel-bitlinear)
 - **BẢNG QUY CHIẾU & ĐỐI SÁNH TỔNG HỢP**:
-  - [Tổng kết Hệ thống 7 Phần Kiến trúc Toàn cảnh (24 Chương)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20HỆ%20THỐNG%20TERSUN%20_TỪ%20NỀN%20TẢNG%20ĐẾN%20KIẾN%20TRÚC%20NÂNG%20CAO%20VOL%203.md#L2290)
+  - [Tổng kết Hệ thống 7 Phần Kiến trúc Toàn cảnh (28 Chương)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20HỆ%20THỐNG%20TERSUN%20_TỪ%20NỀN%20TẢNG%20ĐẾN%20KIẾN%20TRÚC%20NÂNG%20CAO%20VOL%203.md#L1650)
 
 ---
 
 ### TRACK B: BỘ GIÁO TRÌNH LẬP TRÌNH TERSUN
-#### *(First-Principles Tersun Programming: From Hardware Mechanics to Quantum Applications)*
+#### *(First-Principles Tersun Programming: From Hardware Mechanics to Quantum & LLM Applications)*
 
-*Bao gồm 3 Tập, 10 Phần học thuật và 38 Chương triển khai mã nguồn thực chiến từ cơ bản đến đỉnh cao.*
+*Bao gồm 3 Tập, 11 Phần học thuật và 40 Chương triển khai mã nguồn thực chiến từ cơ bản đến đỉnh cao.*
 
 #### 📗 [TẬP 1: CƠ CHẾ BỘ NHỚ, CÚ PHÁP, HÀM, OOP VÀ GENERICS (VOL 1)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%201.md)
 *Dung lượng: 533.4 KB | 10,301 dòng mã và giải thích sư phạm.*
@@ -206,41 +212,40 @@ Tùy theo định hướng chuyên môn, người học có thể lựa chọn 1
   - [Chương 10: Tham số, Truyền Giá trị & Hiệp ước Gọi hàm (ABI & Conventions)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%201.md#L4250)
   - [Chương 11: Đệ quy, Phân rã Bài toán & Nguy cơ Tràn Ngăn xếp (Recursion)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%201.md#L4730)
   - [Chương 12: Hàm Vô danh, Biểu thức Lambda & Closure (Closures & Capture)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%201.md#L5210)
-- **PHẦN IV: CẤU TRÚC DỮ LIỆU & QUẢN LÝ BỘ NHỚ HEAP**:
-  - [Chương 13: Mảng Động & Bộ nhớ Tuyến tính (Dynamic Arrays & Allocations)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%201.md#L5700)
-  - [Chương 14: Mảng Đa chiều & Ma trận Tam phân (Multi-Dim & Matrices)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%201.md#L6200)
-  - [Chương 15: Chuỗi Ký tự, Định dạng F-String & Bộ nhớ Đệm (Strings & Buffers)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%201.md#L6700)
-  - [Chương 16: Cấu trúc Bản ghi Struct & Bố cục Bộ nhớ (Structs & Layout)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%201.md#L7200)
-- **PHẦN V: LẬP TRÌNH HƯỚNG ĐỐI TƯỢNG & ĐA HÌNH**:
-  - [Chương 17: Lớp (Class), Thuộc tính & Phương thức Khởi tạo (OOP Basics)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%201.md#L7700)
-  - [Chương 18: Kế thừa & Khung Đối tượng (Inheritance & Superclasses)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%201.md#L8180)
-  - [Chương 19: Đa hình & Bảng Phương thức Ảo (Polymorphism, VTable & Dispatch)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%201.md#L8232)
-  - [Chương 20: Giao diện (Interfaces), Traits & Hợp đồng Thiết kế (Contracts)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%201.md#L8726)
-- **PHẦN VI: HỆ THỐNG KIỂU NÂNG CAO (KHỞI ĐẦU)**:
-  - [Chương 21: Kiểu Liệt kê Nâng cao (Algebraic Enums & Pattern Matching)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%201.md#L9275)
-  - [Chương 22: Generics & Tham số hóa Kiểu (Generics & Monomorphization)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%201.md#L9774)
+- **PHẦN IV: CẤU TRÚC DỮ LIỆU & BỘ NHỚ HEAP**:
+  - [Chương 13: Mảng Động & Chiến Lược Tái Cấp Phát (Vector & Growable Arrays)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%201.md#L5690)
+  - [Chương 14: Chuỗi Ký Tự UTF-8, Bảng Băm & Tra Cứu O(1) (Strings & Hash Maps)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%201.md#L6170)
+  - [Chương 15: Cấu Trúc Bản Ghi (Structs) & Bố Cục Bộ Nhớ Đệm Phẳng (Flat Memory Layout)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%201.md#L6650)
+  - [Chương 16: Con Trỏ Thông Minh & Quản Lý Vùng Nhớ Arena (Arena Allocators)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%201.md#L7130)
+- **PHẦN V: LẬP TRÌNH HƯỚNG ĐỐI TƯỢNG & BẢNG ẢO**:
+  - [Chương 17: Đóng Gói Dữ Liệu & Phương Thức Đối Tượng (Encapsulation)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%201.md#L7610)
+  - [Chương 18: Kế Thừa, Bảng Con Trỏ Ảo (vtable) & Đa Hình Động (Virtual Dispatch)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%201.md#L8090)
+  - [Chương 19: Giao Diện (Interfaces) & Kiểm Tra Hợp Đồng Định Kiểu](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%201.md#L8570)
+  - [Chương 20: Tối Ưu Hóa Bộ Nhớ Đệm Nội Tuyến Cho Đối Tượng (Polymorphic Inline Caching)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%201.md#L9050)
+- **PHẦN VI: HỆ THỐNG KIỂU NÂNG CAO & AN TOÀN BỘ NHỚ**:
+  - [Chương 21: Kiểu Dữ Liệu Đại Số & So Khớp Mẫu (Algebraic Data Types & Pattern Matching)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%201.md#L9530)
+  - [Chương 22: Lập Trình Tổng Quát (Generics) & Đơn Hình Hóa (Monomorphization)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%201.md#L10010)
 
 ---
 
-#### 📗 [TẬP 2: ARENA ALLOCATORS, VI KIẾN TRÚC TAFPU, BITNET VÀ EVENT LOOP (VOL 2)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%202.md)
-*Dung lượng: 187.4 KB | 3,745 dòng phân tích vi kiến trúc phần cứng và đồng quy.*
+#### 📗 [TẬP 2: TAM PHÂN CÂN BẰNG, TAFPU VÀ BẤT ĐỒNG BỘ COROUTINES (VOL 2)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%202.md)
+*Dung lượng: 189.4 KB | 3,360 dòng mã chuyên sâu.*
 
-- **PHẦN VI: HỆ THỐNG KIỂU NÂNG CAO & AN TOÀN BỘ NHỚ (TIẾP TỤC)**:
-  - [Chương 23: Quản lý Bộ nhớ Vùng chứa (Arena Allocators & Memory Pools)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%202.md#L8)
-  - [Chương 24: Bắt lỗi Ngoại lệ & An toàn Thời gian Chạy (Try/Catch & Unwinding)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%202.md#L446)
-- **PHẦN VII: HỆ THỐNG MÁY TÍNH TAM PHÂN & VI KIẾN TRÚC TAFPU**:
-  - [Chương 25: Tryte, BTVP & Phép Cộng Tam phân Cân bằng (Balanced Ternary Adders)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%202.md#L974)
-  - [Chương 26: Số thực TAFPU & Không gian Chiếu $\mathbb{Q}(\sqrt{3})$ (Algebraic Number System)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%202.md#L1403)
-  - [Chương 27: Phép Nhân Không Cần Nhân (@ / Convolution) & SIMD BitNet (Ternary AI)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%202.md#L1862)
-  - [Chương 28: Ngăn xếp Tam phân & Rẽ nhánh 3 hướng (branch3: Setun-70 Dispatch)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%202.md#L2308)
-- **PHẦN VIII: LẬP TRÌNH BẤT ĐỒNG BỘ & EVENT LOOP (KHỞI ĐẦU)**:
-  - [Chương 29: Bất đồng bộ & Máy Trạng thái của `async / await` (Coroutines)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%202.md#L2812)
+- **PHẦN VII: TAM PHÂN CÂN BẰNG & VI KIẾN TRÚC TAFPU**:
+  - [Chương 23: Bản Chất Số Học Tam Phân Cân Bằng (Balanced Ternary & Trit Operations)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%202.md#L3)
+  - [Chương 24: BTVP — Giải Thuật Cộng Tam Phân Không Lan Truyền Sóng Nhớ (Carry-Free BTVP)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%202.md#L450)
+  - [Chương 25: Trường Số Thực Đại Số $\mathbb{Q}(\sqrt{3})$ & Độ Chính Xác Tuyệt Đối Không Sai Số Làm Tròn](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%202.md#L900)
+  - [Chương 26: BitNet b1.58: Nhân Ma Trận Không Cần Bộ Nhân Phần Cứng (Multiplication-Free GEMM)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%202.md#L1350)
+  - [Chương 27: Bộ Xử Lý TAFPU — Tập Lệnh Nơ-ron Tam Phân Cho Trí Tuệ Nhân Tạo (TAFPU Neurons)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%202.md#L1820)
+  - [Chương 28: Chứng Minh Hình Thức Bằng Trợ Lý Lean 4 (Formal Proof of TAFPU Arithmetic)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%202.md#L2300)
+- **PHẦN VIII: LẬP TRÌNH BẤT ĐỒNG BỘ, ĐA LUỒNG & ĐỒNG BỘ HÓA**:
+  - [Chương 29: Coroutines & Cơ Chế Hoãn Thực Thi (Stackless Async/Await)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%202.md#L2780)
   - [Chương 30: Vòng lặp Sự kiện Đa tầng (Tersun Event Loop & Tri-Priority Scheduler)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%202.md#L3261)
 
 ---
 
-#### 📗 [TẬP 3: NATIVE THREADS, LLVM AOT, JIT/OSR, QVM VÀ ĐIỆN TOÁN LƯỢNG TỬ (VOL 3)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%203.md)
-*Dung lượng: 215.8 KB | 3,950 dòng phân tích điện toán lượng tử, OSR và AOT compiler.*
+#### 📗 [TẬP 3: NATIVE THREADS, LLVM AOT, JIT/OSR, QVM VÀ ĐIỆN TOÁN LƯỢNG TỬ & LLM RUNTIME (VOL 3)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%203.md)
+*Dung lượng: 250+ KB | 40 Chương triển khai hoàn chỉnh ứng dụng hiệu năng cao.*
 
 - **PHẦN VIII: LẬP TRÌNH BẤT ĐỒNG BỘ, ĐA LUỒNG & ĐỒNG BỘ HÓA (HOÀN TẤT)**:
   - [Chương 31: Đa Luồng Thật & Truyền Thông Điệp (Native Threads & Actor Channels)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%203.md#L6)
@@ -253,8 +258,11 @@ Tùy theo định hướng chuyên môn, người học có thể lựa chọn 1
 - **PHẦN X: HIỆU NĂNG TỐI THƯỢNG VỚI JIT, OSR & MÔ PHỎNG LƯỢNG TỬ ĐẠI QUY MÔ**:
   - [Chương 37: Kỹ Thuật Lập Trình Hiệu Năng Cao: On-Stack Replacement (OSR), Flat Structs & Native AOT Hot Loops](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%203.md#L3008)
   - [Chương 38: Lập Trình Mô Phỏng Lượng Tử Quy Mô Lớn: Grover, QFT & Chạm Trần Phần Cứng N=29 Qubits](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%203.md#L3212)
+- **PHẦN XI: LẬP TRÌNH MÔ HÌNH AI TAM PHÂN & LLM RUNTIME BẢN ĐỊA (GATE 7.4 & 7.5)**:
+  - [Chương 39: Quản Lý Gói Mô Hình & Định Dạng Chat: SafeTensors, ModelManifest & ChatTemplate](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%203.md#ch39-model-package)
+  - [Chương 40: Lập Trình Suy Luận Tự Hồi Quy & Thực Thi CLI setunc ai](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%203.md#ch40-autoregressive-cli)
 - **TỔNG KẾT TOÀN DIỆN**:
-  - [Tổng Kết Toàn Diện Giáo Trình Lập Trình Tersun (38 Chương - 10 Phần)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%203.md#L3435)
+  - [Tổng Kết Toàn Diện Giáo Trình Lập Trình Tersun (40 Chương - 11 Phần)](file:///d:/New%20PJ/Ternary/Compiler/GT/GIÁO%20TRÌNH%20LẬP%20TRÌNH%20TERSUN%20(FIRST-PRINCIPLES%20TERSUN%20PROGRAMMING)%20Vol%203.md#L3466)
 
 ---
 
@@ -267,8 +275,7 @@ Mỗi chương trong giáo trình đều được liên kết trực tiếp vớ
 | **Lexer & Zero-Copy Token** | [lexer.hpp](file:///d:/New%20PJ/Ternary/Compiler/Code/include/compiler/lexer.hpp), `lexer.cpp` | Sys.Vol 1: Ch.4 | Prog.Vol 1: Ch.5 |
 | **Pratt Parser & AST Nodes** | [parser.hpp](file:///d:/New%20PJ/Ternary/Compiler/Code/include/compiler/parser.hpp), [ast.hpp](file:///d:/New%20PJ/Ternary/Compiler/Code/include/compiler/ast.hpp) | Sys.Vol 1: Ch.5 | Prog.Vol 1: Ch.1-4 |
 | **Type Checker & Generics** | [type_checker.hpp](file:///d:/New%20PJ/Ternary/Compiler/Code/include/compiler/type_checker.hpp), [monomorphizer.hpp](file:///d:/New%20PJ/Ternary/Compiler/Code/include/compiler/monomorphizer.hpp) | Sys.Vol 1: Ch.6, 7 | Prog.Vol 1: Ch.21, 22 |
-| **Tree Optimizer & Passes** | [tree_canonicalize.hpp](file:///d:/New%20PJ/Ternary/Compiler/Code/include/compiler/tree_canonicalize.hpp), [tree_optimizer.hpp](file:///d:/New%20PJ/Ternary/Compiler/Code/include/compiler/tree_optimizer.hpp) | Gate 5.1 & 5.2 | Sys.Vol 1: Ch.9 |
-| **Linear IR & CFG Builder** | [opt_ir.hpp](file:///d:/New%20PJ/Ternary/Compiler/Code/include/compiler/opt_ir.hpp), [cfg.hpp](file:///d:/New%20PJ/Ternary/Compiler/Code/include/compiler/cfg.hpp) | Sys.Vol 1: Ch.9, 10 | Sys.Vol 2: Ch.11 |
+| **Canonical Ternary IR (Gate 7.3.3)**| [canonical_ternary_ir.hpp](file:///d:/New%20PJ/Ternary/Compiler/Code/include/compiler/canonical_ternary_ir.hpp) | Gate 7.3.3 | Sys.Vol 1: Ch.9, 10 |
 | **Stack VM & Dispatch Loop** | [vm.hpp](file:///d:/New%20PJ/Ternary/Compiler/Code/include/vm/vm.hpp), `vm.cpp` | Sys.Vol 2: Ch.12, 13 | Prog.Vol 1: Ch.8-10 |
 | **NaN-Boxing 64-bit Values** | [value_nanbox.hpp](file:///d:/New%20PJ/Ternary/Compiler/Code/include/vm/value_nanbox.hpp) | Sys.Vol 2: Ch.13 | Prog.Vol 1: Ch.6 |
 | **Arena & Memory Manager** | [arena.hpp](file:///d:/New%20PJ/Ternary/Compiler/Code/include/compiler/arena.hpp) | Sys.Vol 2: Ch.14 | Prog.Vol 2: Ch.23 |
@@ -276,7 +283,11 @@ Mỗi chương trong giáo trình đều được liên kết trực tiếp vớ
 | **Native LLVM AOT Compiler**| [llvm_emitter.hpp](file:///d:/New%20PJ/Ternary/Compiler/Code/include/compiler/llvm_emitter.hpp) | Sys.Vol 2: Ch.16-18 | Prog.Vol 3: Ch.33 |
 | **JIT Compiler & OSR Engine** | `jit_compiler.cpp`, `deopt.cpp` | Sys.Vol 3: Ch.23 | Prog.Vol 3: Ch.37 |
 | **Scaled QVM Quantum Engine** | [qvm.hpp](file:///d:/New%20PJ/Ternary/Compiler/Code/include/qvm/qvm.hpp), `qcircuit.cpp` | Sys.Vol 3: Ch.24 | Prog.Vol 3: Ch.34, 35, 38 |
-| **Telemetry & Diagnostics** | [vm_telemetry.hpp](file:///d:/New%20PJ/Ternary/Compiler/Code/include/vm/vm_telemetry.hpp) | Sys.Vol 3: Ch.21 | Prog.Vol 3: Ch.36 |
+| **Byte-Level BPE Tokenizer (Gate 7.4)** | [tokenizer.hpp](file:///d:/New%20PJ/Ternary/Compiler/Code/include/tensor/nn/format/tokenizer.hpp), `tokenizer.cpp` | Sys.Vol 3: Ch.25 | Prog.Vol 3: Ch.39 |
+| **Sampler & StopMatcher (Gate 7.4)** | [sampler.hpp](file:///d:/New%20PJ/Ternary/Compiler/Code/include/tensor/nn/runtime/sampler.hpp), `sampler.cpp` | Sys.Vol 3: Ch.25 | Prog.Vol 3: Ch.40 |
+| **KV Cache & Zero-Alloc (Gate 7.4)** | [kv_cache.hpp](file:///d:/New%20PJ/Ternary/Compiler/Code/include/tensor/nn/memory/kv_cache.hpp), `inference_session.cpp` | Sys.Vol 3: Ch.26 | Prog.Vol 3: Ch.40 |
+| **7-Stage Attention SIMD (Gate 7.5)** | [attention_kernels.hpp](file:///d:/New%20PJ/Ternary/Compiler/Code/include/tensor/nn/ops/attention_kernels.hpp), `attention_kernels.cpp` | Sys.Vol 3: Ch.27 | Prog.Vol 3: Ch.40 |
+| **ParallelPlanner & BitLinear (Gate 7.5)**| [parallel_planner.hpp](file:///d:/New%20PJ/Ternary/Compiler/Code/include/tensor/nn/runtime/parallel_planner.hpp), `bit_linear.cpp` | Sys.Vol 3: Ch.28 | Prog.Vol 3: Ch.40 |
 
 ---
 
@@ -311,19 +322,49 @@ Mỗi chương trong giáo trình đều được liên kết trực tiếp vớ
    .\scientific_native.exe
    ```
 
-6. **Chạy Kiểm Định Giới Hạn Phần Cứng Lượng Tử Đến $N=29$ Qubits (Zero-Copy Strided)**:
+6. **Chạy Sinh Văn Bản AI Bản Địa Với Mô Hình BitNet (Gate 7.4 & Gate 7.5)**:
    ```bash
-   .\test_quantum_limit.exe
+   .\setunc.exe ai generate --model-dir path\to\bitnet_model --prompt "Xin chao" --temp 0.7 --max-tokens 64
    ```
 
-7. **Chạy Bộ Kiểm định 2.13 Triệu Bất Biến Toán học & Lượng tử (Exhaustive Verification)**:
+7. **Bật Chế Độ Trò Chuyện Tương Tác REPL ChatML Đa Lượt**:
    ```bash
-   python bench/bench_gate5_harness.py CP1_TREE_OPT
+   .\setunc.exe ai chat --model-dir path\to\bitnet_model
+   ```
+
+8. **Chạy Đối Chuẩn Hiệu Năng Thực Thi LLM Chuyên Sâu (Gate 7.5 Benchmark)**:
+   ```bash
+   .\build\benchmarks\gate75_benchmark.exe
+   ```
+
+9. **Chạy Kiểm Định Toàn Bộ Hệ Thống Với CTest (9 Test Suites)**:
+   ```bash
+   ctest --test-dir build --output-on-failure
    ```
 
 ---
 
+## VII. BẢN ĐỒ CẦU NỐI TRI THỨC KIẾN TRÚC (ARCHITECTURE KNOWLEDGE BRIDGES)
+
+Để hỗ trợ người học chuyển tiếp từ **nhận thức lý thuyết (Giáo trình GT/)** sang **kỹ nghệ phần mềm thực chiến (Core Docs)** và **quyết định thiết kế thực tế (ADRs & Research Forensics)**, hệ thống thiết lập bảng liên kết trực tiếp dưới đây:
+
+| Chủ Đề Học Tập (GT Curriculum) | Tham Chiếu Kỹ Thuật (Core Doc) | Quyết Định Thiết Kế (ADR) | Bằng Chứng Thực Nghiệm (Forensics & Seal) |
+| :--- | :--- | :--- | :--- |
+| **NaN-Boxing & Value Model** (Sys.Vol 2: Ch.13) | [Code/src/vm/vm.md](file:///d:/New%20PJ/Ternary/Compiler/Code/src/vm/vm.md) | [ADR-001: NaN-Boxing](file:///d:/New%20PJ/Ternary/Compiler/Doc/adr/ADR-001-nan-boxing-64bit-value.md) | `value.hpp` bitmask canonical verification |
+| **Quản Lý Vùng Nhớ & GC** (Sys.Vol 2: Ch.14) | [Code/src/vm/vm.md](file:///d:/New%20PJ/Ternary/Compiler/Code/src/vm/vm.md) | [ADR-002: VMArena](file:///d:/New%20PJ/Ternary/Compiler/Doc/adr/ADR-002-vmarena-handle-indexing.md)<br>[ADR-003: Tri-Color GC](file:///d:/New%20PJ/Ternary/Compiler/Doc/adr/ADR-003-tri-color-mark-sweep-gc.md) | `GCEngine` generational write barrier benchmarks |
+| **Điều Phối Thông Dịch VM** (Sys.Vol 2: Ch.12) | [Code/src/vm/vm.md](file:///d:/New%20PJ/Ternary/Compiler/Code/src/vm/vm.md) | [ADR-004: Direct Threading](file:///d:/New%20PJ/Ternary/Compiler/Doc/adr/ADR-004-direct-threaded-dispatch.md) | BTB miss reduction $18.4\% \to 4.2\%$ |
+| **Hợp Đồng Mã Trung Gian (IR)** (Sys.Vol 1: Ch.9-10) | [Code/src/compiler/compiler.md](file:///d:/New%20PJ/Ternary/Compiler/Code/src/compiler/compiler.md) | [Doc/Rule.md](file:///d:/New%20PJ/Ternary/Compiler/Doc/Rule.md) | SSA Dominance Frontier invariants |
+| **Canonical Ternary IR & Tuples** (Gate 7.3.3) | [Code/src/compiler/compiler.md](file:///d:/New%20PJ/Ternary/Compiler/Code/src/compiler/compiler.md) | Gate 7.3.3 Specification | Hierarchical GEMM & TensorView differential parity |
+| **Tối Ưu Hóa JIT, SRA & BCE** (Sys.Vol 3: Ch.23) | [Code/src/vm/vm.md](file:///d:/New%20PJ/Ternary/Compiler/Code/src/vm/vm.md) | [ADR-005: Linear Scan](file:///d:/New%20PJ/Ternary/Compiler/Doc/adr/ADR-005-linear-scan-register-allocator.md)<br>[ADR-007: SRA](file:///d:/New%20PJ/Ternary/Compiler/Doc/adr/ADR-007-scalar-replacement-of-aggregates.md)<br>[ADR-008: BCE Hoisting](file:///d:/New%20PJ/Ternary/Compiler/Doc/adr/ADR-008-bounds-check-elimination-hoisting.md) | W2 BCE Seal ($3.75\text{ ms}$ / `G6R.2.4`)<br>W4 SRA Seal ($0.94\text{ ms}$ / `G6R.2.2`) |
+| **Vector Hóa SIMD AVX2** (Sys.Vol 2: Ch.17) | [Code/src/vm/vm.md](file:///d:/New%20PJ/Ternary/Compiler/Code/src/vm/vm.md) | [ADR-009: AVX2 SIMD](file:///d:/New%20PJ/Ternary/Compiler/Doc/adr/ADR-009-avx2-simd-stride1-vectorization.md) | W3 SIMD Seal ($4.88\text{ ms}$ / `G6R.2.1`) |
+| **Số Học Đại Số $\mathbb{Q}(\sqrt{3})$ & BitNet** (Prog.Vol 2: Ch.25-28) | [Code/src/tafpu/tafpu.md](file:///d:/New%20PJ/Ternary/Compiler/Code/src/tafpu/tafpu.md) | [Doc/FormalVerification_Lean4.lean](file:///d:/New%20PJ/Ternary/Compiler/Doc/FormalVerification_Lean4.lean) | 4-Level Proof Ladder (Lean 4 machine proven) |
+| **Mô Phỏng Lượng Tử QVM & MPS** (Sys.Vol 3: Ch.24) | [Code/src/qvm/qvm.md](file:///d:/New%20PJ/Ternary/Compiler/Code/src/qvm/qvm.md) | [ADR-010: QVM Optimization](file:///d:/New%20PJ/Ternary/Compiler/Doc/adr/ADR-010-qvm-circuit-optimization-and-qft-scaling.md)<br>[Doc/architecture_overview.md](file:///d:/New%20PJ/Ternary/Compiler/Doc/architecture_overview.md) | [QFT Scaling Report](file:///d:/New%20PJ/Ternary/Compiler/Doc/artifacts/qvm_benchmark/QFT_SCALING_REPORT.md)<br>$N=24$ Qubits trong $2.89\text{ s}$<br>SVD Bond truncation $\chi \le 64$ ($100+$ qubits) |
+| **Lập Lịch Vi Nhân Tam Phân** (Prog.Vol 2: Ch.30) | [Code/src/kernel/kernel.md](file:///d:/New%20PJ/Ternary/Compiler/Code/src/kernel/kernel.md) | [Doc/architecture_overview.md](file:///d:/New%20PJ/Ternary/Compiler/Doc/architecture_overview.md) | Preemptive RT queue priority tests |
+| **LLM Runtime & Zero-Alloc Session** (Sys.Vol 3: Ch.25-26) | [Code/src/tensor/nn/nn.md](file:///d:/New%20PJ/Ternary/Compiler/Code/src/tensor/nn/nn.md) | Gate 7.4 Specification | `gate74_runtime_tests.exe`: KV parity $\Delta=0.0$, steady `malloc == 0` |
+| **Thang Attention 7 Bậc $A_0 \to A_6$** (Sys.Vol 3: Ch.27) | [Code/src/tensor/nn/nn.md](file:///d:/New%20PJ/Ternary/Compiler/Code/src/tensor/nn/nn.md) | Gate 7.5 Specification | Max error $< 6\times 10^{-7}$, Cosine $1.0$, Attention 6.5x – 8.7x |
+| **Single Owner Parallel & BitLinear** (Sys.Vol 3: Ch.28) | [Code/src/tensor/nn/nn.md](file:///d:/New%20PJ/Ternary/Compiler/Code/src/tensor/nn/nn.md) | Gate 7.5 Specification | Decoupled speedup benchmark, 1T-8T parallel efficiency |
+
+---
+
 > **Bản quyền & Giữ nguyên Nội dung**:  
-> Toàn bộ nội dung chi tiết trong 6 tập giáo trình gốc được bảo toàn 100% nguyên trạng, chuẩn hóa cấu trúc định hướng học thuật và liên kết điều hướng thông suốt qua tài liệu này.
-
-
+> Toàn bộ nội dung chi tiết trong các tập giáo trình gốc được bảo toàn 100% nguyên trạng, chuẩn hóa cấu trúc định hướng học thuật và liên kết điều hướng thông suốt qua tài liệu này.

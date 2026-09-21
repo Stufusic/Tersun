@@ -216,6 +216,33 @@ void IRBuilder::lower_stmt(Stmt* stmt, IRFunction& out_fn) {
             inst.has_side_effect = true;
             inst.line = s.loc.line;
             out_fn.instructions.push_back(inst);
+        } else if constexpr (std::is_same_v<T, TupleDestructureStmt>) {
+            IROperand tup = lower_expr(s.init, out_fn);
+            for (size_t i = 0; i < s.names.size(); ++i) {
+                size_t slot;
+                auto it = local_slots_.find(s.names[i]);
+                if (it == local_slots_.end()) {
+                    slot = local_slots_.size();
+                    local_slots_[s.names[i]] = slot;
+                } else {
+                    slot = it->second;
+                }
+                IROperand elem = alloc_vreg();
+                IRInstruction load_inst;
+                load_inst.op = IROp::LOAD_ELEM;
+                load_inst.dst = elem;
+                load_inst.src1 = tup;
+                load_inst.src2 = IROperand::const_int(i);
+                load_inst.line = s.loc.line;
+                out_fn.instructions.push_back(load_inst);
+
+                IRInstruction store_inst;
+                store_inst.op = IROp::STORE_LOCAL;
+                store_inst.dst = IROperand::local(slot, s.names[i]);
+                store_inst.src1 = elem;
+                store_inst.line = s.loc.line;
+                out_fn.instructions.push_back(store_inst);
+            }
         } else if constexpr (std::is_same_v<T, ExprStmt>) {
             if (s.expr) {
                 lower_expr(s.expr, out_fn);
@@ -776,6 +803,53 @@ IROperand IRBuilder::lower_expr(Expr* expr, IRFunction& out_fn) {
 
             for (size_t i = 0; i < e.elements.size(); ++i) {
                 IROperand elem = lower_expr(e.elements[i], out_fn);
+                IRInstruction store_inst;
+                store_inst.op = IROp::STORE_ELEM;
+                store_inst.dst = dst;
+                store_inst.src1 = IROperand::const_int(i);
+                store_inst.src2 = elem;
+                store_inst.has_side_effect = true;
+                out_fn.instructions.push_back(store_inst);
+            }
+            return dst;
+        } else if constexpr (std::is_same_v<T, TupleLiteralExpr>) {
+            IROperand dst = alloc_vreg();
+            IRInstruction alloc_inst;
+            alloc_inst.op = IROp::ALLOC_ARRAY;
+            alloc_inst.dst = dst;
+            alloc_inst.src1 = IROperand::const_int(e.elements.size());
+            alloc_inst.line = e.loc.line;
+            out_fn.instructions.push_back(alloc_inst);
+
+            for (size_t i = 0; i < e.elements.size(); ++i) {
+                IROperand elem = lower_expr(e.elements[i], out_fn);
+                IRInstruction store_inst;
+                store_inst.op = IROp::STORE_ELEM;
+                store_inst.dst = dst;
+                store_inst.src1 = IROperand::const_int(i);
+                store_inst.src2 = elem;
+                store_inst.has_side_effect = true;
+                out_fn.instructions.push_back(store_inst);
+            }
+            return dst;
+        } else if constexpr (std::is_same_v<T, TritVecLiteralExpr>) {
+            IROperand dst = alloc_vreg();
+            IRInstruction alloc_inst;
+            alloc_inst.op = IROp::ALLOC_ARRAY;
+            alloc_inst.dst = dst;
+            alloc_inst.src1 = IROperand::const_int(e.trits.size());
+            alloc_inst.line = e.loc.line;
+            out_fn.instructions.push_back(alloc_inst);
+
+            for (size_t i = 0; i < e.trits.size(); ++i) {
+                IROperand elem = alloc_vreg();
+                IRInstruction cinst;
+                cinst.op = IROp::CONST_INT;
+                cinst.dst = elem;
+                cinst.src1 = IROperand::const_int(e.trits[i]);
+                cinst.line = e.loc.line;
+                out_fn.instructions.push_back(cinst);
+
                 IRInstruction store_inst;
                 store_inst.op = IROp::STORE_ELEM;
                 store_inst.dst = dst;

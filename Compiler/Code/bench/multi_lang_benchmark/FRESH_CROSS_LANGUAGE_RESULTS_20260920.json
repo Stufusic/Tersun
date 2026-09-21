@@ -1,0 +1,651 @@
+{
+  "metadata": {
+    "timestamp": "2026-09-20T21:03:01.013738",
+    "cpu": "12th Gen Intel(R) Core(TM) i5-1245U (10 cores, 12 threads)",
+    "os": "Windows 11 Pro 64-bit",
+    "n_reps": 10,
+    "warmup_reps": 2,
+    "compilers": {
+      "cpp": "GCC 15.2.0 -O3 -std=c++20",
+      "rust": "rustc 1.98.1 -O -C opt-level=3",
+      "java": "OpenJDK 25.0.2 Server VM",
+      "python": "CPython 3.14.3",
+      "tersun": "Tersun 1.0.3 (G6R.3 Pinned Registers)"
+    }
+  },
+  "classical_workloads": {
+    "W1": {
+      "name": "Recursive Fibonacci (N=30)",
+      "domain": "Call stack frames, pure recursion, branch prediction",
+      "expected_checksum": 832040,
+      "targets": {
+        "cpp_gcc": {
+          "n": 10,
+          "median_ms": 1.179,
+          "mean_ms": 1.246,
+          "stddev_ms": 0.153,
+          "min_ms": 1.154,
+          "max_ms": 1.555,
+          "checksum": 832040.0,
+          "raw_times_ms": [
+            1.179,
+            1.154,
+            1.17,
+            1.19,
+            1.171,
+            1.516,
+            1.167,
+            1.182,
+            1.178,
+            1.555
+          ]
+        },
+        "rust": {
+          "n": 10,
+          "median_ms": 1.777,
+          "mean_ms": 1.785,
+          "stddev_ms": 0.104,
+          "min_ms": 1.664,
+          "max_ms": 1.963,
+          "checksum": 832040.0,
+          "raw_times_ms": [
+            1.67,
+            1.897,
+            1.85,
+            1.665,
+            1.755,
+            1.845,
+            1.799,
+            1.664,
+            1.963,
+            1.743
+          ]
+        },
+        "java_openjdk": {
+          "n": 10,
+          "median_ms": 3.383,
+          "mean_ms": 3.434,
+          "stddev_ms": 0.209,
+          "min_ms": 3.19,
+          "max_ms": 3.941,
+          "checksum": 832040.0,
+          "raw_times_ms": [
+            3.522,
+            3.19,
+            3.484,
+            3.311,
+            3.514,
+            3.941,
+            3.319,
+            3.447,
+            3.316,
+            3.3
+          ]
+        },
+        "python_cpython": {
+          "n": 10,
+          "median_ms": 86.837,
+          "mean_ms": 86.625,
+          "stddev_ms": 1.185,
+          "min_ms": 83.93,
+          "max_ms": 88.157,
+          "checksum": 832040.0,
+          "raw_times_ms": [
+            88.157,
+            83.93,
+            85.843,
+            86.798,
+            87.89,
+            86.839,
+            85.985,
+            86.835,
+            86.895,
+            87.082
+          ]
+        },
+        "tersun_native_aot": {
+          "n": 10,
+          "median_ms": 2.506,
+          "mean_ms": 2.627,
+          "stddev_ms": 0.178,
+          "min_ms": 2.476,
+          "max_ms": 2.941,
+          "checksum": 832040.0,
+          "raw_times_ms": [
+            2.845,
+            2.503,
+            2.507,
+            2.492,
+            2.773,
+            2.483,
+            2.741,
+            2.476,
+            2.506,
+            2.941
+          ]
+        },
+        "tersun_g6r3_interp": {
+          "n": 10,
+          "median_ms": 85.416,
+          "mean_ms": 87.011,
+          "stddev_ms": 3.448,
+          "min_ms": 83.874,
+          "max_ms": 94.993,
+          "checksum": 832040.0,
+          "raw_times_ms": [
+            88.301,
+            90.793,
+            85.317,
+            94.993,
+            84.941,
+            85.027,
+            85.515,
+            86.205,
+            83.874,
+            85.146
+          ]
+        }
+      }
+    },
+    "W2": {
+      "name": "Prime Sieve (N=100k)",
+      "domain": "Linear array buffer mutation, tight loop traversal",
+      "expected_checksum": 9592,
+      "targets": {
+        "cpp_gcc": {
+          "n": 10,
+          "median_ms": 0.21,
+          "mean_ms": 0.211,
+          "stddev_ms": 0.007,
+          "min_ms": 0.202,
+          "max_ms": 0.225,
+          "checksum": 9592.0,
+          "raw_times_ms": [
+            0.217,
+            0.203,
+            0.202,
+            0.205,
+            0.208,
+            0.207,
+            0.215,
+            0.213,
+            0.225,
+            0.216
+          ]
+        },
+        "rust": {
+          "n": 10,
+          "median_ms": 0.235,
+          "mean_ms": 0.236,
+          "stddev_ms": 0.009,
+          "min_ms": 0.227,
+          "max_ms": 0.253,
+          "checksum": 9592.0,
+          "raw_times_ms": [
+            0.227,
+            0.229,
+            0.235,
+            0.245,
+            0.228,
+            0.235,
+            0.229,
+            0.236,
+            0.246,
+            0.253
+          ]
+        },
+        "java_openjdk": {
+          "n": 10,
+          "median_ms": 1.266,
+          "mean_ms": 1.268,
+          "stddev_ms": 0.073,
+          "min_ms": 1.178,
+          "max_ms": 1.357,
+          "checksum": 9592.0,
+          "raw_times_ms": [
+            1.357,
+            1.327,
+            1.178,
+            1.21,
+            1.338,
+            1.204,
+            1.194,
+            1.336,
+            1.32,
+            1.211
+          ]
+        },
+        "python_cpython": {
+          "n": 10,
+          "median_ms": 7.127,
+          "mean_ms": 7.253,
+          "stddev_ms": 0.344,
+          "min_ms": 6.852,
+          "max_ms": 8.079,
+          "checksum": 9592.0,
+          "raw_times_ms": [
+            7.129,
+            7.01,
+            7.453,
+            8.079,
+            7.098,
+            7.255,
+            7.079,
+            7.449,
+            7.125,
+            6.852
+          ]
+        },
+        "tersun_native_aot": {
+          "n": 10,
+          "median_ms": 1.945,
+          "mean_ms": 1.992,
+          "stddev_ms": 0.141,
+          "min_ms": 1.867,
+          "max_ms": 2.336,
+          "checksum": 9592.0,
+          "raw_times_ms": [
+            1.916,
+            1.867,
+            2.07,
+            1.936,
+            2.336,
+            1.92,
+            1.954,
+            1.956,
+            2.088,
+            1.878
+          ]
+        },
+        "tersun_g6r3_interp": {
+          "n": 10,
+          "median_ms": 26.425,
+          "mean_ms": 26.396,
+          "stddev_ms": 0.364,
+          "min_ms": 25.747,
+          "max_ms": 26.908,
+          "checksum": 9592.0,
+          "raw_times_ms": [
+            26.037,
+            25.747,
+            26.181,
+            26.565,
+            26.206,
+            26.292,
+            26.759,
+            26.71,
+            26.908,
+            26.558
+          ]
+        }
+      }
+    },
+    "W3": {
+      "name": "Matrix Multiply (100x100 Flat 1D)",
+      "domain": "1M MAC ops, cache locality, nested loops",
+      "expected_checksum": 20250000,
+      "targets": {
+        "cpp_gcc": {
+          "n": 10,
+          "median_ms": 0.359,
+          "mean_ms": 0.601,
+          "stddev_ms": 0.686,
+          "min_ms": 0.331,
+          "max_ms": 2.532,
+          "checksum": 20250000.0,
+          "raw_times_ms": [
+            2.532,
+            0.666,
+            0.331,
+            0.334,
+            0.366,
+            0.344,
+            0.35,
+            0.358,
+            0.361,
+            0.369
+          ]
+        },
+        "rust": {
+          "n": 10,
+          "median_ms": 0.435,
+          "mean_ms": 0.485,
+          "stddev_ms": 0.118,
+          "min_ms": 0.412,
+          "max_ms": 0.746,
+          "checksum": 20250000.0,
+          "raw_times_ms": [
+            0.746,
+            0.415,
+            0.445,
+            0.413,
+            0.658,
+            0.415,
+            0.462,
+            0.425,
+            0.412,
+            0.457
+          ]
+        },
+        "java_openjdk": {
+          "n": 10,
+          "median_ms": 3.847,
+          "mean_ms": 4.023,
+          "stddev_ms": 0.619,
+          "min_ms": 3.704,
+          "max_ms": 5.768,
+          "checksum": 20250000.0,
+          "raw_times_ms": [
+            3.726,
+            3.962,
+            3.704,
+            3.873,
+            5.768,
+            3.901,
+            3.907,
+            3.817,
+            3.821,
+            3.749
+          ]
+        },
+        "python_cpython": {
+          "n": 10,
+          "median_ms": 73.849,
+          "mean_ms": 73.72,
+          "stddev_ms": 1.382,
+          "min_ms": 70.948,
+          "max_ms": 75.736,
+          "checksum": 20250000.0,
+          "raw_times_ms": [
+            75.736,
+            73.143,
+            72.537,
+            74.185,
+            74.058,
+            73.64,
+            70.948,
+            75.149,
+            73.105,
+            74.701
+          ]
+        },
+        "tersun_native_aot": {
+          "n": 10,
+          "median_ms": 3.503,
+          "mean_ms": 3.62,
+          "stddev_ms": 0.38,
+          "min_ms": 3.287,
+          "max_ms": 4.613,
+          "checksum": 20250000.0,
+          "raw_times_ms": [
+            3.456,
+            3.498,
+            3.507,
+            3.55,
+            3.685,
+            3.287,
+            3.357,
+            4.613,
+            3.437,
+            3.812
+          ]
+        },
+        "tersun_g6r3_interp": {
+          "n": 10,
+          "median_ms": 139.7,
+          "mean_ms": 140.281,
+          "stddev_ms": 5.097,
+          "min_ms": 134.546,
+          "max_ms": 152.061,
+          "checksum": 20250000.0,
+          "raw_times_ms": [
+            137.4,
+            134.906,
+            139.946,
+            152.061,
+            134.546,
+            137.612,
+            141.531,
+            141.267,
+            139.453,
+            144.091
+          ]
+        }
+      }
+    },
+    "W4": {
+      "name": "Object Updates (200k iters)",
+      "domain": "Object lifecycle, property mutation, method dispatch",
+      "expected_checksum": 541096364,
+      "targets": {
+        "cpp_gcc": {
+          "n": 10,
+          "median_ms": 0.5,
+          "mean_ms": 0.565,
+          "stddev_ms": 0.159,
+          "min_ms": 0.451,
+          "max_ms": 0.897,
+          "checksum": 541096364.0,
+          "raw_times_ms": [
+            0.897,
+            0.826,
+            0.457,
+            0.451,
+            0.514,
+            0.47,
+            0.492,
+            0.499,
+            0.501,
+            0.544
+          ]
+        },
+        "rust": {
+          "n": 10,
+          "median_ms": 0.504,
+          "mean_ms": 0.497,
+          "stddev_ms": 0.022,
+          "min_ms": 0.454,
+          "max_ms": 0.534,
+          "checksum": 541096364.0,
+          "raw_times_ms": [
+            0.504,
+            0.471,
+            0.494,
+            0.454,
+            0.505,
+            0.494,
+            0.505,
+            0.508,
+            0.506,
+            0.534
+          ]
+        },
+        "java_openjdk": {
+          "n": 10,
+          "median_ms": 3.666,
+          "mean_ms": 3.612,
+          "stddev_ms": 0.563,
+          "min_ms": 2.984,
+          "max_ms": 4.337,
+          "checksum": 541096364.0,
+          "raw_times_ms": [
+            4.337,
+            4.01,
+            3.322,
+            2.984,
+            3.025,
+            4.075,
+            4.04,
+            3.086,
+            4.199,
+            3.04
+          ]
+        },
+        "python_cpython": {
+          "n": 10,
+          "median_ms": 40.52,
+          "mean_ms": 41.994,
+          "stddev_ms": 6.417,
+          "min_ms": 37.314,
+          "max_ms": 59.859,
+          "checksum": 541096364.0,
+          "raw_times_ms": [
+            38.356,
+            40.329,
+            40.819,
+            39.523,
+            59.859,
+            40.632,
+            37.314,
+            40.696,
+            42.003,
+            40.409
+          ]
+        },
+        "tersun_native_aot": {
+          "n": 10,
+          "median_ms": 0.524,
+          "mean_ms": 0.597,
+          "stddev_ms": 0.163,
+          "min_ms": 0.513,
+          "max_ms": 1.013,
+          "checksum": 541096000.0,
+          "raw_times_ms": [
+            1.013,
+            0.751,
+            0.538,
+            0.547,
+            0.516,
+            0.522,
+            0.522,
+            0.517,
+            0.526,
+            0.513
+          ]
+        },
+        "tersun_g6r3_interp": {
+          "n": 10,
+          "median_ms": 73.275,
+          "mean_ms": 73.48,
+          "stddev_ms": 1.938,
+          "min_ms": 70.981,
+          "max_ms": 76.239,
+          "checksum": 541096364.0,
+          "raw_times_ms": [
+            74.313,
+            72.305,
+            75.189,
+            71.575,
+            76.239,
+            76.126,
+            70.981,
+            71.523,
+            72.832,
+            73.718
+          ]
+        }
+      }
+    }
+  },
+  "quantum_workloads": {
+    "tersun_qvm": {
+      "Q_TASK1_QFT4": {
+        "iters": 1000.0,
+        "total_time_us": 2242.0,
+        "avg_time_us": 2.242
+      },
+      "Q_TASK1_QFT8": {
+        "iters": 100.0,
+        "total_time_us": 4535.0,
+        "avg_time_us": 45.35
+      },
+      "Q_TASK2_BELL": {
+        "shots": 10000.0,
+        "total_time_us": 2123.0,
+        "avg_time_us": 0.2123,
+        "count00": 5027.0,
+        "count11": 4973.0
+      },
+      "Q_TASK3_GROVER3": {
+        "iters": 1000.0,
+        "total_time_us": 635.0,
+        "avg_time_us": 0.635,
+        "target_prob": 0.945312
+      }
+    },
+    "python_quantum": {
+      "QISKIT_TASK1_QFT4": {
+        "iters": 1000.0,
+        "total_time_us": 449252.0,
+        "avg_time_us": 449.25
+      },
+      "QISKIT_TASK1_QFT8": {
+        "iters": 100.0,
+        "total_time_us": 133192.0,
+        "avg_time_us": 1331.92
+      },
+      "QISKIT_TASK2_BELL": {
+        "shots": 10000.0,
+        "total_time_us": 8261.0,
+        "avg_time_us": 0.83,
+        "count00": 5105.0,
+        "count11": 4895.0
+      },
+      "QISKIT_TASK3_GROVER3": {
+        "iters": 1000.0,
+        "total_time_us": 359646.0,
+        "avg_time_us": 359.65,
+        "target_prob": 0.7812
+      },
+      "NUMPY_TASK1_QFT4": {
+        "iters": 1000.0,
+        "total_time_us": 61907.0,
+        "avg_time_us": 61.91
+      },
+      "NUMPY_TASK1_QFT8": {
+        "iters": 100.0,
+        "total_time_us": 23662.0,
+        "avg_time_us": 236.62
+      },
+      "NUMPY_TASK2_BELL": {
+        "shots": 10000.0,
+        "total_time_us": 280482.0,
+        "avg_time_us": 28.05,
+        "count00": 4957.0,
+        "count11": 5043.0
+      },
+      "NUMPY_TASK3_GROVER3": {
+        "iters": 1000.0,
+        "total_time_us": 153392.0,
+        "avg_time_us": 153.39,
+        "target_prob": 0.7812
+      }
+    }
+  },
+  "historical_baselines": {
+    "B0_gate6_legacy": {
+      "W1": 145.2,
+      "W2": 48.6,
+      "W3": 62.1,
+      "W4": 18.4
+    },
+    "B1_g6r24_baseline_interp": {
+      "W1": 103.65,
+      "W2": 32.46,
+      "W3": 202.3,
+      "W4": 105.69
+    },
+    "B2_g6r3_converged_interp": {
+      "W1": 87.97,
+      "W2": 27.99,
+      "W3": 150.06,
+      "W4": 105.74
+    },
+    "seal_20260913_interp": {
+      "W1": 111.28,
+      "W2": 30.53,
+      "W3": 205.01,
+      "W4": 106.16
+    }
+  }
+}

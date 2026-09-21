@@ -58,6 +58,25 @@ void run_phase4_async_tests();
 // Next-Gen Phase 5 Language Server Protocol, Formatter & Visual Debugger
 void run_phase5_lsp_tests();
 
+} // namespace setun
+
+namespace setun::test {
+void test_target_capabilities_suite();
+void test_tensor_core_suite();
+void test_portable_compute_suite();
+void test_ternary_language_contract_suite();
+void test_dendrite_canonical_lowering_suite();
+void test_mutable_slice_contract_suite();
+void test_gemv_canonical_lowering_suite();
+void test_tuple_and_destructuring_suite();
+void test_tensor_view_indexing_suite();
+void test_split_at_mut_safety_suite();
+void test_epilogue_fusion_parity_suite();
+void test_hierarchical_gemm_suite();
+}
+
+namespace setun {
+
 // Phase 1 Type Checker & Semantic Analyzer
 void run_phase1_type_checker_tests();
 
@@ -146,10 +165,10 @@ int run_all_tests() {
         setun::test_part3_cordic_and_quaternions();
 
         std::cout << "\n[7/8] Testing Phase 4 FFI, Tri-Color GC, Verilog RTL, stdtaf & TPM...\n";
+        setun::test_part4_stdtaf_and_tpm();
         setun::test_part4_c_ffi_embedding();
         setun::test_part4_tricolor_gc_stress();
         setun::test_part4_verilog_rtl_emission();
-        setun::test_part4_stdtaf_and_tpm();
 
         std::cout << "\n[8/8] Testing Phase 5 Lean 4 Formal Proof, Game Engine 1,000 NPC & Microkernel...\n";
         setun::test_part5_lean4_verification();
@@ -217,6 +236,42 @@ int run_all_tests() {
 
         std::cout << "\n[Gate 6R.2.4 Evolution] Testing BCE & Range Propagation Negative/Positive Safety...\n";
         setun::run_bce_safety_tests();
+
+        std::cout << "\n[Gate 7.1 Evolution] Testing Target Capabilities & Dynamic Kernel Dispatch...\n";
+        setun::test::test_target_capabilities_suite();
+
+        std::cout << "\n[Gate 7.2 Evolution] Testing Tensor Core, TensorView & Tensor IR Lowering...\n";
+        setun::test::test_tensor_core_suite();
+
+        std::cout << "\n[Gate 7.3 - 7.6 Evolution] Testing Portable Compute Runtime & BitNet Pipeline...\n";
+        setun::test::test_portable_compute_suite();
+
+        std::cout << "\n[Gate 7.3.1 Evolution] Testing Tersun Language Evolution & Type System Contract...\n";
+        setun::test::test_ternary_language_contract_suite();
+
+        std::cout << "\n[Gate 7.3.1 Evolution] Testing Canonical Ternary IR & Multi-Target Lowering...\n";
+        setun::test::test_dendrite_canonical_lowering_suite();
+
+        std::cout << "\n[Gate 7.3.2 Evolution] Testing Mutable Slice Views (&mut [T]) & Aliasing Contract...\n";
+        setun::test::test_mutable_slice_contract_suite();
+
+        std::cout << "\n[Gate 7.3.2 Evolution] Testing Canonical 2D GEMV IR & Multi-Target Lowering...\n";
+        setun::test::test_gemv_canonical_lowering_suite();
+
+        std::cout << "\n[Gate 7.3.3 Evolution] Testing Tuples & Destructuring Type Contract...\n";
+        setun::test::test_tuple_and_destructuring_suite();
+
+        std::cout << "\n[Gate 7.3.3 Evolution] Testing TensorView & Multi-Dimensional Indexing Contract...\n";
+        setun::test::test_tensor_view_indexing_suite();
+
+        std::cout << "\n[Gate 7.3.3 Evolution] Testing split_at_mut & Disjoint Memory Verification...\n";
+        setun::test::test_split_at_mut_safety_suite();
+
+        std::cout << "\n[Gate 7.3.3 Evolution] Testing Epilogue Fusion & Contraction Parity...\n";
+        setun::test::test_epilogue_fusion_parity_suite();
+
+        std::cout << "\n[Gate 7.3.3 Evolution] Testing Hierarchical AVX2 GEMM & Multi-Layout Verification...\n";
+        setun::test::test_hierarchical_gemm_suite();
 
         std::cout << "\n==========================================================\n";
         std::cout << "  ALL TESTS PASSED SUCCESSFULLY! (100% Verification)      \n";

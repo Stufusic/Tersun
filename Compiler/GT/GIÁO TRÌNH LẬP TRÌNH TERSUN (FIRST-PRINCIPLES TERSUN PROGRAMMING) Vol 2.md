@@ -418,6 +418,23 @@ Khi dùng VMArena:
 
 ---
 
+### 15.5. NGUYÊN TẮC LẬP TRÌNH THÂN THIỆN VỚI TIER-2 JIT (JIT-FRIENDLY PATTERNS)
+
+Từ nguyên lý hoạt động của các bộ tối ưu hóa hiện đại, người lập trình Setun chuyên nghiệp cần rèn luyện các thói quen viết mã "thân thiện với JIT":
+
+1. **Duy trì Mảng Đồng Nhất Phẳng (Flat Homogeneous Arrays)**:
+   - Khởi tạo mảng với các phần tử cùng kiểu số học (`int` hoặc `float`).
+   - Khi đó, máy ảo Tersun tự động thăng cấp vùng nhớ thành `FlatArrayStorage::I64` hoặc `FlatArrayStorage::F64`.
+   - Tránh việc gán đối tượng hoặc chuỗi ký tự vào mảng số học; việc này sẽ kích hoạt deoptimization và giáng cấp mảng về `GENERIC`, làm mất cơ hội tối ưu hóa vector AVX2 và triệt tiêu kiểm tra biên (BCE).
+2. **Khởi tạo Thuộc tính Nhất quán (Consistent Shape Initialization)**:
+   - Luôn khởi tạo các trường của đối tượng theo một thứ tự cố định (`x` rồi đến `y` rồi đến `z`).
+   - Điều này bảo đảm mọi đối tượng đều chia sẻ cùng một mã hình dạng `shape_id`, giúp bộ đệm nội tuyến **Field IC** luôn chạy ở trạng thái Đơn hình (Monomorphic Fast Path) chỉ tốn $2$ chu kỳ CPU thay vì tra cứu băm chậm chạp (xem [ADR-006](file:///d:/New%20PJ/Ternary/Compiler/Doc/adr/ADR-006-shape-transition-field-ic.md)).
+3. **Thu hẹp Phạm vi Đối tượng Tạm thời cho SRA**:
+   - Khi thực hiện các phép toán hình học trong vòng lặp, hãy khởi tạo cấu trúc vector cục bộ trong thân hàm.
+   - Bộ phân tích thoát `EscapeAnalyzer` sẽ dễ dàng chứng minh đối tượng không thoát ra ngoài (`NO_ESCAPE`), kích hoạt **Thay Thế Vô Hướng (SRA)** để đưa cấp phát heap về $0\text{ bytes}$ (xem [ADR-007](file:///d:/New%20PJ/Ternary/Compiler/Doc/adr/ADR-007-scalar-replacement-of-aggregates.md)).
+
+---
+
 ### 16. Tổng kết & Cầu nối sang chương sau (Summary & Bridge)
 
 Chương 23 đã giải phẫu một trong những bí mật kiến trúc quan trọng nhất của các hệ thống máy tính hiệu năng cao:

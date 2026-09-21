@@ -1,0 +1,29 @@
+{
+  "gate": "7.1",
+  "title": "Cross-Architecture Semantic Parity Audit",
+  "timestamp": "2026-09-21T05:00:00Z",
+  "total_targets_evaluated": 2,
+  "parity_verdict": "PASS",
+  "targets": [
+    {
+      "file": "result_x86-64_avx2.json",
+      "host_arch": "x86-64",
+      "backend": "avx2",
+      "status": "PASS",
+      "total_vectors": 64,
+      "passed_vectors": 64,
+      "failed_vectors": 0,
+      "elapsed_ms": 8.175
+    },
+    {
+      "file": "result_x86-64_scalar.json",
+      "host_arch": "x86-64",
+      "backend": "scalar",
+      "status": "PASS",
+      "total_vectors": 64,
+      "passed_vectors": 64,
+      "failed_vectors": 0,
+      "elapsed_ms": 10.418
+    }
+  ]
+}

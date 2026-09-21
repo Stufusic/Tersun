@@ -1,0 +1,18 @@
+// Tersun 1.0.3 Native Squared ReLU Kernel
+// Formal BitNet-b1.58 activation function: f(x) = (max(0, x))^2
+// Zero-allocation steady state using mutable output slice &mut [int]
+
+fn squared_relu(x: &[int], out: &mut [int], max_val: int) {
+    let n = len(x);
+    let mut i = 0;
+    while (i < n) {
+        let val = x[i];
+        if (val <= 0) {
+            out[i] = 0;
+        } else {
+            let clamped = (val > max_val) ? max_val : val;
+            out[i] = clamped * clamped;
+        }
+        i = i + 1;
+    }
+}

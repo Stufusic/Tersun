@@ -1,0 +1,25 @@
+{
+  "gate": "Gate 7: Portable AI Compute / Portable Compute Runtime",
+  "timestamp": "2026-09-20T21:00:23Z",
+  "status": "SEALED_AND_VERIFIED",
+  "target_capabilities": {
+    "arch": "x86-64",
+    "simd": "AVX2 (256-bit YMM)",
+    "parity": "100% bit-exact with Scalar Reference Oracle"
+  },
+  "benchmarks": {
+    "workload": "BitNet MNIST 1.58-bit (784 -> 128 -> 10)",
+    "iterations": 20000,
+    "average_latency_us": 40.0072,
+    "throughput_inf_per_sec": 24995.0,
+    "heap_allocations_in_forward": 0,
+    "stress_50k_allocations": 0,
+    "zero_allocation_contract": "PASSED"
+  },
+  "model_compression": {
+    "total_parameters": 101770,
+    "ternary_packed_bytes": 25960,
+    "fp32_reference_bytes": 407080,
+    "compression_ratio": "15.68x"
+  }
+}

@@ -151,6 +151,10 @@ enum class OpCode : uint8_t {
     OP_QUICK_GE_INT                = 0xCF,
     OP_INVOKE_METHOD_IC            = 0xD0, // uint16_t method_ic_index, uint8_t argc
 
+    // Gate 6R.3-B6: Dataflow Superinstructions & Local Arithmetic
+    OP_ADD_LOCAL_IMM               = 0xD1, // uint16_t src, int16_t imm, uint16_t dst
+    OP_FUSED_DOT_STEP_I64          = 0xD2, // uint16_t slot_C, uint16_t slot_c_idx, uint16_t slot_a_val, uint16_t slot_B, uint16_t slot_b_idx
+
     OP_HALT            = 0xFF
 };
 

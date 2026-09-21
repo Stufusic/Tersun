@@ -1,0 +1,14 @@
+{
+  "gate": "7.1",
+  "host_arch": "x86-64",
+  "requested_backend": "scalar",
+  "effective_backend": "scalar",
+  "status": "PASS",
+  "total_vectors_tested": 64,
+  "passed_vectors": 64,
+  "failed_vectors": 0,
+  "steady_state_heap_allocations": 431,
+  "elapsed_ms": 10.418,
+  "failures": [
+  ]
+}

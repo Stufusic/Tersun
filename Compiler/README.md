@@ -1,30 +1,35 @@
-# TERSUN COMPUTING PLATFORM 1.0.3
-### *Unified Balanced Ternary Computing, Multi-Tier JIT/AOT Compiler & Quantum State Simulator*
+# TERSUN COMPUTING PLATFORM 1.1.0
+### *Unified Balanced Ternary Computing, Multi-Tier JIT/AOT Compiler, Scaled Quantum Simulator & Native LLM Inference Engine*
 
-[![Version](https://img.shields.io/badge/version-1.0.3_G6R.2_Edition-blue.svg)](file:///d:/New%20PJ/Ternary/Compiler/README.md)
-[![Invariants](https://img.shields.io/badge/mathematical_invariants-2%2C135%2C241_verified_(100%25)-success.svg)](file:///d:/New%20PJ/Ternary/Compiler/test_registry/gate5_milestones.json)
-[![Differential Tests](https://img.shields.io/badge/cross--tier_differential-33%2F33_PASS_(100%25)-brightgreen.svg)](file:///d:/New%20PJ/Ternary/Compiler/test_registry/g6r2/g6r2_1_vectorization.json)
-[![Milestone Seals](https://img.shields.io/badge/seals-G6R.1__FORENSICS__&__G6R.2.1__AVX2__LOCKED-darkgreen.svg)](file:///d:/New%20PJ/Ternary/Compiler/test_registry/g6r2/g6r2_1_vectorization.json)
+[![Version](https://img.shields.io/badge/version-1.1.0_Gate_7.5_Sealed-blue.svg)](file:///d:/New%20PJ/Ternary/Compiler/README.md)
+[![Attention Ladder](https://img.shields.io/badge/Attention_Ladder-8.7x_AVX2_Speedup-brightgreen.svg)](file:///d:/New%20PJ/Ternary/Compiler/Code/benchmarks/bench_llm_execution.cpp)
+[![Zero-Alloc](https://img.shields.io/badge/malloc_at_hotpath-0_bytes_(verified)-darkgreen.svg)](file:///d:/New%20PJ/Ternary/Compiler/Code/tests/gate74_runtime_runner.cpp)
+[![CTest Suites](https://img.shields.io/badge/ctest-9%2F9_PASS_(100%25)-success.svg)](file:///d:/New%20PJ/Ternary/Compiler/Code/CMakeLists.txt)
 [![Quantum Scaling](https://img.shields.io/badge/QVM_Statevector-N%3D29_qubits_(536.87M_states)-purple.svg)](file:///d:/New%20PJ/Ternary/Compiler/bench/multi_lang_benchmark/quantum_dashboard.html)
 [![License](https://img.shields.io/badge/license-TIPARL_IP_Protected-red.svg)](file:///d:/New%20PJ/Ternary/Compiler/LICENSE.md)
 
 ---
 
 > **Tersun** là một nền tảng ngôn ngữ lập trình và kiến trúc thực thi thống nhất thế hệ mới (Next-Generation Unified Computing Architecture), kết hợp hài hòa giữa:
-> 1. **Động cơ thực thi đa tầng tiên tiến (Multi-Tier Execution Runtime - Gate 6 Rebuild)**:
+> 1. **Động cơ thực thi đa tầng tiên tiến (Multi-Tier Execution Runtime)**:
 >    - **Tier-0 (Interpreter)**: Máy ảo Setun-70 VM với NaN-Boxing 64-bit, Register-Cached Dispatch, Superinstruction Fusion và Flat Array Storage.
 >    - **Tier-1 (Baseline JIT)**: Trình biên dịch mã máy x86-64 trực tiếp trên RAM, hỗ trợ On-Stack Replacement (OSR), Tri-Color GC Safepoint Polling và Speculative Deoptimization.
->    - **Tier-2 (Optimizing JIT & SIMD Vectorizer)**: Tối ưu hóa trên SSA Machine IR, Phân bổ thanh ghi Linear Scan (Windows x64 ABI), Loại bỏ kiểm tra biên (BCE), và **Bộ vector hóa vòng lặp tự động AVX2 256-bit VEX SIMD (G6R.2.1)**.
+>    - **Tier-2 (Optimizing JIT & SIMD Vectorizer)**: Tối ưu hóa trên SSA Machine IR, Phân bổ thanh ghi Linear Scan (Windows x64 ABI), Loại bỏ kiểm tra biên (BCE), và **Bộ vector hóa vòng lặp tự động AVX2 256-bit VEX SIMD**.
 >    - **Bộ thu gom rác Tri-Color GC**: Cam kết **0.00% độ trôi bộ nhớ (Memory Flatline)** qua hàng triệu chu kỳ cấp phát.
 > 2. **Trình biên dịch mã máy bản địa (Native AOT -O3 Backend)**: Dịch mã nguồn Tersun sang C++20 / LLVM SIMD tối ưu, cho tốc độ tiệm cận trực tiếp C++ (0.46ms) và Rust (0.51ms) và vượt qua Java 25 Server VM.
 > 3. **Hệ thống số học tam phân cân bằng (Balanced Ternary & TAFPU Architecture)**: Kiến trúc số học trên trường đại số $\mathbb{Q}(\sqrt{3})$ với **0% sai số làm tròn tích lũy** và giải thuật **BitNet 1.58-bit GEMM không cần bộ nhân phần cứng**.
 > 4. **Máy ảo lượng tử không mã lệnh (Zero-Opcode QVM)**: Mô phỏng không gian trạng thái Hilbert tới **$N=29$ Qubits ($536,870,912$ biên độ trạng thái, $8.59\text{ GB}$ RAM)**, tích hợp thuật toán Grover, QFT và xuất chuẩn OpenQASM 3.0.
+> 5. **Động cơ suy luận mô hình ngôn ngữ lớn bản địa (Native LLM Inference Engine - Gate 7.4 & 7.5)**:
+>    - Nạp trực tiếp trọng số `SafeTensors` và siêu tham số kiến trúc qua `ModelManifest`.
+>    - Tokenizer Byte-Level BPE không cấp phát, bộ lấy mẫu 7 bước Sampler, StopMatcher trên token stream.
+>    - Thang tối ưu hóa 7 bậc Attention Ladder ($A_0 \to A_6$) với vi nhân SIMD AVX2/FMA unroll 4 chuỗi FMA song song, gia tốc lên tới **$8.7\times$**, sai số $\le 5.96 \times 10^{-7}$.
+>    - Single Owner of Parallelism (`ParallelPlanner`), Shape-Aware `BitLinear`, bảo tồn bất biến **Zero-Heap Allocation (`malloc == 0`)** tuyệt đối và đạt tốc độ **$162 - 403\text{ tokens/s}$** trên CPU x86-64.
 
 ---
 
 ## 📚 BỘ ĐẠI GIÁO TRÌNH HỌC THUẬT TOÀN DIỆN (TERSUN MASTER CURRICULUM)
 
-Nhằm phục vụ công tác đào tạo khoa học máy tính chuyên sâu từ nguyên lý sơ khởi đến vi kiến trúc phần cứng, dự án cung cấp **Bộ Đại Giáo Trình 2 Tuyến (2 Tracks), 6 Tập (6 Volumes), 18 Phần và 62 Chương chuyên sâu** với hơn 35.000 dòng mã nguồn và phân tích kỹ thuật:
+Nhằm phục vụ công tác đào tạo khoa học máy tính chuyên sâu từ nguyên lý sơ khởi đến vi kiến trúc phần cứng và trí tuệ nhân tạo, dự án cung cấp **Bộ Đại Giáo Trình 2 Tuyến (2 Tracks), 6 Tập (6 Volumes), 18 Phần và 68 Chương chuyên sâu** với hơn 40.000 dòng mã nguồn và phân tích kỹ thuật:
 
 ```
                             ┌──────────────────────────────────────────────┐
@@ -37,7 +42,7 @@ Nhằm phục vụ công tác đào tạo khoa học máy tính chuyên sâu t�
     ┌────────────────────────────────────────────┐                  ┌────────────────────────────────────────────┐
     │  TRACK A: KỸ NGHỆ HỆ THỐNG & BIÊN DỊCH     │                  │  TRACK B: LẬP TRÌNH TỪ NGUYÊN LÝ THỨ NHẤT  │
     │  (Tersun Computer Systems Engineering)     │                  │  (First-Principles Tersun Programming)     │
-    │  3 Volumes • 18 Parts • 24 Chapters        │                  │  3 Volumes • 11 Parts • 38 Chapters        │
+    │  3 Volumes • 7 Parts • 28 Chapters         │                  │  3 Volumes • 11 Parts • 40 Chapters        │
     │  - Frontend Compiler & Pratt Parsing       │                  │  - Core Variables, Scopes & Flow           │
     │  - SSA IR, CFG & Dataflow Optimization     │                  │  - Functions, Stack ABI & Closures         │
     │  - Virtual Machine, NaN-Boxing & TriColorGC│                  │  - Heap, Structs, Classes, VTable OOP      │
@@ -46,6 +51,8 @@ Nhằm phục vụ công tác đào tạo khoa học máy tính chuyên sâu t�
     │  - Native AOT Lowering & LLVM Backend      │                  │  - Async/Await Coroutines & Event Loop     │
     │  - Forensic Telemetry & Micro-Profiling    │                  │  - Native Threads & Lock-Free Channels     │
     │  - In-Place QVM Engine & Scaled Limits     │                  │  - QVM Grover Search & QFT Scalability     │
+    │  - Native LLM Runtime & Zero-Alloc Session │                  │  - SafeTensors, ModelManifest & ChatML     │
+    │  - 7-Stage FlashAttention SIMD & Parallel  │                  │  - Autoregressive Generation & CLI setunc  │
     └────────────────────────────────────────────┘                  └────────────────────────────────────────────┘
 ```
 
@@ -98,16 +105,49 @@ Nhằm phục vụ công tác đào tạo khoa học máy tính chuyên sâu t�
 
 ---
 
+### C. Đối Chuẩn Động Cơ Thực Thi LLM Bản Địa (Gate 7.5 Decoupled Evidence)
+*(Đo đạc trên bộ benchmark độc lập [`gate75_benchmark.exe`](file:///d:/New%20PJ/Ternary/Compiler/Code/benchmarks/bench_llm_execution.cpp), mô hình Transformer/BitNet b1.58, hidden=2560, intermediate=6912, GQA 20:5, head_dim=128, CPU x86-64)*:
+
+#### 1. Thang Gia Tốc Attention 7 Bậc ($A_0 \to A_6$)
+| Độ dài Sequence ($S$) | $A_0$: Scalar Ref | $A_1$: Online Scalar | $A_2$: SIMD QK | $A_3$: SIMD PV | $A_4$: Fused SIMD | $A_5$: 2D Tiling | $A_6$: GQA Parallel | **Gia Tốc Tổng** |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **$S=64$** | 13.63 ms | 7.97 ms | 5.86 ms | 5.37 ms | 3.96 ms | 3.48 ms | **2.11 ms** | **6.46x** |
+| **$S=256$** | 228.33 ms | 120.30 ms | 83.18 ms | 75.14 ms | 56.40 ms | 50.77 ms | **26.29 ms** | **8.69x** |
+| **$S=512$** | 808.43 ms | 465.31 ms | 338.93 ms | 309.84 ms | 228.33 ms | 200.07 ms | **100.09 ms** | **8.08x** |
+| **$S=1024$** | 2977.43 ms | 1795.84 ms | 1326.68 ms | 1200.86 ms | 895.84 ms | 785.49 ms | **441.86 ms** | **6.74x** |
+
+#### 2. Chỉ Số LLM Chuẩn Mực: TTFT, TPOT & Throughput
+| Chiều Dài Prompt ($S$) | TTFT (Time-To-First-Token) | Prefill Throughput | $\text{TPOT}_{\text{cold}}$ | $\text{TPOT}_{\text{warm}}$ (Ổn định) | Decode Throughput |
+| :---: | :---: | :---: | :---: | :---: | :---: |
+| **$S = 16$** | 26.55 ms | 602.7 tok/s | 3.11 ms | **2.48 ms** | **403.7 tok/s** |
+| **$S = 64$** | 102.29 ms | 625.7 tok/s | 3.20 ms | **2.85 ms** | **351.2 tok/s** |
+| **$S = 256$** | 446.79 ms | 573.0 tok/s | 4.15 ms | **3.68 ms** | **271.7 tok/s** |
+| **$S = 512$** | 1016.85 ms | 503.5 tok/s | 6.42 ms | **5.21 ms** | **191.8 tok/s** |
+| **$S = 1024$** | 2567.36 ms | 398.9 tok/s | 8.65 ms | **6.17 ms** | **162.0 tok/s** |
+
+#### 3. Phân Tách Thời Gian 1 Lớp Transformer ($S=256$, hidden=2560)
+```text
+Tổng thời gian 1 Layer: 1672.35 ms (Prefill Throughput: 153.1 tok/s)
+  [1] Self-Attention (Stage A6) .....   30.02 ms ( 1.8% of layer time)  <-- Attention không còn là bottleneck!
+  [2] QKV Projections ...............  219.74 ms (13.1% of layer time)
+  [3] Output Projection .............  173.00 ms (10.3% of layer time)
+  [4] FFN Projections (Gate/Up/Down)  1247.64 ms (74.6% of layer time)  <-- FFN chiếm 74.6% thời gian
+  [5] RMSNorms + RoPE ...............    1.95 ms ( 0.1% of layer time)
+```
+
+---
+
 ## 🛡️ BỘ KIỂM ĐỊNH MẬT MÃ & BẤT BIẾN TOÁN HỌC
 
 Hệ thống tuân thủ quy trình kiểm định toán học và niêm phong mật mã nghiêm ngặt nhất:
 1. **2,135,241 / 2,135,241 Invariants Verified (100.000%)**: Kiểm tra vét cạn toàn bộ không gian số học tam phân, tính giao hoán, kết hợp, bộ thu gom rác Tri-Color Flatline và chuẩn hóa sóng lượng tử.
-2. **33 / 33 Cross-Tier Differential Tests (100%)**: Kiểm tra sai phân tuyệt đối giữa Interpreter, Baseline JIT, Optimizing JIT và AOT.
+2. **9 / 9 CTest Automated Suites (100% PASS)**: Toàn bộ các suite kiểm thử liên tầng (Frontend, IR, GEMM, AOT, Runtime, Gate 7.4, Gate 7.5, CrossTier, BCE) đều vượt qua.
 3. **Khóa Niêm Phong Mật Mã Cốt Lõi (Cryptographic Milestone Seals)**:
+   - **`GATE_7.4_LLM_RUNTIME_SEAL`**: `tests/gate74_runtime_runner.cpp` (KV Cache Parity $\Delta = 0.0$, Tokenizer BPE, Sampler 7-step, StopMatcher, Hot-path `malloc == 0`).
+   - **`GATE_7.5_EXECUTION_SEAL`**: `tests/gate75_runner.cpp` (Thang Attention $A_0 \to A_6$ gia tốc $8.7\times$, Hợp đồng số học 3 tầng $\max\text{ error} \le 5.96 \times 10^{-7}$, Cosine $1.0$, Single Owner Parallelism).
    - **`G6R.1_FORENSICS_SEAL`**: `test_registry/g6r1_forensics_seal.json`
-   - **`G6R.2.0_EVIDENCE_SEAL`**: `test_registry/g6r2/g6r2_0_evidence.json` (SHA256: `3345E90BF7C0451A9D71271CFFCD5C3E9A3C18E30C4E9827DB2CE5983B2BCD37`)
-   - **`G6R.2.1_VECTORIZATION_SEAL`**: `test_registry/g6r2/g6r2_1_vectorization.json` (SHA256 Toolchain: `A4216602339506E2D77821DA482ECB5934C2E07182BD023ABBD6896EC2B9A81F`)
-   - **`CP5_OSR_DEOPT`**: `403f7ca275c1b69f658ff996c56aa38914b14d2e8e30b6ffc31f47d9aee1942d`
+   - **`G6R.2.0_EVIDENCE_SEAL`**: `test_registry/g6r2/g6r2_0_evidence.json`
+   - **`G6R.2.1_VECTORIZATION_SEAL`**: `test_registry/g6r2/g6r2_1_vectorization.json`
    - **`SEAL_BENCHMARK_CLASSICAL`**: `b8ee756877e5e942f89913bd5cd0b20e920a0cee5d1f6f6f200c45733dcc06d9`
    - **`SEAL_BENCHMARK_QUANTUM_LIMIT`**: `dabd1cf15ef0794c98f416426dd5314dde5e18fd844848c14669a7c6a81113e1`
 
@@ -116,19 +156,19 @@ Hệ thống tuân thủ quy trình kiểm định toán học và niêm phong m
 ## 🚀 HƯỚNG DẪN BẮT ĐẦU NHANH (QUICKSTART)
 
 ### 1. Biên dịch Toolchain từ mã nguồn
-Yêu cầu: GCC hỗ trợ C++20 (MinGW-w64 trên Windows hoặc GCC/Clang trên Linux).
+Yêu cầu: GCC hỗ trợ C++20 (MinGW-w64 trên Windows hoặc GCC/Clang trên Linux) kết hợp OpenMP và AVX2.
 ```powershell
 cd Code
 .\build_toolchain.bat
 ```
 
-### 2. Chạy bộ kiểm thử tự động toàn diện (33 Differential Tests)
+### 2. Chạy bộ kiểm thử tự động toàn diện (9 CTest Suites)
 ```powershell
 cd Code
-.\setunc_test.exe
+ctest --test-dir build --output-on-failure
 ```
 
-### 3. Chạy chương trình ứng dụng mẫu
+### 3. Chạy chương trình ứng dụng & AI suy luận mẫu
 ```powershell
 # Chạy Demo Ứng dụng tổng hợp
 .\setunc.exe run ..\app_demo.stn
@@ -142,8 +182,14 @@ cd Code
 # Chạy Demo Mạch Lượng tử QVM
 .\setunc.exe run ..\quantum_demo.stn
 
-# Chạy Game Rắn Săn Mồi Tam Phân (Giao diện Đồ họa 2D)
-.\setunc.exe run ..\snake_2d_gui.stn
+# Chạy Sinh văn bản AI bản địa (Gate 7.4 & 7.5)
+.\setunc.exe ai generate --model-dir models/bitnet-b1.58 --prompt "Xin chao" --temp 0.7
+
+# Bật giao diện trò chuyện REPL ChatML đa lượt
+.\setunc.exe ai chat --model-dir models/bitnet-b1.58
+
+# Chạy Đối chuẩn Hiệu năng Thực thi LLM chuyên sâu
+.\build\benchmarks\gate75_benchmark.exe
 ```
 
 ### 4. Ví dụ Mã Nguồn Tersun

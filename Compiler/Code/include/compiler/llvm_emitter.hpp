@@ -3,6 +3,7 @@
 #include "compiler/ast.hpp"
 #include "compiler/types.hpp"
 #include "compiler/native_runtime.hpp"
+#include "compiler/canonical_ternary_ir.hpp"
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -59,6 +60,26 @@ public:
 
     // 4. Pure LLVM AOT Compilation Pipeline (.ll -> .exe via LLVM/Clang)
     bool compile_llvm_native(const Program& program, const std::string& output_path, int opt_level = 3);
+
+    // 5. Gate 7.3.3: Contraction Kernel Lowering to LLVM Vector IR
+    //    Lowers TernaryContractionNode + EpilogueStage to <8 x i32> vector operations
+    std::string emit_contraction_llvm_ir(
+        const compiler::TernaryContractionNode& node,
+        const compiler::ContractionSchedule& schedule
+    );
+
+    // Gate 7.3.3 P5: Structural Vector IR to LLVM lowering bridge
+    std::string emit_vector_ir_to_llvm(
+        const compiler::TargetIndependentVectorIR& vir
+    );
+
+    // 6. Standalone contraction kernel compilation (.stn contraction -> .obj / .exe)
+    bool compile_contraction_standalone(
+        const compiler::TernaryContractionNode& node,
+        const compiler::ContractionSchedule& schedule,
+        const std::string& output_path,
+        int opt_level = 3
+    );
 
     // Accessors
     const TargetConfig& config() const { return config_; }

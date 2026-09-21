@@ -3221,6 +3221,11 @@ Khi thực thi mã máy JIT sinh ra bởi OSR, trình biên dịch thực hiện
 ### Những thành tựu kỹ thuật đã làm chủ trong Chương 37:
 - Làm chủ kỹ thuật **On-Stack Replacement (OSR)**, cho phép máy ảo chuyển đổi động cơ thực thi từ Bytecode sang Native Machine Code ngay giữa chu kỳ của vòng lặp nóng.
 - Hiểu sâu sắc sự khác biệt về mặt kiến trúc bộ nhớ giữa đối tượng tham chiếu Heap thông thường và **Cấu trúc phẳng (Flat Structs)**: loại bỏ con trỏ trung gian, tận dụng tối đa CPU Spatial Locality.
+- **Tối Ưu Hóa Vi Kiến Trúc Gate 6R (Living Architecture Knowledge)**:
+  - **W1 (Direct Native Recursion)**: Đệ quy sâu không tràn stack nhờ Direct Assembly Call và tối ưu khung frame ($3.48\text{ ms}$).
+  - **W2 (BCE Hoisting)**: Nhấc điều kiện kiểm tra biên và con trỏ mảng ra ngoài Outermost Preheader, triệt tiêu $100\%$ rẽ nhánh sai trong thân vòng lặp ($3.75\text{ ms}$ - xem [ADR-008](file:///d:/New%20PJ/Ternary/Compiler/Doc/adr/ADR-008-bounds-check-elimination-hoisting.md)).
+  - **W3 (AVX2 SIMD Vectorization)**: Nhân vector song song 256-bit 4 làn ($4.88\text{ ms}$ - xem [ADR-009](file:///d:/New%20PJ/Ternary/Compiler/Doc/adr/ADR-009-avx2-simd-stride1-vectorization.md)).
+  - **W4 (Scalar Replacement of Aggregates - SRA)**: Phân tích thoát triệt tiêu hoàn toàn cấp phát heap trong vòng lặp lồng ($0.94\text{ ms}$ - xem [ADR-007](file:///d:/New%20PJ/Ternary/Compiler/Doc/adr/ADR-007-scalar-replacement-of-aggregates.md)).
 - Kiểm chứng thực nghiệm bộ tứ benchmark kinh điển W1 - W4, xác nhận Tersun Native AOT đạt tốc độ cập nhật đối tượng chấn động $0.56\text{ ms}$, vượt xa Java ($7.27\times$) và Python ($72.5\times$).
 
 ### Cầu nối sang Chương 38 (Đỉnh Cao Giáo Trình):
@@ -3447,20 +3452,181 @@ Trong hàm `apply_single_qubit_gate()`, các vòng lặp biến đổi trên $2^
 
 ---
 
-## 9. TỔNG KẾT & KHÉP LẠI TOÀN BỘ GIÁO TRÌNH (Curriculum Grand Finale)
+---
 
-### Những thành tựu kỹ thuật đã làm chủ trong Chương 38:
-- Thấu hiểu bản chất toán học của vector trạng thái lượng tử và sự bùng nổ hàm mũ không gian Hilbert $O(2^N)$.
-- Làm chủ kỹ thuật **In-Place Strided Bitwise Transformation**: loại bỏ hoàn toàn ma trận phụ và bộ nhớ đệm trung gian, đạt hiệu quả sử dụng RAM tối ưu $100\%$.
-- Hiện thực hóa trọn vẹn các thuật toán lượng tử kinh điển: thuật toán tìm kiếm Grover và Biến đổi Fourier lượng tử (QFT).
-- Kiểm chứng thực nghiệm giới hạn vật lý phần cứng máy tính cá nhân: vận hành thành công $N = 29\text{ Qubits}$ ($536.870.912$ trạng thái phức, $8.59\text{ GB}$ RAM) trong $70.98\text{ s}$ và kích hoạt cơ chế phòng vệ an toàn tại mốc $N = 30$.
+## PHẦN XI: LẬP TRÌNH MÔ HÌNH AI TAM PHÂN & LLM RUNTIME BẢN ĐỊA (NATIVE TERNARY LLM & INFERENCE PIPELINE)
+
+---
+
+<a id="ch39-model-package"></a>
+# CHƯƠNG 39: QUẢN LÝ GÓI MÔ HÌNH & ĐỊNH DẠNG CHAT: SAFETENSORS, MODELMANIFEST & CHATTEMPLATE (GATE 7.4)
+### *(HuggingFace SafeTensors Parsing, ModelManifest Topology, ChatML Tagging & Multi-Turn Conversations)*
+
+---
+
+## 1. ĐẶT VẤN ĐỀ (MOTIVATION)
+Khi triển khai các mô hình AI ngôn ngữ lớn (LLM) trong môi trường sản xuất thực tế, bài toán kỹ nghệ không chỉ dừng lại ở thuật toán nhân ma trận mà nằm ở khâu **quản lý tài nguyên gói mô hình (Model Asset Packaging)**:
+1. **Rủi ro bảo mật từ định dạng Pickle (`.bin`/`.pt`)**: Các định dạng checkpoint cũ của Python cho phép thực thi mã tùy ý khi giải mã dữ liệu, mở ra lỗ hổng bảo mật nghiêm trọng. Định dạng hiện đại **SafeTensors** khắc phục triệt để điều này bằng cách lưu trữ header JSON phẳng kèm các khối dữ liệu nhị phân thô (Raw Tensor Slices).
+2. **Đa dạng hóa siêu tham số kiến trúc**: Mỗi mô hình (BitNet-b1.58, LLaMA-3, Mistral) có các tham số hình học khác nhau: tỷ lệ Grouped-Query Attention (GQA), RoPE theta ($10^4$ vs $5 \times 10^5$), mảng nhiều mã dừng EOS token IDs (`[128001, 128008, 128009]`). Nếu mã hóa cứng (hardcode) trong mã nguồn, hệ thống sẽ mất khả năng tương thích.
+3. **Chuẩn hóa khuôn mẫu hội thoại đa lượt**: Các mô hình chỉ nhận diện được vai trò của người nói thông qua các thẻ đặc biệt (`<|im_start|>system`, `<|im_start|>user`, `<|im_start|>assistant`). Sai lệch một ký tự xuống dòng `\n` trong mẫu ChatML sẽ làm mô hình suy giảm khả năng suy luận.
+
+---
+
+## 2. KIẾN TRÚC GÓI MÔ HÌNH: `ModelPackage` & `ModelManifest`
+
+Trong Tersun, việc quản lý mô hình được chuẩn hóa tại [`include/tensor/nn/format/`](file:///d:/New%20PJ/Ternary/Compiler/Code/include/tensor/nn/format/):
+
+```
+                       ┌──────────────────────────────────────┐
+                       │          Thư mục Mô hình             │
+                       │ ├── config.json                      │
+                       │ ├── generation_config.json           │
+                       │ ├── tokenizer.json                   │
+                       │ └── model.safetensors                │
+                       └──────────────────┬───────────────────┘
+                                          │
+       ┌──────────────────────────────────┼──────────────────────────────────┐
+       ▼                                  ▼                                  ▼
+┌──────────────────┐             ┌──────────────────┐              ┌──────────────────┐
+│  ModelManifest   │             │   SafeTensors    │              │   ChatTemplate   │
+│  - hidden_dim    │             │  - Tensor Offsets│              │  - ChatML Formatter│
+│  - num_heads/kv  │             │  - Direct mmap / │              │  - System Prompt │
+│  - eos_token_ids │             │    Zero-Copy Load│              │  - Multi-Turn Tag│
+└──────────────────┘             └──────────────────┘              └──────────────────┘
+```
+
+### 2.1. Phân Tích Cấu Hình `ModelManifest` Tự Chủ
+Lớp [`ModelManifest`](file:///d:/New%20PJ/Ternary/Compiler/Code/src/tensor/nn/format/model_manifest.cpp) tự động phân tích `config.json` mà không cần bất kỳ thư viện JSON bên ngoài nào:
+```cpp
+ModelManifest manifest;
+if (!manifest.load_from_file("models/bitnet-b1.58/config.json")) {
+    std::cerr << "Loi nap cau hinh mo hinh!\n";
+}
+
+std::cout << "Layers: " << manifest.num_layers << "\n"
+          << "Hidden Dim: " << manifest.hidden_dim << "\n"
+          << "Query Heads: " << manifest.num_heads << "\n"
+          << "KV Heads: " << manifest.num_kv_heads << " (GQA " << manifest.gqa_ratio() << ":1)\n";
+```
+
+### 2.2. Khuôn Mẫu Hội Thoại ChatML Với `ChatTemplate`
+Lớp [`ChatTemplate`](file:///d:/New%20PJ/Ternary/Compiler/Code/src/tensor/nn/format/chat_template.cpp) quản lý danh sách [`ChatMessage`](file:///d:/New%20PJ/Ternary/Compiler/Code/include/tensor/nn/format/chat_template.hpp) và tự động lắp ráp khuôn mẫu ChatML chuẩn mực:
+```cpp
+ChatTemplate chat(ChatFormat::ChatML);
+chat.set_system_prompt("Ban la tro ly AI thong minh xay dung tren nen tang Tersun.");
+chat.add_user_message("So hoc tam phan can bang la gi?");
+
+// Xuất chuỗi prompt hoàn chỉnh có chứa thẻ đóng mở im_start / im_end
+std::string formatted_prompt = chat.format_prompt(true /* add_generation_prompt */);
+```
+
+---
+
+<a id="ch40-autoregressive-cli"></a>
+# CHƯƠNG 40: LẬP TRÌNH SUY LUẬN TỰ HỒI QUY & THỰC THI CLI `setunc ai` (GATE 7.4 & 7.5)
+### *(InferenceSession Lifecycle, Autoregressive Loop, Hot-Path AllocationProbe & CLI Commands)*
+
+---
+
+## 1. ĐẶT VẤN ĐỀ (MOTIVATION)
+Suy luận mô hình ngôn ngữ lớn bản địa yêu cầu phối hợp nhịp nhàng giữa:
+1. **Pha Nạp Ngữ Cảnh (Prefill Phase)**: Tiếp nhận toàn bộ chuỗi token của prompt ($S$ tokens), tính toán song song qua ma trận và điền đầy bộ nhớ đệm `KVCache`.
+2. **Pha Sinh Tự Hồi Quy (Autoregressive Decode Phase)**: Sinh từng token một, đưa token mới sinh quay ngược lại làm đầu vào cho bước tiếp theo.
+3. **Kiểm Soát Tài Nguyên Tuyệt Đối**: Trong quá trình giải mã 500 – 1000 tokens liên tục, nếu phát sinh lời gọi `malloc` hoặc rò rỉ bộ nhớ, hệ thống sẽ bị giật khung hình (stuttering) và vi phạm yêu cầu thời gian thực.
+
+---
+
+## 2. THIẾT KẾ PHIÊN SUY LUẬN `InferenceSession`
+
+Lớp [`InferenceSession`](file:///d:/New%20PJ/Ternary/Compiler/Code/include/tensor/nn/runtime/inference_session.hpp) gói gọn toàn bộ vòng đời suy luận của một tác vụ LLM:
+
+```cpp
+#include "tensor/nn/runtime/inference_session.hpp"
+
+int main() {
+    InferenceSession session;
+    
+    // 1. Khoi tao phien suy luan va cap phat truoc toan bo bo nho dem
+    SessionConfig config;
+    config.model_dir = "models/bitnet-b1.58";
+    config.max_context_length = 2048;
+    config.temperature = 0.7f;
+    config.top_p = 0.9f;
+    config.repetition_penalty = 1.15f;
+    
+    session.initialize(config);
+    
+    // 2. Thuc thi sinh van ban (Prefill + Incremental Decode)
+    std::string prompt = "Xin chao, ban la ai?";
+    
+    session.generate_stream(prompt, [](std::string_view token_text) {
+        std::cout << token_text << std::flush;
+        return true; // Tiep tuc sinh
+    });
+    
+    return 0;
+}
+```
+
+### 2.1. Vòng Lặp Giải Mã Không Cấp Phát Bộ Nhớ (Zero-Allocation Decode Loop)
+Bên trong [`InferenceSession::generate_step()`](file:///d:/New%20PJ/Ternary/Compiler/Code/src/tensor/nn/runtime/inference_session.cpp):
+1. **Nạp Token Input**: Nạp `token_id` vào thanh ghi input của mô hình.
+2. **Thực Thi Mạng Nơ-ron Transformer**:
+   - `BitLinear` tính toán Embedding $\to$ `RMSNorm` $\to$ `AttentionKernels` (Stage $A_6$ GQA Parallel) $\to$ `BitLinear` FFN (SwiGLU) $\to$ `RMSNorm` $\to$ LM Head.
+   - Toàn bộ tính toán diễn ra trên vùng nhớ `EdgeArena` được phân bổ từ trước; số lần gọi `malloc` đo được qua `AllocationProbe` là **chính xác bằng 0**.
+3. **Bộ Lấy Mẫu Hợp Đồng 7 Bước (Sampler)**: Biến đổi logits thành token tiếp theo.
+4. **Kiểm Tra Điểm Dừng (StopMatcher)**: Đối chiếu tức thì `token_id` với mảng `stop_token_ids` mà không giải mã chuỗi.
+
+---
+
+## 3. SỬ DỤNG BỘ GIAO DIỆN DÒNG LỆNH `setunc ai`
+
+Trình biên dịch Tersun tích hợp sẵn bộ lệnh chuyên dụng cho trí tuệ nhân tạo thông qua lệnh `setunc ai`:
+
+### 3.1. Chế Độ Sinh Văn Bản Đơn Lần (`setunc ai generate`)
+```bash
+.\setunc.exe ai generate \
+    --model-dir models/bitnet-b1.58 \
+    --prompt "Viet mot bai tho ve ngon ngu lap trinh tam phan" \
+    --temp 0.8 \
+    --top-k 40 \
+    --top-p 0.95 \
+    --rep-penalty 1.1 \
+    --max-tokens 128
+```
+
+### 3.2. Chế Độ Trò Chuyện Tương Tác Đa Lượt (`setunc ai chat`)
+Khởi động giao diện trò chuyện REPL trực quan, tự động quản lý lịch sử và áp dụng khuôn mẫu ChatML:
+```bash
+.\setunc.exe ai chat --model-dir models/bitnet-b1.58
+```
+```text
+===================================================================
+             TERSUN NATIVE LLM REPL CHAT (BitNet b1.58)            
+===================================================================
+User > Chao ban, ban co the tinh toan tren so hoc tam phan khong?
+Assistant > Xin chao! Toi duoc xay dung tren nen tang ngon ngu Tersun
+va kien truc TAFPU Q(sqrt(3)), cho phep toi tinh toan dai so tam phan
+can bang voi do chinh xac tuyet doi 0% sai so lam tron!
+```
+
+---
+
+## 4. TỔNG KẾT & KHÉP LẠI TOÀN BỘ GIÁO TRÌNH (Curriculum Grand Finale)
+
+### Những thành tựu kỹ thuật đã làm chủ trong Chương 39 & 40:
+- Nạp trọng số từ định dạng an toàn `SafeTensors` và ánh xạ siêu tham số qua `ModelManifest`.
+- Chuẩn hóa quản lý hội thoại đa lượt bằng khuôn mẫu `ChatTemplate` (ChatML).
+- Xây dựng hoàn chỉnh phiên suy luận `InferenceSession` kết hợp `KVCache` xoay vòng và vi nhân FlashAttention SIMD AVX2.
+- Bảo tồn tuyệt đối bất biến `malloc == 0` trong suốt quá trình sinh tự hồi quy.
+- Tự động hóa trải nghiệm người dùng với các lệnh CLI tiện ích `setunc ai generate` và `setunc ai chat`.
 
 ---
 
 # 🎓 TỔNG KẾT TOÀN DIỆN GIÁO TRÌNH LẬP TRÌNH TERSUN TỪ NGUYÊN LÝ THỨ NHẤT
-**(CHẶNG ĐƯỜNG 38 CHƯƠNG TỪ NGUYÊN LÝ CỐT LÕI ĐẾN ĐỈNH CAO HỆ THỐNG)**
+**(CHẶNG ĐƯỜNG 40 CHƯƠNG TỪ NGUYÊN LÝ CỐT LÕI ĐẾN ĐỈNH CAO HỆ THỐNG)**
 
-Trải qua **38 chương chuyên sâu**, bạn đã hoàn thành một cuộc hành trình kỹ thuật vô tiền khoáng hậu: từ những viên gạch logic đầu tiên cho đến một hệ sinh thái ngôn ngữ lập trình hoàn chỉnh ở đẳng cấp công nghiệp:
+Trải qua **40 chương chuyên sâu** được tổ chức chặt chẽ thành **11 Phần lớn**, bạn đã hoàn thành một cuộc hành trình kỹ thuật vô tiền khoáng hậu: từ những viên gạch logic đầu tiên cho đến một hệ sinh thái ngôn ngữ lập trình hoàn chỉnh ở đẳng cấp công nghiệp:
 
 ```
                                   BẢN ĐỒ TOÀN CẢNH HỆ SINH THÁI TERSUN
@@ -3494,25 +3660,29 @@ Trải qua **38 chương chuyên sâu**, bạn đã hoàn thành một cuộc h�
 ├────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ PHẦN X: HIỆU NĂNG TỐI THƯỢNG VỚI JIT, OSR & MÔ PHỎNG LƯỢNG TỬ ĐẠI QUY MÔ (Chương 37 - 38)            │
 │   Thay Khung Giữa Vòng Lặp (OSR), Flat Structs 0.56ms (W1-W4), QVM Chạm Trần N=29 Qubits (536M States).│
+├────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ PHẦN XI: LẬP TRÌNH MÔ HÌNH AI TAM PHÂN & LLM RUNTIME BẢN ĐỊA (Chương 39 - 40)                         │
+│   SafeTensors, ModelManifest, ChatML Format, Zero-Alloc Autoregressive Session, CLI setunc ai.         │
 └────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Lời kết & Tầm nhìn Tương lai (The Future Roadmap):
-Tersun không dừng lại ở một dự án nghiên cứu hay một trình biên dịch mô phỏng. Bằng việc làm chủ **38 chương** của giáo trình này, bạn đã nắm giữ trong tay bản thiết kế của một cuộc cách mạng điện toán thế hệ mới:
+Tersun không dừng lại ở một dự án nghiên cứu hay một trình biên dịch mô phỏng. Bằng việc làm chủ **40 chương** của giáo trình này, bạn đã nắm giữ trong tay bản thiết kế của một cuộc cách mạng điện toán thế hệ mới:
 1. **Phần Cứng Silicon Setun Bản Địa**: Sử dụng cờ lệnh `setunc --emit-verilog` để tổng hợp kiến trúc TAFPU và vi xử lý Setun-70 trực tiếp lên các chip phần cứng FPGA và ASIC.
 2. **Hệ Điều Hành Vi Nhân Tam Phân (Ternary Microkernel)**: Tận dụng cơ chế rẽ nhánh 3 hướng `Branch3`, trạng thái `Nil` phần cứng và mô hình kênh truyền thông điệp Actor để xây dựng hệ điều hành an toàn tuyệt đối.
 3. **Mạng Lưới Điện Toán Lượng Tử Tam Phân Toàn Cầu**: Kết hợp máy ảo QVM và chuẩn OpenQASM 3.0 để đưa thuật toán Grover và QFT tam phân lên các bộ xử lý lượng tử siêu dẫn của tương lai.
+4. **Hệ Thống Trí Tuệ Nhân Tạo Bản Địa Thế Hệ Mới (Tersun Native AI Engine)**: Tận dụng phép nhân ma trận tam phân không nhân (Multiplication-Free BitNet GEMM) và vi nhân FlashAttention SIMD AVX2 để triển khai các mô hình AI ngôn ngữ lớn trực tiếp trên vi xử lý CPU mà không cần GPU rời đắt đỏ.
 
 *Xin chúc mừng bạn đã hoàn thành xuất sắc toàn bộ Giáo trình Lập trình Tersun từ Nguyên lý Thứ nhất!*
 
-
-
+---
 
 **LỜI BẠT CỦA TÁC GIẢ**
 
 Trước hết, tôi xin gửi lời chào và lời tri ân sâu sắc nhất đến tất cả các bạn — những người đã dành quỹ thời gian quý báu của mình để kiên trì đồng hành cùng tôi đi đến tận những trang cuối cùng của giáo trình Tersun này.
 
-Tôi hiểu rằng, hành trình vừa qua không hề dễ dàng. Để tiếp cận một hệ tư duy hoàn toàn mới — từ đại số tam phân cân bằng, không gian số thực $\mathbb{Q}(\sqrt{3})$, kiến trúc vi xử lý Setun, cho đến máy ảo lượng tử QVM — đó là một quá trình vô cùng gian nan, đòi hỏi sự kiên nhẫn tột cùng và không ít những giờ phút trăn trở trước màn hình máy tính. Sự nỗ lực và bền bỉ của các bạn chính là món quà lớn nhất dành cho công trình này.
+Tôi hiểu rằng, hành trình vừa qua không hề dễ dàng. Để tiếp cận một hệ tư duy hoàn toàn mới — từ đại số tam phân cân bằng, không gian số thực $\mathbb{Q}(\sqrt{3})$, kiến trúc vi xử lý Setun, máy ảo lượng tử QVM, cho đến tầng suy luận LLM bản địa không tốn heap — đó là một quá trình vô cùng gian nan, đòi hỏi sự kiên nhẫn tột cùng và không ít những giờ phút trăn trở trước màn hình máy tính. Sự nỗ lực và bền bỉ của các bạn chính là món quà lớn nhất dành cho công trình này.
+
 
 Bản thân tôi không phải một vĩ nhân công nghệ, cũng chẳng phải một nhân vật tầm cỡ. Tôi cũng như các bạn, chỉ đơn thuần là một người viết mã bằng xương bằng thịt. Tôi tạo ra Tersun xuất phát từ chính khát khao của bản thân: xây dựng nên một ngôn ngữ mà tôi hằng ao ước, nhằm giải quyết những bài toán nhức nhối của chính mình và nỗ lực bù đắp những giới hạn mà các thế hệ ngôn ngữ đi trước chưa thể chạm tới.
 

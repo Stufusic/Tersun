@@ -1,0 +1,516 @@
+{
+  "gate": "7.1",
+  "spec": "G7.1-SOC Canonical Vector Corpus",
+  "version": "1.0.0",
+  "oracle": "C++20 Scalar Ladder Reference (-fno-tree-vectorize)",
+  "test_suites": [
+    {
+      "suite": "A1",
+      "kernel": "K0_decode",
+      "vectors": [
+        {
+          "id": "A1-001",
+          "seed": 1000,
+          "count": 1,
+          "packed_bytes": 1,
+          "expected_checksum": "0x00000000"
+        },
+        {
+          "id": "A1-002",
+          "seed": 1037,
+          "count": 2,
+          "packed_bytes": 1,
+          "expected_checksum": "0x00000001"
+        },
+        {
+          "id": "A1-003",
+          "seed": 1074,
+          "count": 3,
+          "packed_bytes": 1,
+          "expected_checksum": "0x00001ee1"
+        },
+        {
+          "id": "A1-004",
+          "seed": 1111,
+          "count": 4,
+          "packed_bytes": 1,
+          "expected_checksum": "0x0000011e"
+        },
+        {
+          "id": "A1-005",
+          "seed": 1148,
+          "count": 7,
+          "packed_bytes": 2,
+          "expected_checksum": "0xe80a2444"
+        },
+        {
+          "id": "A1-006",
+          "seed": 1185,
+          "count": 8,
+          "packed_bytes": 2,
+          "expected_checksum": "0xaad0d67e"
+        },
+        {
+          "id": "A1-007",
+          "seed": 1222,
+          "count": 15,
+          "packed_bytes": 4,
+          "expected_checksum": "0xd72ecf9f"
+        },
+        {
+          "id": "A1-008",
+          "seed": 1259,
+          "count": 16,
+          "packed_bytes": 4,
+          "expected_checksum": "0xd2ae9061"
+        },
+        {
+          "id": "A1-009",
+          "seed": 1296,
+          "count": 17,
+          "packed_bytes": 5,
+          "expected_checksum": "0x8d7e36db"
+        },
+        {
+          "id": "A1-010",
+          "seed": 1333,
+          "count": 31,
+          "packed_bytes": 8,
+          "expected_checksum": "0x5c0f6c7e"
+        },
+        {
+          "id": "A1-011",
+          "seed": 1370,
+          "count": 32,
+          "packed_bytes": 8,
+          "expected_checksum": "0x51006725"
+        },
+        {
+          "id": "A1-012",
+          "seed": 1407,
+          "count": 33,
+          "packed_bytes": 9,
+          "expected_checksum": "0xa2643483"
+        },
+        {
+          "id": "A1-013",
+          "seed": 1444,
+          "count": 64,
+          "packed_bytes": 16,
+          "expected_checksum": "0x417ddd79"
+        },
+        {
+          "id": "A1-014",
+          "seed": 1481,
+          "count": 128,
+          "packed_bytes": 32,
+          "expected_checksum": "0x9939870a"
+        },
+        {
+          "id": "A1-015",
+          "seed": 1518,
+          "count": 784,
+          "packed_bytes": 196,
+          "expected_checksum": "0xd09dda08"
+        }
+      ]
+    },
+    {
+      "suite": "A2",
+      "kernel": "K2_dot_product",
+      "vectors": [
+        {
+          "id": "A2-001",
+          "seed": 2000,
+          "K": 1,
+          "expected_result": 0,
+          "expected_checksum": "0x00000000"
+        },
+        {
+          "id": "A2-002",
+          "seed": 2043,
+          "K": 2,
+          "expected_result": -13,
+          "expected_checksum": "0xfffffff3"
+        },
+        {
+          "id": "A2-003",
+          "seed": 2086,
+          "K": 3,
+          "expected_result": 0,
+          "expected_checksum": "0x00000000"
+        },
+        {
+          "id": "A2-004",
+          "seed": 2129,
+          "K": 4,
+          "expected_result": -161,
+          "expected_checksum": "0xffffff5f"
+        },
+        {
+          "id": "A2-005",
+          "seed": 2172,
+          "K": 7,
+          "expected_result": -96,
+          "expected_checksum": "0xffffffa0"
+        },
+        {
+          "id": "A2-006",
+          "seed": 2215,
+          "K": 8,
+          "expected_result": 18,
+          "expected_checksum": "0x00000012"
+        },
+        {
+          "id": "A2-007",
+          "seed": 2258,
+          "K": 15,
+          "expected_result": 473,
+          "expected_checksum": "0x000001d9"
+        },
+        {
+          "id": "A2-008",
+          "seed": 2301,
+          "K": 16,
+          "expected_result": 48,
+          "expected_checksum": "0x00000030"
+        },
+        {
+          "id": "A2-009",
+          "seed": 2344,
+          "K": 17,
+          "expected_result": 156,
+          "expected_checksum": "0x0000009c"
+        },
+        {
+          "id": "A2-010",
+          "seed": 2387,
+          "K": 31,
+          "expected_result": 45,
+          "expected_checksum": "0x0000002d"
+        },
+        {
+          "id": "A2-011",
+          "seed": 2430,
+          "K": 32,
+          "expected_result": 135,
+          "expected_checksum": "0x00000087"
+        },
+        {
+          "id": "A2-012",
+          "seed": 2473,
+          "K": 33,
+          "expected_result": 124,
+          "expected_checksum": "0x0000007c"
+        },
+        {
+          "id": "A2-013",
+          "seed": 2516,
+          "K": 64,
+          "expected_result": -6,
+          "expected_checksum": "0xfffffffa"
+        },
+        {
+          "id": "A2-014",
+          "seed": 2559,
+          "K": 128,
+          "expected_result": 575,
+          "expected_checksum": "0x0000023f"
+        },
+        {
+          "id": "A2-015",
+          "seed": 2602,
+          "K": 784,
+          "expected_result": -807,
+          "expected_checksum": "0xfffffcd9"
+        }
+      ]
+    },
+    {
+      "suite": "A3",
+      "kernel": "K3_gemv",
+      "vectors": [
+        {
+          "id": "A3-001",
+          "seed": 3000,
+          "N": 1,
+          "K": 1,
+          "expected_checksum": "0x00000000"
+        },
+        {
+          "id": "A3-002",
+          "seed": 3053,
+          "N": 1,
+          "K": 3,
+          "expected_checksum": "0xffffffe8"
+        },
+        {
+          "id": "A3-003",
+          "seed": 3106,
+          "N": 2,
+          "K": 5,
+          "expected_checksum": "0xffffedab"
+        },
+        {
+          "id": "A3-004",
+          "seed": 3159,
+          "N": 4,
+          "K": 15,
+          "expected_checksum": "0x00723cbd"
+        },
+        {
+          "id": "A3-005",
+          "seed": 3212,
+          "N": 4,
+          "K": 16,
+          "expected_checksum": "0x002859cc"
+        },
+        {
+          "id": "A3-006",
+          "seed": 3265,
+          "N": 4,
+          "K": 17,
+          "expected_checksum": "0xffd0d216"
+        },
+        {
+          "id": "A3-007",
+          "seed": 3318,
+          "N": 8,
+          "K": 31,
+          "expected_checksum": "0x61bf7bdf"
+        },
+        {
+          "id": "A3-008",
+          "seed": 3371,
+          "N": 8,
+          "K": 32,
+          "expected_checksum": "0x63beafed"
+        },
+        {
+          "id": "A3-009",
+          "seed": 3424,
+          "N": 8,
+          "K": 33,
+          "expected_checksum": "0x2d990667"
+        },
+        {
+          "id": "A3-010",
+          "seed": 3477,
+          "N": 128,
+          "K": 784,
+          "expected_checksum": "0xbbbf0b4e"
+        },
+        {
+          "id": "A3-011",
+          "seed": 3530,
+          "N": 10,
+          "K": 128,
+          "expected_checksum": "0xed3c2389"
+        }
+      ]
+    },
+    {
+      "suite": "A4",
+      "kernel": "K4_gemm",
+      "vectors": [
+        {
+          "id": "A4-001",
+          "seed": 4000,
+          "M": 1,
+          "N": 1,
+          "K": 1,
+          "expected_checksum": "0x00000028"
+        },
+        {
+          "id": "A4-002",
+          "seed": 4067,
+          "M": 2,
+          "N": 4,
+          "K": 15,
+          "expected_checksum": "0x8c9a90f9"
+        },
+        {
+          "id": "A4-003",
+          "seed": 4134,
+          "M": 2,
+          "N": 4,
+          "K": 16,
+          "expected_checksum": "0xf84a5b43"
+        },
+        {
+          "id": "A4-004",
+          "seed": 4201,
+          "M": 2,
+          "N": 4,
+          "K": 17,
+          "expected_checksum": "0x1f78ae4b"
+        },
+        {
+          "id": "A4-005",
+          "seed": 4268,
+          "M": 4,
+          "N": 8,
+          "K": 32,
+          "expected_checksum": "0x8ea98580"
+        },
+        {
+          "id": "A4-006",
+          "seed": 4335,
+          "M": 1,
+          "N": 10,
+          "K": 128,
+          "expected_checksum": "0xb2c6f8a1"
+        }
+      ]
+    },
+    {
+      "suite": "A5",
+      "kernel": "K5_gemm_bias",
+      "vectors": [
+        {
+          "id": "A5-001",
+          "seed": 5000,
+          "M": 1,
+          "N": 4,
+          "K": 15,
+          "expected_checksum": "0xff635b5a"
+        },
+        {
+          "id": "A5-002",
+          "seed": 5079,
+          "M": 1,
+          "N": 4,
+          "K": 16,
+          "expected_checksum": "0xfe91db81"
+        },
+        {
+          "id": "A5-003",
+          "seed": 5158,
+          "M": 1,
+          "N": 4,
+          "K": 17,
+          "expected_checksum": "0x0150411d"
+        },
+        {
+          "id": "A5-004",
+          "seed": 5237,
+          "M": 2,
+          "N": 4,
+          "K": 17,
+          "expected_checksum": "0x196be6b8"
+        },
+        {
+          "id": "A5-005",
+          "seed": 5316,
+          "M": 1,
+          "N": 128,
+          "K": 784,
+          "expected_checksum": "0xd09668f7"
+        },
+        {
+          "id": "A5-006",
+          "seed": 5395,
+          "M": 1,
+          "N": 10,
+          "K": 128,
+          "expected_checksum": "0x235de739"
+        }
+      ]
+    },
+    {
+      "suite": "A6",
+      "kernel": "K6_gemm_bias_relu",
+      "vectors": [
+        {
+          "id": "A6-001",
+          "seed": 6000,
+          "M": 1,
+          "N": 4,
+          "K": 15,
+          "expected_checksum": "0x00039e06"
+        },
+        {
+          "id": "A6-002",
+          "seed": 6089,
+          "M": 1,
+          "N": 4,
+          "K": 16,
+          "expected_checksum": "0x017138d1"
+        },
+        {
+          "id": "A6-003",
+          "seed": 6178,
+          "M": 1,
+          "N": 4,
+          "K": 17,
+          "expected_checksum": "0x0001f345"
+        },
+        {
+          "id": "A6-004",
+          "seed": 6267,
+          "M": 2,
+          "N": 4,
+          "K": 17,
+          "expected_checksum": "0x261c8a6e"
+        },
+        {
+          "id": "A6-005",
+          "seed": 6356,
+          "M": 1,
+          "N": 128,
+          "K": 784,
+          "expected_checksum": "0xb653a052"
+        },
+        {
+          "id": "A6-006",
+          "seed": 6445,
+          "M": 1,
+          "N": 10,
+          "K": 128,
+          "expected_checksum": "0x07032ce4"
+        }
+      ]
+    },
+    {
+      "suite": "A7",
+      "kernel": "BitNetMnist_forward",
+      "vectors": [
+        {
+          "id": "A7-001",
+          "model_seed": 42,
+          "input_seed": 12387,
+          "expected_prediction": 5,
+          "expected_logits_checksum": "0x688c579d"
+        },
+        {
+          "id": "A7-002",
+          "model_seed": 101,
+          "input_seed": 12446,
+          "expected_prediction": 2,
+          "expected_logits_checksum": "0xeed6ae58"
+        },
+        {
+          "id": "A7-003",
+          "model_seed": 777,
+          "input_seed": 13122,
+          "expected_prediction": 1,
+          "expected_logits_checksum": "0x9d92d7dd"
+        },
+        {
+          "id": "A7-004",
+          "model_seed": 2026,
+          "input_seed": 14371,
+          "expected_prediction": 6,
+          "expected_logits_checksum": "0x0e14f58a"
+        },
+        {
+          "id": "A7-005",
+          "model_seed": 9999,
+          "input_seed": 22344,
+          "expected_prediction": 9,
+          "expected_logits_checksum": "0x5f4f3440"
+        }
+      ]
+    }
+  ]
+}

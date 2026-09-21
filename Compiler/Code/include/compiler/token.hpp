@@ -5,6 +5,8 @@
 #include <string>
 #include <string_view>
 #include <variant>
+#include <vector>
+#include <cstdint>
 
 namespace setun {
 
@@ -19,6 +21,7 @@ enum class TokenType {
     FLOAT_LITERAL,
     STRING_LITERAL,
     TERNARY_LITERAL,  // e.g. @10T1, @1TTT
+    LITERAL_TRIT_VEC, // e.g. 0t+0-, 0t10T fixed array literal
     TAFPU_LITERAL,    // e.g. [14, 25, -2]
 
     // Keywords
@@ -58,6 +61,7 @@ enum class TokenType {
     // Types
     TYPE_INT,
     TYPE_TRYTE,
+    TYPE_TRIT,
     TYPE_TAF3,
     TYPE_BOOL,
 
@@ -145,6 +149,7 @@ struct Token {
     std::string string_val;
     TafpuNum tafpu_val{};
     int16_t tryte_val{0};
+    std::vector<int8_t> trit_vec_val{};
 
     std::string to_string() const;
 };

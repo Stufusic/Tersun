@@ -1,0 +1,14 @@
+{
+  "gate": "7.1",
+  "host_arch": "x86-64",
+  "requested_backend": "avx2",
+  "effective_backend": "avx2",
+  "status": "PASS",
+  "total_vectors_tested": 64,
+  "passed_vectors": 64,
+  "failed_vectors": 0,
+  "steady_state_heap_allocations": 431,
+  "elapsed_ms": 8.175,
+  "failures": [
+  ]
+}

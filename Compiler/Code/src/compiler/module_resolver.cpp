@@ -46,9 +46,13 @@ ModuleResolver::ModuleResolver(ArenaAllocator& arena)
     if (!exe_dir.empty()) {
         add_include_path(exe_dir + "/include/stdtaf");
         add_include_path(exe_dir + "/Code/include/stdtaf");
+        add_include_path(exe_dir + "/../include/stdtaf");
+        add_include_path(exe_dir + "/../../include/stdtaf");
     }
     add_include_path("include/stdtaf");
     add_include_path("Code/include/stdtaf");
+    add_include_path("../include/stdtaf");
+    add_include_path("../../include/stdtaf");
     add_include_path(".");
 }
 
@@ -85,6 +89,8 @@ std::string ModuleResolver::resolve_path(const std::string& module_spec, const s
         candidates.push_back(sub + ".stn");
         candidates.push_back("include/stdtaf/" + sub + ".stn");
         candidates.push_back("Code/include/stdtaf/" + sub + ".stn");
+        candidates.push_back("../include/stdtaf/" + sub + ".stn");
+        candidates.push_back("../../include/stdtaf/" + sub + ".stn");
         candidates.push_back("Projects/std/" + sub + ".stn");
     }
 
@@ -265,8 +271,14 @@ void ModuleResolver::rewrite_expr_references(
             rewrite_expr_references(e.object, rename_map);
         } else if constexpr (std::is_same_v<T, IndexExpr>) {
             rewrite_expr_references(e.object, rename_map);
-            rewrite_expr_references(e.index, rename_map);
+            if (!e.indices.empty()) {
+                for (Expr* idx : e.indices) rewrite_expr_references(idx, rename_map);
+            } else {
+                rewrite_expr_references(e.index, rename_map);
+            }
         } else if constexpr (std::is_same_v<T, ArrayLiteralExpr>) {
+            for (Expr* el : e.elements) rewrite_expr_references(el, rename_map);
+        } else if constexpr (std::is_same_v<T, TupleLiteralExpr>) {
             for (Expr* el : e.elements) rewrite_expr_references(el, rename_map);
         } else if constexpr (std::is_same_v<T, AmbiguousTripleExpr>) {
             for (Expr* el : e.elements) rewrite_expr_references(el, rename_map);
@@ -295,6 +307,8 @@ void ModuleResolver::rewrite_module_references(
                 rewrite_expr_references(s.expr, rename_map);
             } else if constexpr (std::is_same_v<T, VarDeclStmt>) {
                 rewrite_expr_references(s.init, rename_map);
+            } else if constexpr (std::is_same_v<T, TupleDestructureStmt>) {
+                rewrite_expr_references(s.init, rename_map);
             } else if constexpr (std::is_same_v<T, AssignStmt>) {
                 rewrite_expr_references(s.value, rename_map);
             } else if constexpr (std::is_same_v<T, MemberAssignStmt>) {
@@ -302,7 +316,11 @@ void ModuleResolver::rewrite_module_references(
                 rewrite_expr_references(s.value, rename_map);
             } else if constexpr (std::is_same_v<T, IndexAssignStmt>) {
                 rewrite_expr_references(s.object, rename_map);
-                rewrite_expr_references(s.index, rename_map);
+                if (!s.indices.empty()) {
+                    for (Expr* idx : s.indices) rewrite_expr_references(idx, rename_map);
+                } else {
+                    rewrite_expr_references(s.index, rename_map);
+                }
                 rewrite_expr_references(s.value, rename_map);
             } else if constexpr (std::is_same_v<T, IfStmt>) {
                 rewrite_expr_references(s.condition, rename_map);

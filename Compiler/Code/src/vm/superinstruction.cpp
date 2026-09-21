@@ -79,6 +79,12 @@ std::unordered_set<size_t> SuperInstructionRegistry::collect_jump_targets(const 
             case OpCode::OP_PUSH_TAFPU:
                 inst_len = 21;
                 break;
+            case OpCode::OP_ADD_LOCAL_IMM:
+                inst_len = 7;
+                break;
+            case OpCode::OP_FUSED_DOT_STEP_I64:
+                inst_len = 11;
+                break;
             default:
                 inst_len = 1;
                 break;
@@ -155,7 +161,11 @@ bool SuperInstructionRegistry::can_fuse_range(const Chunk& chunk,
                 inst_len = 2;
                 break;
             case OpCode::OP_BRANCH_3:
+            case OpCode::OP_ADD_LOCAL_IMM:
                 inst_len = 7;
+                break;
+            case OpCode::OP_FUSED_DOT_STEP_I64:
+                inst_len = 11;
                 break;
             case OpCode::OP_PUSH_TAFPU:
                 inst_len = 21;

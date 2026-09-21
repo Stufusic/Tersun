@@ -138,6 +138,8 @@ std::string_view opcode_name(OpCode op) {
         case OpCode::OP_QUICK_GT_INT: return "OP_QUICK_GT_INT";
         case OpCode::OP_QUICK_GE_INT: return "OP_QUICK_GE_INT";
         case OpCode::OP_INVOKE_METHOD_IC: return "OP_INVOKE_METHOD_IC";
+        case OpCode::OP_ADD_LOCAL_IMM: return "OP_ADD_LOCAL_IMM";
+        case OpCode::OP_FUSED_DOT_STEP_I64: return "OP_FUSED_DOT_STEP_I64";
         case OpCode::OP_HALT: return "OP_HALT";
     }
     return "UNKNOWN_OP";
@@ -586,6 +588,7 @@ void BytecodeEmitter::emit_stmt(Stmt* stmt) {
     std::visit([this](const auto& s) {
         using T = std::decay_t<decltype(s)>;
         if constexpr (std::is_same_v<T, VarDeclStmt>) emit_var_decl(s);
+        else if constexpr (std::is_same_v<T, TupleDestructureStmt>) emit_tuple_destructure(s);
         else if constexpr (std::is_same_v<T, AssignStmt>) emit_assign(s);
         else if constexpr (std::is_same_v<T, MemberAssignStmt>) {
             if (s.object) emit_expr(s.object);
@@ -595,10 +598,21 @@ void BytecodeEmitter::emit_stmt(Stmt* stmt) {
             chunk_.write_int16(static_cast<int16_t>(fid), s.loc.line);
         }
         else if constexpr (std::is_same_v<T, IndexAssignStmt>) {
-            if (s.object) emit_expr(s.object);
-            if (s.index) emit_expr(s.index);
-            if (s.value) emit_expr(s.value);
-            chunk_.write_opcode(OpCode::OP_SET_INDEX, s.loc.line);
+            if (!s.indices.empty()) {
+                if (s.object) emit_expr(s.object);
+                for (size_t i = 0; i + 1 < s.indices.size(); ++i) {
+                    emit_expr(s.indices[i]);
+                    chunk_.write_opcode(OpCode::OP_GET_INDEX, s.loc.line);
+                }
+                emit_expr(s.indices.back());
+                if (s.value) emit_expr(s.value);
+                chunk_.write_opcode(OpCode::OP_SET_INDEX, s.loc.line);
+            } else {
+                if (s.object) emit_expr(s.object);
+                if (s.index) emit_expr(s.index);
+                if (s.value) emit_expr(s.value);
+                chunk_.write_opcode(OpCode::OP_SET_INDEX, s.loc.line);
+            }
         }
         else if constexpr (std::is_same_v<T, ExprStmt>) emit_expr_stmt(s);
         else if constexpr (std::is_same_v<T, BlockStmt>) emit_block(s);
@@ -642,6 +656,8 @@ void BytecodeEmitter::emit_expr(Expr* expr) {
         else if constexpr (std::is_same_v<T, IndexExpr>) emit_index(e);
         else if constexpr (std::is_same_v<T, ComptimeExpr>) emit_comptime(e);
         else if constexpr (std::is_same_v<T, ArrayLiteralExpr>) emit_array_lit(e);
+        else if constexpr (std::is_same_v<T, TupleLiteralExpr>) emit_tuple_lit(e);
+        else if constexpr (std::is_same_v<T, TritVecLiteralExpr>) emit_trit_vec_lit(e);
         else if constexpr (std::is_same_v<T, LambdaExpr>) emit_lambda(e);
     }, expr->data);
 }
@@ -670,6 +686,52 @@ void BytecodeEmitter::emit_var_decl(const VarDeclStmt& stmt) {
     chunk_.write_int16(static_cast<int16_t>(slot), stmt.loc.line);
 }
 
+void BytecodeEmitter::emit_tuple_destructure(const TupleDestructureStmt& stmt) {
+    bool is_global = symbol_table_.is_global_scope();
+    uint16_t tuple_slot = is_global ? next_global_slot_++ : next_local_slot_++;
+
+    if (stmt.init) {
+        emit_expr(stmt.init);
+    } else {
+        chunk_.write_opcode(OpCode::OP_PUSH_INT, stmt.loc.line);
+        chunk_.write_int64(0, stmt.loc.line);
+    }
+
+    if (is_global) {
+        chunk_.write_opcode(OpCode::OP_STORE_GLOBAL, stmt.loc.line);
+    } else {
+        chunk_.write_opcode(OpCode::OP_STORE_LOCAL, stmt.loc.line);
+    }
+    chunk_.write_int16(static_cast<int16_t>(tuple_slot), stmt.loc.line);
+
+    for (size_t i = 0; i < stmt.names.size(); ++i) {
+        uint16_t var_slot = is_global ? next_global_slot_++ : next_local_slot_++;
+        DataType dt = (i < stmt.resolved_types.size() && stmt.resolved_types[i])
+                          ? stmt.resolved_types[i]->to_data_type() : DataType::ANY;
+        if (!symbol_table_.define(stmt.names[i], dt, is_global, var_slot)) {
+            throw CompilerException("[Emitter Error] " + loc_str(stmt.loc) + " - Variable '" + stmt.names[i] + "' already defined in this scope.");
+        }
+        if (is_global) {
+            chunk_.write_opcode(OpCode::OP_LOAD_GLOBAL, stmt.loc.line);
+        } else {
+            chunk_.write_opcode(OpCode::OP_LOAD_LOCAL, stmt.loc.line);
+        }
+        chunk_.write_int16(static_cast<int16_t>(tuple_slot), stmt.loc.line);
+
+        chunk_.write_opcode(OpCode::OP_PUSH_INT, stmt.loc.line);
+        chunk_.write_int64(static_cast<int64_t>(i), stmt.loc.line);
+
+        chunk_.write_opcode(OpCode::OP_GET_INDEX, stmt.loc.line);
+
+        if (is_global) {
+            chunk_.write_opcode(OpCode::OP_STORE_GLOBAL, stmt.loc.line);
+        } else {
+            chunk_.write_opcode(OpCode::OP_STORE_LOCAL, stmt.loc.line);
+        }
+        chunk_.write_int16(static_cast<int16_t>(var_slot), stmt.loc.line);
+    }
+}
+
 void BytecodeEmitter::emit_assign(const AssignStmt& stmt) {
     auto opt_sym = symbol_table_.resolve(stmt.name);
     if (!opt_sym.has_value()) {
@@ -692,11 +754,11 @@ void BytecodeEmitter::emit_expr_stmt(const ExprStmt& stmt) {
 }
 
 void BytecodeEmitter::emit_block(const BlockStmt& stmt) {
-    symbol_table_.enter_scope();
+    if (!stmt.is_transparent_scope) symbol_table_.enter_scope();
     for (Stmt* s : stmt.statements) {
         emit_stmt(s);
     }
-    symbol_table_.exit_scope();
+    if (!stmt.is_transparent_scope) symbol_table_.exit_scope();
 }
 
 void BytecodeEmitter::emit_if(const IfStmt& stmt) {
@@ -1969,9 +2031,17 @@ void BytecodeEmitter::emit_method_call(const MethodCallExpr& expr) {
 }
 
 void BytecodeEmitter::emit_index(const IndexExpr& expr) {
-    if (expr.object) emit_expr(expr.object);
-    if (expr.index) emit_expr(expr.index);
-    chunk_.write_opcode(OpCode::OP_GET_INDEX, expr.loc.line);
+    if (!expr.indices.empty()) {
+        if (expr.object) emit_expr(expr.object);
+        for (Expr* idx : expr.indices) {
+            if (idx) emit_expr(idx);
+            chunk_.write_opcode(OpCode::OP_GET_INDEX, expr.loc.line);
+        }
+    } else {
+        if (expr.object) emit_expr(expr.object);
+        if (expr.index) emit_expr(expr.index);
+        chunk_.write_opcode(OpCode::OP_GET_INDEX, expr.loc.line);
+    }
 }
 
 void BytecodeEmitter::emit_comptime(const ComptimeExpr& expr) {
@@ -1984,6 +2054,28 @@ void BytecodeEmitter::emit_array_lit(const ArrayLiteralExpr& expr) {
     }
     chunk_.write_opcode(OpCode::OP_NEW_ARRAY, expr.loc.line);
     chunk_.write_int16(static_cast<int16_t>(expr.elements.size()), expr.loc.line);
+}
+
+void BytecodeEmitter::emit_tuple_lit(const TupleLiteralExpr& expr) {
+    for (Expr* el : expr.elements) {
+        emit_expr(el);
+    }
+    chunk_.write_opcode(OpCode::OP_NEW_ARRAY, expr.loc.line);
+    chunk_.write_int16(static_cast<int16_t>(expr.elements.size()), expr.loc.line);
+}
+
+void BytecodeEmitter::emit_trit_vec_lit(const TritVecLiteralExpr& expr) {
+    if (expr.trits.size() == 1) {
+        chunk_.write_opcode(OpCode::OP_PUSH_INT, expr.loc.line);
+        chunk_.write_int64(static_cast<int64_t>(expr.trits[0]), expr.loc.line);
+        return;
+    }
+    for (int8_t t : expr.trits) {
+        chunk_.write_opcode(OpCode::OP_PUSH_INT, expr.loc.line);
+        chunk_.write_int64(static_cast<int64_t>(t), expr.loc.line);
+    }
+    chunk_.write_opcode(OpCode::OP_NEW_ARRAY, expr.loc.line);
+    chunk_.write_int16(static_cast<int16_t>(expr.trits.size()), expr.loc.line);
 }
 
 // Number of init() parameters excluding 'self'; -1 when the class has no init.

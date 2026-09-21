@@ -14,6 +14,7 @@ std::string_view token_type_name(TokenType type) {
         case TokenType::FLOAT_LITERAL: return "FLOAT_LITERAL";
         case TokenType::STRING_LITERAL: return "STRING_LITERAL";
         case TokenType::TERNARY_LITERAL: return "TERNARY_LITERAL";
+        case TokenType::LITERAL_TRIT_VEC: return "LITERAL_TRIT_VEC";
         case TokenType::TAFPU_LITERAL: return "TAFPU_LITERAL";
         case TokenType::KW_LET: return "let";
         case TokenType::KW_CONST: return "const";
@@ -49,6 +50,7 @@ std::string_view token_type_name(TokenType type) {
         case TokenType::KW_TO_DOUBLE: return "to_double";
         case TokenType::TYPE_INT: return "int";
         case TokenType::TYPE_TRYTE: return "tryte";
+        case TokenType::TYPE_TRIT: return "trit";
         case TokenType::TYPE_TAF3: return "taf3";
         case TokenType::TYPE_BOOL: return "bool";
         case TokenType::PLUS: return "+";
@@ -160,6 +162,7 @@ static const std::unordered_map<std::string_view, TokenType> KEYWORDS = {
     {"to_double", TokenType::KW_TO_DOUBLE},
     {"int", TokenType::TYPE_INT},
     {"tryte", TokenType::TYPE_TRYTE},
+    {"trit", TokenType::TYPE_TRIT},
     {"taf3", TokenType::TYPE_TAF3},
     {"bool", TokenType::TYPE_BOOL},
     {"min", TokenType::KW_MIN},
@@ -342,8 +345,36 @@ Token Lexer::scan_identifier_or_keyword() {
 }
 
 Token Lexer::scan_number_or_float() {
+    // Check for ternary vector literal (0t... or 0T...)
+    if (source_[start_] == '0' && (peek_next() == 't' || peek_next() == 'T')) {
+        advance(); // consume '0'
+        advance(); // consume 't' or 'T'
+        std::vector<int8_t> trits;
+        while (peek() == '+' || peek() == '-' || peek() == '0' || peek() == '1' ||
+               peek() == 'T' || peek() == 't' || peek() == '_') {
+            char tc = advance();
+            if (tc == '_') continue;
+            if (tc == '+' || tc == '1') trits.push_back(1);
+            else if (tc == '0') trits.push_back(0);
+            else if (tc == '-' || tc == 'T' || tc == 't') trits.push_back(-1);
+        }
+        std::string_view text = source_.substr(start_, current_ - start_);
+        Token tok;
+        tok.lexeme = std::string(text);
+        tok.location = {line_, column_ - (current_ - start_)};
+        if (trits.empty()) {
+            tok.type = TokenType::ILLEGAL;
+            return tok;
+        }
+        tok.type = TokenType::LITERAL_TRIT_VEC;
+        tok.trit_vec_val = std::move(trits);
+        tok.int_val = static_cast<int64_t>(tok.trit_vec_val.size());
+        return tok;
+    }
+
     // Check for hexadecimal literal (0x... or 0X...)
-    if (source_[start_] == '0' && (peek() == 'x' || peek() == 'X')) {
+    if (source_[start_] == '0' && (peek_next() == 'x' || peek_next() == 'X')) {
+        advance(); // consume '0'
         advance(); // consume 'x' or 'X'
         while (std::isxdigit(static_cast<unsigned char>(peek()))) {
             advance();

@@ -33,6 +33,7 @@ void TypeChecker::init_builtins() {
     functions_["time_now_us"] = Type::make_function({}, Type::make_int());
     functions_["monotonic_now_us"] = Type::make_function({}, Type::make_int());
     functions_["assert_eq"] = Type::make_function({Type::make_any(), Type::make_any()}, Type::make_void());
+    functions_["slice"] = Type::make_function({Type::make_any(), Type::make_int(), Type::make_int()}, Type::make_slice(Type::make_any()));
 
     // Setun2D Graphics
     functions_["setun2d_init"] = Type::make_function({Type::make_int(), Type::make_int(), Type::make_string()}, Type::make_void());
@@ -93,10 +94,155 @@ TypePtr TypeChecker::get_type_definition(const std::string& name) const {
     return nullptr;
 }
 
+TypePtr TypeChecker::resolve_type_syntax(std::string_view syntax) {
+    // 1. Trim whitespace
+    while (!syntax.empty() && (syntax.front() == ' ' || syntax.front() == '\t' || syntax.front() == '\r' || syntax.front() == '\n')) {
+        syntax.remove_prefix(1);
+    }
+    while (!syntax.empty() && (syntax.back() == ' ' || syntax.back() == '\t' || syntax.back() == '\r' || syntax.back() == '\n')) {
+        syntax.remove_suffix(1);
+    }
+    if (syntax.empty()) return nullptr;
+
+    // 2. Primitives
+    if (syntax == "int" || syntax == "Int") return Type::make_int();
+    if (syntax == "trit" || syntax == "Trit") return Type::make_trit();
+    if (syntax == "tryte" || syntax == "Tryte") return Type::make_tryte();
+    if (syntax == "bool" || syntax == "Bool") return Type::make_bool();
+    if (syntax == "float" || syntax == "Float") return Type::make_float();
+    if (syntax == "taf3" || syntax == "TAF3") return Type::make_taf3();
+    if (syntax == "string" || syntax == "String") return Type::make_string();
+    if (syntax == "void" || syntax == "Void") return Type::make_void();
+    if (syntax == "any" || syntax == "Any") return Type::make_any();
+    if (syntax == "tvec3" || syntax == "Tvec3") return Type::make_tvec3();
+
+    std::string s(syntax);
+
+    // 3. User-defined types from type_defs_
+    auto custom = get_type_definition(s);
+    if (custom) return custom;
+
+    // 4. TensorView<T, Rank>
+    if (s.rfind("TensorView<", 0) == 0 && s.back() == '>') {
+        std::string inner = s.substr(11, s.size() - 12);
+        size_t comma = inner.find(',');
+        size_t rank = 2;
+        std::string elem_str = inner;
+        if (comma != std::string::npos) {
+            elem_str = inner.substr(0, comma);
+            std::string rank_str = inner.substr(comma + 1);
+            size_t rb = rank_str.find_first_not_of(" \t");
+            size_t re = rank_str.find_last_not_of(" \t");
+            if (rb != std::string::npos && re != std::string::npos) {
+                rank_str = rank_str.substr(rb, re - rb + 1);
+            }
+            try { rank = std::stoull(rank_str); } catch (...) { rank = 2; }
+        }
+        TypePtr elem_type = resolve_type_syntax(elem_str);
+        return Type::make_tensor_view(elem_type ? elem_type : Type::make_any(), rank);
+    }
+
+    // 5. Tuple (T1, T2, ...)
+    if (s.size() >= 2 && s.front() == '(' && s.back() == ')') {
+        std::string inner = s.substr(1, s.size() - 2);
+        std::vector<TypePtr> elems;
+        size_t start = 0;
+        int depth = 0;
+        for (size_t i = 0; i <= inner.size(); ++i) {
+            if (i == inner.size() || (inner[i] == ',' && depth == 0)) {
+                std::string segment = inner.substr(start, i - start);
+                size_t sb = segment.find_first_not_of(" \t");
+                size_t se = segment.find_last_not_of(" \t");
+                if (sb != std::string::npos && se != std::string::npos) {
+                    segment = segment.substr(sb, se - sb + 1);
+                    TypePtr resolved_el = resolve_type_syntax(segment);
+                    elems.push_back(resolved_el ? resolved_el : Type::make_any());
+                }
+                start = i + 1;
+            } else if (inner[i] == '(' || inner[i] == '<' || inner[i] == '[') {
+                depth++;
+            } else if (inner[i] == ')' || inner[i] == '>' || inner[i] == ']') {
+                depth--;
+            }
+        }
+        return Type::make_tuple(elems);
+    }
+
+    // 6. Mutable slice &mut [T]
+    if (s.size() > 6 && s.substr(0, 6) == "&mut [" && s.back() == ']') {
+        std::string inner = s.substr(6, s.size() - 7);
+        TypePtr elem_type = resolve_type_syntax(inner);
+        return Type::make_mut_slice(elem_type ? elem_type : Type::make_any());
+    }
+
+    // 7. Slice &[T]
+    if (s.size() > 3 && s.substr(0, 2) == "&[" && s.back() == ']') {
+        std::string inner = s.substr(2, s.size() - 3);
+        TypePtr elem_type = resolve_type_syntax(inner);
+        return Type::make_slice(elem_type ? elem_type : Type::make_any());
+    }
+
+    // 8. Fixed array [T; N]
+    if (s.size() > 3 && s.front() == '[' && s.back() == ']') {
+        size_t semi = s.find(';');
+        if (semi != std::string::npos) {
+            std::string inner_elem = s.substr(1, semi - 1);
+            std::string size_str = s.substr(semi + 1, s.size() - semi - 2);
+            size_t sb = size_str.find_first_not_of(" \t");
+            size_t se = size_str.find_last_not_of(" \t");
+            if (sb != std::string::npos && se != std::string::npos) {
+                size_str = size_str.substr(sb, se - sb + 1);
+            }
+            size_t n = 0;
+            try { n = std::stoull(size_str); } catch (...) { n = 0; }
+            TypePtr elem_type = resolve_type_syntax(inner_elem);
+            return Type::make_fixed_array(elem_type ? elem_type : Type::make_any(), n);
+        }
+        std::string inner_elem = s.substr(1, s.size() - 2);
+        TypePtr elem_type = resolve_type_syntax(inner_elem);
+        return Type::make_array(elem_type ? elem_type : Type::make_any());
+    }
+
+    // 9. Array<T>
+    if (s.rfind("Array<", 0) == 0 && s.back() == '>') {
+        std::string inner = s.substr(6, s.size() - 7);
+        TypePtr elem_type = resolve_type_syntax(inner);
+        return Type::make_array(elem_type ? elem_type : Type::make_any());
+    }
+
+    // 10. Generic instance Base<T1, T2>
+    size_t lt = s.find('<');
+    if (lt != std::string::npos && s.back() == '>') {
+        std::string base_name = s.substr(0, lt);
+        std::string args_str = s.substr(lt + 1, s.size() - lt - 2);
+        std::vector<TypePtr> targs;
+        size_t start = 0;
+        int depth = 0;
+        for (size_t i = 0; i <= args_str.size(); ++i) {
+            if (i == args_str.size() || (args_str[i] == ',' && depth == 0)) {
+                std::string segment = args_str.substr(start, i - start);
+                TypePtr targ = resolve_type_syntax(segment);
+                targs.push_back(targ ? targ : Type::make_any());
+                start = i + 1;
+            } else if (args_str[i] == '<' || args_str[i] == '(' || args_str[i] == '[') {
+                depth++;
+            } else if (args_str[i] == '>' || args_str[i] == ')' || args_str[i] == ']') {
+                depth--;
+            }
+        }
+        return Type::make_generic_instance(base_name, targs);
+    }
+
+    return Type::make_any();
+}
+
 TypePtr TypeChecker::resolve_type_from_data_type(DataType dt, const std::string& type_name) {
     if (!type_name.empty()) {
-        auto custom = get_type_definition(type_name);
-        if (custom) return custom;
+        TypePtr t = resolve_type_syntax(type_name);
+        if (t && t->kind != TypeKind::ANY) return t;
+    }
+    if (dt == DataType::TRIT) {
+        return Type::make_trit();
     }
     return Type::from_data_type(dt);
 }
@@ -110,10 +256,12 @@ MethodTypeInfo TypeChecker::make_method_info(const MethodDecl& m) {
     mi.name = m.name;
     for (const auto& p : m.params) {
         if (p.name == "self" || p.name == "this") continue;
-        mi.param_types.push_back(resolve_type_from_data_type(p.type, p.custom_type_name));
+        TypePtr pt = (!p.custom_type_name.empty()) ? resolve_type_syntax(p.custom_type_name) : Type::from_data_type(p.type);
+        mi.param_types.push_back(pt ? pt : Type::make_any());
         mi.param_names.push_back(p.name);
     }
-    mi.return_type = Type::from_data_type(m.return_type);
+    mi.return_type = (!m.return_custom_name.empty()) ? resolve_type_syntax(m.return_custom_name) : Type::from_data_type(m.return_type);
+    if (!mi.return_type) mi.return_type = Type::make_void();
     mi.is_pub = m.is_pub;
     return mi;
 }
@@ -222,10 +370,11 @@ bool TypeChecker::check_program(Program& program) {
             }
             std::vector<TypePtr> param_types;
             for (const auto& p : f.params) {
-                param_types.push_back(resolve_type_from_data_type(p.type, p.custom_type_name));
+                TypePtr pt = (!p.custom_type_name.empty()) ? resolve_type_syntax(p.custom_type_name) : Type::from_data_type(p.type);
+                param_types.push_back(pt ? pt : Type::make_any());
             }
-            TypePtr ret_type = Type::from_data_type(f.return_type);
-            functions_[f.name] = Type::make_function(param_types, ret_type);
+            TypePtr ret_type = (!f.return_custom_name.empty()) ? resolve_type_syntax(f.return_custom_name) : Type::from_data_type(f.return_type);
+            functions_[f.name] = Type::make_function(param_types, ret_type ? ret_type : Type::make_void());
         }
     }
 
@@ -249,6 +398,8 @@ void TypeChecker::check_stmt(Stmt* stmt) {
 
         if constexpr (std::is_same_v<T, VarDeclStmt>) {
             check_var_decl(s);
+        } else if constexpr (std::is_same_v<T, TupleDestructureStmt>) {
+            check_tuple_destructure(s);
         } else if constexpr (std::is_same_v<T, AssignStmt>) {
             check_assign(s);
         } else if constexpr (std::is_same_v<T, MemberAssignStmt>) {
@@ -300,7 +451,12 @@ void TypeChecker::check_stmt(Stmt* stmt) {
 }
 
 void TypeChecker::check_var_decl(VarDeclStmt& stmt) {
-    TypePtr declared_type = (stmt.type == DataType::ANY) ? nullptr : resolve_type_from_data_type(stmt.type, stmt.custom_type_name);
+    TypePtr declared_type = nullptr;
+    if (!stmt.custom_type_name.empty()) {
+        declared_type = resolve_type_syntax(stmt.custom_type_name);
+    } else if (stmt.type != DataType::ANY) {
+        declared_type = Type::from_data_type(stmt.type);
+    }
     TypePtr init_type = nullptr;
 
     if (stmt.init) {
@@ -324,6 +480,36 @@ void TypeChecker::check_var_decl(VarDeclStmt& stmt) {
 
     stmt.resolved_type = final_type;
     define_symbol(stmt.name, final_type, true, stmt.is_const, stmt.loc);
+}
+
+void TypeChecker::check_tuple_destructure(TupleDestructureStmt& stmt) {
+    TypePtr init_type = stmt.init ? check_expr(stmt.init) : nullptr;
+    if (init_type && init_type->kind == TypeKind::TUPLE) {
+        if (stmt.names.size() != init_type->tuple_elements.size()) {
+            report_error("Tuple destructuring arity mismatch: expected " +
+                         std::to_string(init_type->tuple_elements.size()) +
+                         " variables, got " + std::to_string(stmt.names.size()) + ".", stmt.loc);
+        }
+        for (size_t i = 0; i < stmt.names.size(); ++i) {
+            TypePtr elem_type = (i < init_type->tuple_elements.size()) ? init_type->tuple_elements[i] : Type::make_any();
+            stmt.resolved_types.push_back(elem_type);
+            define_symbol(stmt.names[i], elem_type, true, stmt.is_const, stmt.loc);
+        }
+        if (stmt.names.size() == 2 && stmt.init && std::holds_alternative<CallExpr>(stmt.init->data)) {
+            const auto& call = std::get<CallExpr>(stmt.init->data);
+            if (call.callee == "split_at_mut") {
+                memory_facts_.add_disjoint(stmt.names[0], stmt.names[1]);
+            }
+        }
+    } else {
+        if (init_type && init_type->kind != TypeKind::ANY) {
+            report_error("Cannot destructure non-tuple expression of type '" + init_type->to_string() + "'.", stmt.loc);
+        }
+        for (const auto& name : stmt.names) {
+            stmt.resolved_types.push_back(Type::make_any());
+            define_symbol(name, Type::make_any(), true, stmt.is_const, stmt.loc);
+        }
+    }
 }
 
 void TypeChecker::check_assign(AssignStmt& stmt) {
@@ -359,6 +545,10 @@ void TypeChecker::check_member_assign(MemberAssignStmt& stmt) {
     if (obj_type->kind == TypeKind::STRUCT || obj_type->kind == TypeKind::CLASS) {
         auto it = obj_type->fields.find(stmt.member);
         if (it != obj_type->fields.end()) {
+            if (it->second.type->kind == TypeKind::SLICE_VIEW || it->second.type->kind == TypeKind::TENSOR_VIEW) {
+                report_error("Cannot store borrowed view '" + it->second.type->to_string() + "' in struct field '" + stmt.member + "': violates region lifetime invariant.", stmt.loc);
+                return;
+            }
             if (!it->second.type->is_assignable_from(val_type)) {
                 report_error("Cannot assign '" + val_type->to_string() + "' to member '"
                              + stmt.member + "' of type '" + it->second.type->to_string() + "'.", stmt.loc);
@@ -369,26 +559,54 @@ void TypeChecker::check_member_assign(MemberAssignStmt& stmt) {
 
 void TypeChecker::check_index_assign(IndexAssignStmt& stmt) {
     TypePtr obj_type = check_expr(stmt.object);
-    TypePtr idx_type = check_expr(stmt.index);
+    if (!stmt.indices.empty()) {
+        for (Expr* idx : stmt.indices) {
+            TypePtr it = check_expr(idx);
+            if (it && !it->is_integer() && it->kind != TypeKind::ANY) {
+                report_error("Array index must be an integer (int, tryte, trit), found '" + it->to_string() + "'.", stmt.loc);
+            }
+        }
+    } else if (stmt.index) {
+        TypePtr idx_type = check_expr(stmt.index);
+        if (idx_type && !idx_type->is_integer() && idx_type->kind != TypeKind::ANY) {
+            report_error("Array index must be an integer (int, tryte, trit), found '" + idx_type->to_string() + "'.", stmt.loc);
+        }
+    }
     TypePtr val_type = check_expr(stmt.value);
 
-    if (idx_type && !idx_type->is_integer()) {
-        report_error("Array index must be an integer (int, tryte, trit), found '" + idx_type->to_string() + "'.", stmt.loc);
-    }
-
-    if (obj_type && obj_type->kind == TypeKind::ARRAY && obj_type->element_type && val_type) {
-        if (!obj_type->element_type->is_assignable_from(val_type)) {
-            report_error("Cannot assign element of type '" + val_type->to_string() + "' to '" + obj_type->to_string() + "'.", stmt.loc);
+    if (obj_type) {
+        if (obj_type->kind == TypeKind::TENSOR_VIEW) {
+            size_t num_indices = stmt.indices.empty() ? (stmt.index ? 1 : 0) : stmt.indices.size();
+            if (num_indices != obj_type->rank) {
+                report_error("TensorView with rank " + std::to_string(obj_type->rank) + " indexed with " + std::to_string(num_indices) + " indices.", stmt.loc);
+            }
+            if (obj_type->element_type && val_type && !obj_type->element_type->is_assignable_from(val_type)) {
+                report_error("Cannot assign element of type '" + val_type->to_string() + "' to TensorView of '" + obj_type->element_type->to_string() + "'.", stmt.loc);
+            }
+            return;
+        }
+        if (obj_type->kind == TypeKind::SLICE_VIEW) {
+            if (!obj_type->is_mut_slice) {
+                report_error("Cannot mutate elements through immutable slice view '" + obj_type->to_string() + "'. Consider using '&mut [T]'.", stmt.loc);
+                return;
+            }
+            if (obj_type->element_type && val_type && !obj_type->element_type->is_assignable_from(val_type)) {
+                report_error("Cannot assign element of type '" + val_type->to_string() + "' to mutable slice of '" + obj_type->element_type->to_string() + "'.", stmt.loc);
+            }
+        } else if ((obj_type->kind == TypeKind::ARRAY || obj_type->kind == TypeKind::FIXED_ARRAY) && obj_type->element_type && val_type) {
+            if (!obj_type->element_type->is_assignable_from(val_type)) {
+                report_error("Cannot assign element of type '" + val_type->to_string() + "' to '" + obj_type->to_string() + "'.", stmt.loc);
+            }
         }
     }
 }
 
 void TypeChecker::check_block(BlockStmt& stmt) {
-    enter_scope();
+    if (!stmt.is_transparent_scope) enter_scope();
     for (Stmt* child : stmt.statements) {
         check_stmt(child);
     }
-    exit_scope();
+    if (!stmt.is_transparent_scope) exit_scope();
 }
 
 void TypeChecker::check_if(IfStmt& stmt) {
@@ -555,8 +773,14 @@ void TypeChecker::resolve_triples_expr(Expr* expr, bool expect_taf3) {
             for (Expr* arg : e.args) resolve_triples_expr(arg, false);
         } else if constexpr (std::is_same_v<T, IndexExpr>) {
             resolve_triples_expr(e.object, false);
-            resolve_triples_expr(e.index, false);
+            if (!e.indices.empty()) {
+                for (Expr* idx : e.indices) resolve_triples_expr(idx, false);
+            } else {
+                resolve_triples_expr(e.index, false);
+            }
         } else if constexpr (std::is_same_v<T, ArrayLiteralExpr>) {
+            for (Expr* el : e.elements) resolve_triples_expr(el, false);
+        } else if constexpr (std::is_same_v<T, TupleLiteralExpr>) {
             for (Expr* el : e.elements) resolve_triples_expr(el, false);
         } else if constexpr (std::is_same_v<T, FStringExpr>) {
             for (Expr* child : e.expressions) resolve_triples_expr(child, false);
@@ -578,6 +802,8 @@ void TypeChecker::resolve_triples_stmt(Stmt* stmt) {
         if constexpr (std::is_same_v<T, VarDeclStmt>) {
             bool expect = (s.type == DataType::TAF3);
             if (s.init) resolve_triples_expr(s.init, expect);
+        } else if constexpr (std::is_same_v<T, TupleDestructureStmt>) {
+            if (s.init) resolve_triples_expr(s.init, false);
         } else if constexpr (std::is_same_v<T, AssignStmt>) {
             auto sym = resolve_symbol(s.name);
             bool expect = sym && sym->type && sym->type->kind == TypeKind::TAF3;
@@ -588,7 +814,11 @@ void TypeChecker::resolve_triples_stmt(Stmt* stmt) {
             if (s.value) resolve_triples_expr(s.value, expect);
         } else if constexpr (std::is_same_v<T, IndexAssignStmt>) {
             resolve_triples_expr(s.object, false);
-            resolve_triples_expr(s.index, false);
+            if (!s.indices.empty()) {
+                for (Expr* idx : s.indices) resolve_triples_expr(idx, false);
+            } else {
+                resolve_triples_expr(s.index, false);
+            }
             resolve_triples_expr(s.value, false);
         } else if constexpr (std::is_same_v<T, ExprStmt>) {
             resolve_triples_expr(s.expr, false);
@@ -616,6 +846,22 @@ void TypeChecker::resolve_triples_stmt(Stmt* stmt) {
 void TypeChecker::check_return(ReturnStmt& stmt) {
     TypePtr ret_type = stmt.value ? check_expr(stmt.value) : Type::make_void();
     if (current_fn_return_type_) {
+        // Non-escaping slice check: cannot return slice referencing local stack array
+        if (current_fn_return_type_->kind == TypeKind::SLICE_VIEW && stmt.value) {
+            if (std::holds_alternative<IdentifierExpr>(stmt.value->data)) {
+                const auto& var_name = std::get<IdentifierExpr>(stmt.value->data).name;
+                auto sym = resolve_symbol(var_name);
+                if (sym && sym->type && sym->type->kind == TypeKind::FIXED_ARRAY) {
+                    report_error("Non-escaping slice violation: cannot return slice referencing local stack array '" + var_name + "'; slice would outlive stack frame.", stmt.loc);
+                    return;
+                }
+            }
+            if (ret_type && ret_type->kind == TypeKind::FIXED_ARRAY) {
+                report_error("Non-escaping slice violation: cannot return slice referencing temporary local array; slice would outlive stack frame.", stmt.loc);
+                return;
+            }
+        }
+
         if (!current_fn_return_type_->is_assignable_from(ret_type)) {
             report_error("Function return type mismatch: Expected '" + current_fn_return_type_->to_string()
                          + "', but returned '" + ret_type->to_string() + "'.", stmt.loc);
@@ -624,17 +870,17 @@ void TypeChecker::check_return(ReturnStmt& stmt) {
 }
 
 void TypeChecker::check_fn_decl(FnDeclStmt& stmt) {
-    TypePtr ret_type = Type::from_data_type(stmt.return_type);
-    stmt.resolved_ret_type = ret_type;
+    TypePtr ret_type = (!stmt.return_custom_name.empty()) ? resolve_type_syntax(stmt.return_custom_name) : Type::from_data_type(stmt.return_type);
+    stmt.resolved_ret_type = ret_type ? ret_type : Type::make_void();
 
     std::vector<TypePtr> param_types;
     for (auto& p : stmt.params) {
-        TypePtr pt = resolve_type_from_data_type(p.type, p.custom_type_name);
-        p.resolved_type = pt;
-        param_types.push_back(pt);
+        TypePtr pt = (!p.custom_type_name.empty()) ? resolve_type_syntax(p.custom_type_name) : Type::from_data_type(p.type);
+        p.resolved_type = pt ? pt : Type::make_any();
+        param_types.push_back(p.resolved_type);
     }
 
-    functions_[stmt.name] = Type::make_function(param_types, ret_type);
+    functions_[stmt.name] = Type::make_function(param_types, stmt.resolved_ret_type);
 
     TypePtr prev_fn_ret = current_fn_return_type_;
     current_fn_return_type_ = ret_type;
@@ -666,9 +912,13 @@ void TypeChecker::check_struct_decl(StructDeclStmt& stmt) {
     }
 
     for (const auto& f : stmt.fields) {
+        TypePtr ftype = resolve_type_from_data_type(f.type, f.custom_type_name);
+        if (ftype && (ftype->kind == TypeKind::SLICE_VIEW || ftype->kind == TypeKind::TENSOR_VIEW)) {
+            report_error("Struct field '" + f.name + "' cannot hold borrowed view '" + ftype->to_string() + "': violates region lifetime invariant.", stmt.loc);
+        }
         FieldTypeInfo fi;
         fi.name = f.name;
-        fi.type = Type::from_data_type(f.type);
+        fi.type = ftype ? ftype : Type::from_data_type(f.type);
         fi.is_pub = f.is_pub;
         st_type->fields[f.name] = fi;
     }
@@ -676,7 +926,8 @@ void TypeChecker::check_struct_decl(StructDeclStmt& stmt) {
     // Register constructor function
     std::vector<TypePtr> ctor_params;
     for (const auto& f : stmt.fields) {
-        ctor_params.push_back(Type::from_data_type(f.type));
+        TypePtr ftype = resolve_type_from_data_type(f.type, f.custom_type_name);
+        ctor_params.push_back(ftype ? ftype : Type::from_data_type(f.type));
     }
     functions_[stmt.name] = Type::make_function(ctor_params, st_type);
 }
@@ -694,9 +945,13 @@ void TypeChecker::check_class_decl(ClassDeclStmt& stmt) {
     }
 
     for (const auto& f : stmt.fields) {
+        TypePtr ftype = resolve_type_from_data_type(f.type, f.custom_type_name);
+        if (ftype && (ftype->kind == TypeKind::SLICE_VIEW || ftype->kind == TypeKind::TENSOR_VIEW)) {
+            report_error("Class field '" + f.name + "' cannot hold borrowed view '" + ftype->to_string() + "': violates region lifetime invariant.", stmt.loc);
+        }
         FieldTypeInfo fi;
         fi.name = f.name;
-        fi.type = Type::from_data_type(f.type);
+        fi.type = ftype ? ftype : Type::from_data_type(f.type);
         fi.is_pub = f.is_pub;
         cl_type->fields[f.name] = fi;
     }
@@ -704,7 +959,8 @@ void TypeChecker::check_class_decl(ClassDeclStmt& stmt) {
     // Register constructor function
     std::vector<TypePtr> ctor_params;
     for (const auto& f : stmt.fields) {
-        ctor_params.push_back(Type::from_data_type(f.type));
+        TypePtr ftype = resolve_type_from_data_type(f.type, f.custom_type_name);
+        ctor_params.push_back(ftype ? ftype : Type::from_data_type(f.type));
     }
     functions_[stmt.name] = Type::make_function(ctor_params, cl_type);
 
@@ -889,21 +1145,31 @@ TypePtr TypeChecker::check_expr(Expr* expr) {
             res = check_expr(e.expr);
         } else if constexpr (std::is_same_v<T, ArrayLiteralExpr>) {
             res = check_array_lit(e);
+        } else if constexpr (std::is_same_v<T, TupleLiteralExpr>) {
+            res = check_tuple_literal(e);
+        } else if constexpr (std::is_same_v<T, TritVecLiteralExpr>) {
+            if (e.trits.size() == 1) {
+                res = Type::make_trit();
+            } else {
+                res = Type::make_fixed_array(Type::make_trit(), e.trits.size());
+            }
         } else if constexpr (std::is_same_v<T, LambdaExpr>) {
             std::vector<TypePtr> lam_params;
             enter_scope();
-            for (const auto& p : e.params) {
-                TypePtr pt = resolve_type_from_data_type(p.type, p.custom_type_name);
-                define_symbol(p.name, pt, true, false, e.loc);
-                lam_params.push_back(pt);
+            for (auto& p : e.params) {
+                TypePtr pt = (!p.custom_type_name.empty()) ? resolve_type_syntax(p.custom_type_name) : Type::from_data_type(p.type);
+                p.resolved_type = pt ? pt : Type::make_any();
+                define_symbol(p.name, p.resolved_type, true, false, e.loc);
+                lam_params.push_back(p.resolved_type);
             }
-            TypePtr lam_ret = resolve_type_from_data_type(e.return_type);
+            TypePtr lam_ret = (!e.return_custom_name.empty()) ? resolve_type_syntax(e.return_custom_name) : Type::from_data_type(e.return_type);
+            e.resolved_ret_type = lam_ret ? lam_ret : Type::make_void();
             TypePtr saved_ret = current_fn_return_type_;
-            current_fn_return_type_ = lam_ret;
+            current_fn_return_type_ = e.resolved_ret_type;
             if (e.body) check_stmt(e.body);
             current_fn_return_type_ = saved_ret;
             exit_scope();
-            res = Type::make_function(lam_params, lam_ret);
+            res = Type::make_function(lam_params, e.resolved_ret_type);
         }
     }, expr->data);
 
@@ -922,6 +1188,7 @@ TypePtr TypeChecker::check_unary(UnaryExpr& expr) {
             }
             return operand_type;
         case UnaryOp::TILDE: // Ternary logic negation (-1 -> +1, 0 -> 0, +1 -> -1)
+            if (operand_type->kind == TypeKind::TRIT) return Type::make_trit();
             return operand_type;
         case UnaryOp::NOT:
             return Type::make_bool();
@@ -939,9 +1206,48 @@ TypePtr TypeChecker::check_binary(BinaryExpr& expr) {
             if (left_type->kind == TypeKind::STRING || right_type->kind == TypeKind::STRING) {
                 return Type::make_string();
             }
+            if (left_type->kind == TypeKind::TRIT && right_type->kind == TypeKind::TRIT) {
+                return Type::make_int(); // Automatic integer accumulator promotion
+            }
             [[fallthrough]];
         case BinaryOp::SUB:
+            if (left_type->kind == TypeKind::TRIT && right_type->kind == TypeKind::TRIT) {
+                return Type::make_int(); // Automatic integer accumulator promotion
+            }
+            if (left_type->kind == TypeKind::TAF3 || right_type->kind == TypeKind::TAF3) {
+                return Type::make_taf3();
+            }
+            if (left_type->kind == TypeKind::FLOAT || right_type->kind == TypeKind::FLOAT) {
+                return Type::make_float();
+            }
+            if (left_type->kind == TypeKind::TVEC3 || right_type->kind == TypeKind::TVEC3) {
+                return Type::make_tvec3();
+            }
+            return Type::make_int();
+
         case BinaryOp::MUL:
+            if (left_type->kind == TypeKind::TRIT && right_type->kind == TypeKind::TRIT) {
+                return Type::make_trit();
+            }
+            if ((left_type->kind == TypeKind::TRIT && right_type->kind == TypeKind::TRYTE) ||
+                (left_type->kind == TypeKind::TRYTE && right_type->kind == TypeKind::TRIT)) {
+                return Type::make_tryte();
+            }
+            if ((left_type->kind == TypeKind::TRIT && right_type->kind == TypeKind::INT) ||
+                (left_type->kind == TypeKind::INT && right_type->kind == TypeKind::TRIT)) {
+                return Type::make_int();
+            }
+            if (left_type->kind == TypeKind::TAF3 || right_type->kind == TypeKind::TAF3) {
+                return Type::make_taf3();
+            }
+            if (left_type->kind == TypeKind::FLOAT || right_type->kind == TypeKind::FLOAT) {
+                return Type::make_float();
+            }
+            if (left_type->kind == TypeKind::TVEC3 || right_type->kind == TypeKind::TVEC3) {
+                return Type::make_tvec3();
+            }
+            return Type::make_int();
+
         case BinaryOp::DIV:
             if (left_type->kind == TypeKind::TAF3 || right_type->kind == TypeKind::TAF3) {
                 return Type::make_taf3();
@@ -962,7 +1268,18 @@ TypePtr TypeChecker::check_binary(BinaryExpr& expr) {
 
         case BinaryOp::BIT_AND:
         case BinaryOp::BIT_OR:
-        case BinaryOp::BIT_XOR:
+            if (left_type->kind == TypeKind::TRYTE || right_type->kind == TypeKind::TRYTE) {
+                return Type::make_tryte();
+            }
+            if (left_type->kind == TypeKind::BOOL && right_type->kind == TypeKind::BOOL) {
+                return Type::make_bool();
+            }
+            return Type::make_int();
+
+        case BinaryOp::BIT_XOR: // ^ (GF(3) addition for trit, XOR for ints)
+            if (left_type->kind == TypeKind::TRIT && right_type->kind == TypeKind::TRIT) {
+                return Type::make_trit();
+            }
             if (left_type->kind == TypeKind::TRYTE || right_type->kind == TypeKind::TRYTE) {
                 return Type::make_tryte();
             }
@@ -984,8 +1301,8 @@ TypePtr TypeChecker::check_binary(BinaryExpr& expr) {
             }
             return Type::make_taf3();
 
-        case BinaryOp::SPACESHIP: // <=>
-            return Type::make_int(); // Returns -1, 0, +1
+        case BinaryOp::SPACESHIP: // <=> 3-way comparison returning trit (-1, 0, +1)
+            return Type::make_trit();
 
         case BinaryOp::EQ:
         case BinaryOp::NEQ:
@@ -1040,10 +1357,60 @@ TypePtr TypeChecker::check_call(CallExpr& expr) {
         return Type::make_taf3();
     }
 
+    if (expr.callee == "slice" && expr.args.size() >= 3) {
+        TypePtr src_t = check_expr(expr.args[0]);
+        check_expr(expr.args[1]);
+        check_expr(expr.args[2]);
+        if (src_t && src_t->element_type) {
+            return src_t->is_mut_slice ? Type::make_mut_slice(src_t->element_type) : Type::make_slice(src_t->element_type);
+        }
+        return Type::make_slice(Type::make_any());
+    }
+
+    if (expr.callee == "split_at_mut" && expr.args.size() == 2) {
+        TypePtr src_t = check_expr(expr.args[0]);
+        check_expr(expr.args[1]);
+        TypePtr elem_t = (src_t && src_t->element_type) ? src_t->element_type : Type::make_any();
+        TypePtr slice_t = Type::make_mut_slice(elem_t);
+        return Type::make_tuple({slice_t, slice_t});
+    }
+
+    if (expr.callee == "tensor_view" && expr.args.size() >= 2) {
+        TypePtr src_t = check_expr(expr.args[0]);
+        for (size_t i = 1; i < expr.args.size(); ++i) {
+            TypePtr dt = check_expr(expr.args[i]);
+            if (dt && !dt->is_integer() && dt->kind != TypeKind::ANY) {
+                report_error("TensorView dimension argument must be an integer, got '" + dt->to_string() + "'.", expr.loc);
+            }
+        }
+        TypePtr elem_t = (src_t && src_t->element_type) ? src_t->element_type : Type::make_any();
+        size_t rank = expr.args.size() - 1;
+        return Type::make_tensor_view(elem_t, rank);
+    }
+
     auto it = functions_.find(expr.callee);
     if (it != functions_.end()) {
         TypePtr fn_type = it->second;
         if (fn_type && fn_type->kind == TypeKind::FUNCTION) {
+            // Static Alias Analysis for mutable slice parameters
+            for (size_t i = 0; i < fn_type->param_types.size() && i < expr.args.size(); ++i) {
+                if (fn_type->param_types[i]->is_mut_slice && expr.args[i]) {
+                    if (std::holds_alternative<IdentifierExpr>(expr.args[i]->data)) {
+                        const std::string& out_name = std::get<IdentifierExpr>(expr.args[i]->data).name;
+                        for (size_t j = 0; j < expr.args.size(); ++j) {
+                            if (i != j && expr.args[j] && std::holds_alternative<IdentifierExpr>(expr.args[j]->data)) {
+                                const std::string& other_name = std::get<IdentifierExpr>(expr.args[j]->data).name;
+                                if (out_name == other_name) {
+                                    report_error("Aliasing violation in call to '" + expr.callee + "': Mutable output slice '"
+                                                 + out_name + "' (arg " + std::to_string(i + 1)
+                                                 + ") aliases with argument " + std::to_string(j + 1) + ".", expr.loc);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // Check arity
             if (expr.callee != "print" && expr.callee != "println") {
                 if (arg_types.size() != fn_type->param_types.size()) {
@@ -1242,20 +1609,45 @@ TypePtr TypeChecker::check_method_call(MethodCallExpr& expr) {
 
 TypePtr TypeChecker::check_index(IndexExpr& expr) {
     TypePtr obj_type = check_expr(expr.object);
-    TypePtr idx_type = check_expr(expr.index);
-
-    if (idx_type && !idx_type->is_integer() && idx_type->kind != TypeKind::ANY) {
-        report_error("Array index must be an integer, received '" + idx_type->to_string() + "'.", expr.loc);
+    if (!expr.indices.empty()) {
+        for (Expr* idx : expr.indices) {
+            TypePtr idx_type = check_expr(idx);
+            if (idx_type && !idx_type->is_integer() && idx_type->kind != TypeKind::ANY) {
+                report_error("Index must be an integer, received '" + idx_type->to_string() + "'.", expr.loc);
+            }
+        }
+    } else if (expr.index) {
+        TypePtr idx_type = check_expr(expr.index);
+        if (idx_type && !idx_type->is_integer() && idx_type->kind != TypeKind::ANY) {
+            report_error("Array index must be an integer, received '" + idx_type->to_string() + "'.", expr.loc);
+        }
     }
 
-    if (obj_type && obj_type->kind == TypeKind::ARRAY) {
-        return obj_type->element_type ? obj_type->element_type : Type::make_any();
-    }
-    if (obj_type && obj_type->kind == TypeKind::STRING) {
-        return Type::make_string();
+    if (obj_type) {
+        if (obj_type->kind == TypeKind::TENSOR_VIEW) {
+            size_t num_indices = expr.indices.empty() ? (expr.index ? 1 : 0) : expr.indices.size();
+            if (num_indices != obj_type->rank) {
+                report_error("TensorView with rank " + std::to_string(obj_type->rank) + " indexed with " + std::to_string(num_indices) + " indices.", expr.loc);
+            }
+            return obj_type->element_type ? obj_type->element_type : Type::make_any();
+        }
+        if (obj_type->kind == TypeKind::ARRAY || obj_type->kind == TypeKind::FIXED_ARRAY || obj_type->kind == TypeKind::SLICE_VIEW) {
+            return obj_type->element_type ? obj_type->element_type : Type::make_any();
+        }
+        if (obj_type->kind == TypeKind::STRING) {
+            return Type::make_string();
+        }
     }
 
     return Type::make_any();
+}
+
+TypePtr TypeChecker::check_tuple_literal(TupleLiteralExpr& expr) {
+    std::vector<TypePtr> elem_types;
+    for (Expr* el : expr.elements) {
+        elem_types.push_back(check_expr(el));
+    }
+    return Type::make_tuple(elem_types);
 }
 
 TypePtr TypeChecker::check_array_lit(ArrayLiteralExpr& expr) {

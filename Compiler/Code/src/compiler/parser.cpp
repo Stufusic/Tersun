@@ -155,15 +155,64 @@ Stmt* Parser::parse_declaration() {
 
 DataType Parser::parse_type() {
     last_type_name_ = "";
+    if (match(TokenType::LPAREN)) {
+        // Tuple type: (T1, T2, ...)
+        std::vector<std::string> elem_names;
+        if (!check(TokenType::RPAREN)) {
+            do {
+                DataType dt = parse_type();
+                elem_names.push_back(last_type_name_.empty() ? std::string(data_type_name(dt)) : last_type_name_);
+            } while (match(TokenType::COMMA));
+        }
+        consume(TokenType::RPAREN, "Expected ')' after tuple type.");
+        std::string t_repr = "(";
+        for (size_t i = 0; i < elem_names.size(); ++i) {
+            if (i > 0) t_repr += ", ";
+            t_repr += elem_names[i];
+        }
+        t_repr += ")";
+        last_type_name_ = t_repr;
+        return DataType::OBJECT;
+    }
+    if (check(TokenType::AMP)) {
+        if (current_ + 1 < tokens_.size() && tokens_[current_ + 1].type == TokenType::KW_MUT &&
+            current_ + 2 < tokens_.size() && tokens_[current_ + 2].type == TokenType::LBRACKET) {
+            advance(); // consume '&'
+            advance(); // consume 'mut'
+            advance(); // consume '['
+            DataType elem_dt = parse_type();
+            std::string elem_name = last_type_name_.empty() ? std::string(data_type_name(elem_dt)) : last_type_name_;
+            consume(TokenType::RBRACKET, "Expected ']' after mutable slice element type.");
+            last_type_name_ = "&mut [" + elem_name + "]";
+            return DataType::ARRAY;
+        } else if (current_ + 1 < tokens_.size() && tokens_[current_ + 1].type == TokenType::LBRACKET) {
+            advance(); // consume '&'
+            advance(); // consume '['
+            DataType elem_dt = parse_type();
+            std::string elem_name = last_type_name_.empty() ? std::string(data_type_name(elem_dt)) : last_type_name_;
+            consume(TokenType::RBRACKET, "Expected ']' after slice element type.");
+            last_type_name_ = "&[" + elem_name + "]";
+            return DataType::ARRAY;
+        }
+    }
     if (match(TokenType::LBRACKET)) {
-        parse_type(); // parse element type if any
+        DataType elem_dt = parse_type();
+        std::string elem_name = last_type_name_.empty() ? std::string(data_type_name(elem_dt)) : last_type_name_;
+        if (match(TokenType::SEMICOLON)) {
+            Token size_tok = consume(TokenType::INT_LITERAL, "Expected integer literal for array size.");
+            consume(TokenType::RBRACKET, "Expected ']' after array size.");
+            last_type_name_ = "[" + elem_name + "; " + std::to_string(size_tok.int_val) + "]";
+            return DataType::ARRAY;
+        }
         consume(TokenType::RBRACKET, "Expected ']' after array type.");
+        last_type_name_ = "Array<" + elem_name + ">";
         return DataType::ARRAY;
     }
-    if (match(TokenType::TYPE_INT)) return DataType::INT;
-    if (match(TokenType::TYPE_TRYTE)) return DataType::TRYTE;
-    if (match(TokenType::TYPE_TAF3)) return DataType::TAF3;
-    if (match(TokenType::TYPE_BOOL)) return DataType::BOOL;
+    if (match(TokenType::TYPE_INT)) { last_type_name_ = "int"; return DataType::INT; }
+    if (match(TokenType::TYPE_TRYTE)) { last_type_name_ = "tryte"; return DataType::TRYTE; }
+    if (match(TokenType::TYPE_TRIT)) { last_type_name_ = "trit"; return DataType::TRIT; }
+    if (match(TokenType::TYPE_TAF3)) { last_type_name_ = "taf3"; return DataType::TAF3; }
+    if (match(TokenType::TYPE_BOOL)) { last_type_name_ = "bool"; return DataType::BOOL; }
     if (check(TokenType::IDENTIFIER) || (check(TokenType::TERNARY_LITERAL) && peek().lexeme == "T")) {
         std::string tname = peek().lexeme;
         last_type_name_ = tname;
@@ -184,13 +233,25 @@ DataType Parser::parse_type() {
         }
         if (tname == "object" || tname == "Object") { advance(); return DataType::OBJECT; }
         if (tname == "tryte" || tname == "Tryte") { advance(); return DataType::TRYTE; }
-        if (tname == "trit" || tname == "Trit") { advance(); return DataType::TRYTE; }
+        if (tname == "trit" || tname == "Trit") { advance(); last_type_name_ = "trit"; return DataType::TRIT; }
         advance(); // User-defined type or generic
         if (match(TokenType::LESS)) {
+            std::string full_gen = tname + "<";
+            bool first = true;
             do {
-                parse_type();
+                if (!first) full_gen += ", ";
+                first = false;
+                if (check(TokenType::INT_LITERAL)) {
+                    Token itok = advance();
+                    full_gen += std::to_string(itok.int_val);
+                } else {
+                    DataType pdt = parse_type();
+                    full_gen += (last_type_name_.empty() ? std::string(data_type_name(pdt)) : last_type_name_);
+                }
             } while (match(TokenType::COMMA));
             consume(TokenType::GREATER, "Expected '>' after generic type arguments.");
+            full_gen += ">";
+            last_type_name_ = full_gen;
         }
         return DataType::OBJECT;
     }
@@ -200,6 +261,99 @@ DataType Parser::parse_type() {
 Stmt* Parser::parse_var_decl(bool is_const) {
     SourceLocation loc = previous().location;
     match(TokenType::KW_MUT); // Support optional 'mut' keyword (e.g. let mut x = ...)
+
+    // Support tuple destructuring: let (a, b) = expr; or const (a, b) = expr;
+    // Also supports nested tuple destructuring: let ((a, b), c) = expr;
+    if (match(TokenType::LPAREN)) {
+        struct PatternItem {
+            bool is_nested{false};
+            std::string name;
+            std::vector<PatternItem> sub_items;
+            SourceLocation loc;
+        };
+
+        auto parse_pattern_list = [&](auto& self) -> std::vector<PatternItem> {
+            std::vector<PatternItem> items;
+            do {
+                match(TokenType::KW_MUT);
+                if (match(TokenType::LPAREN)) {
+                    SourceLocation sub_loc = previous().location;
+                    PatternItem nested;
+                    nested.is_nested = true;
+                    nested.loc = sub_loc;
+                    nested.sub_items = self(self);
+                    consume(TokenType::RPAREN, "Expected ')' after nested tuple pattern.");
+                    items.push_back(std::move(nested));
+                } else {
+                    Token el_tok = consume(TokenType::IDENTIFIER, "Expected variable name in tuple destructuring.");
+                    PatternItem leaf;
+                    leaf.is_nested = false;
+                    leaf.name = el_tok.lexeme;
+                    leaf.loc = el_tok.location;
+                    items.push_back(std::move(leaf));
+                }
+            } while (match(TokenType::COMMA));
+            return items;
+        };
+
+        std::vector<PatternItem> top_items = parse_pattern_list(parse_pattern_list);
+        consume(TokenType::RPAREN, "Expected ')' after tuple pattern.");
+        consume(TokenType::EQUAL, "Expected '=' in tuple destructuring declaration.");
+        Expr* init = parse_expression();
+        consume(TokenType::SEMICOLON, "Expected ';' after tuple destructuring declaration.");
+
+        bool any_nested = false;
+        for (const auto& item : top_items) {
+            if (item.is_nested) { any_nested = true; break; }
+        }
+
+        if (!any_nested) {
+            std::vector<std::string> names;
+            for (const auto& item : top_items) names.push_back(item.name);
+            return arena_.make<Stmt>(TupleDestructureStmt{std::move(names), init, is_const, loc, {}}, loc);
+        }
+
+        // Desugar nested destructuring into a flat sequence of TupleDestructureStmt inside a transparent BlockStmt
+        static uint64_t s_tuple_desugar_counter = 0;
+        std::vector<Stmt*> block_stmts;
+
+        std::vector<std::string> top_names;
+        std::vector<std::pair<std::string, std::vector<PatternItem>>> pending_subpatterns;
+
+        for (const auto& item : top_items) {
+            if (item.is_nested) {
+                std::string tmp_name = "__tuple_tmp_" + std::to_string(++s_tuple_desugar_counter);
+                top_names.push_back(tmp_name);
+                pending_subpatterns.push_back({tmp_name, item.sub_items});
+            } else {
+                top_names.push_back(item.name);
+            }
+        }
+
+        block_stmts.push_back(arena_.make<Stmt>(TupleDestructureStmt{std::move(top_names), init, is_const, loc, {}}, loc));
+
+        while (!pending_subpatterns.empty()) {
+            auto current = std::move(pending_subpatterns.front());
+            pending_subpatterns.erase(pending_subpatterns.begin());
+
+            Expr* rhs = arena_.make<Expr>(IdentifierExpr{current.first, loc}, loc);
+            std::vector<std::string> current_names;
+
+            for (const auto& sub_item : current.second) {
+                if (sub_item.is_nested) {
+                    std::string tmp_name = "__tuple_tmp_" + std::to_string(++s_tuple_desugar_counter);
+                    current_names.push_back(tmp_name);
+                    pending_subpatterns.push_back({tmp_name, sub_item.sub_items});
+                } else {
+                    current_names.push_back(sub_item.name);
+                }
+            }
+            block_stmts.push_back(arena_.make<Stmt>(TupleDestructureStmt{std::move(current_names), rhs, is_const, loc, {}}, loc));
+        }
+
+        return arena_.make<Stmt>(BlockStmt{std::move(block_stmts), loc, true}, loc);
+    }
+
     Token name_tok = consume(TokenType::IDENTIFIER, "Expected variable name.");
     std::string name = name_tok.lexeme;
 
@@ -325,7 +479,9 @@ Stmt* Parser::parse_struct_decl(bool is_pub) {
             if (match(TokenType::EQUAL)) {
                 def_val = parse_expression();
             }
-            consume(TokenType::SEMICOLON, "Expected ';' after struct field.");
+            if (!match(TokenType::SEMICOLON) && !match(TokenType::COMMA)) {
+                consume(TokenType::SEMICOLON, "Expected ';' or ',' after struct field.");
+            }
             fields.push_back(FieldDecl{last_type_name_, fname.lexeme, ftype, is_pub, def_val});
         } else if (match(TokenType::KW_FN) || match(TokenType::KW_DEF)) {
             Token mname = consume(TokenType::IDENTIFIER, "Expected method name.");
@@ -346,13 +502,15 @@ Stmt* Parser::parse_struct_decl(bool is_pub) {
             }
             consume(TokenType::RPAREN, "Expected ')' after parameters.");
             DataType ret_type = DataType::VOID;
+            std::string ret_custom;
             if (match(TokenType::ARROW)) {
                 ret_type = parse_type();
+                ret_custom = last_type_name_;
             }
             consume(TokenType::LBRACE, "Expected '{' before method body.");
             current_--;
             Stmt* mbody = parse_block_stmt();
-            methods.push_back(MethodDecl{mname.lexeme, std::move(mparams), ret_type, mbody, is_pub, false});
+            methods.push_back(MethodDecl{mname.lexeme, std::move(mparams), ret_type, ret_custom, mbody, is_pub, false});
         } else {
             advance();
         }
@@ -434,13 +592,15 @@ Stmt* Parser::parse_class_decl(bool is_pub) {
             }
             consume(TokenType::RPAREN, "Expected ')' after parameters.");
             DataType ret_type = DataType::VOID;
+            std::string ret_custom;
             if (match(TokenType::ARROW)) {
                 ret_type = parse_type();
+                ret_custom = last_type_name_;
             }
             consume(TokenType::LBRACE, "Expected '{' before method body.");
             current_--;
             Stmt* mbody = parse_block_stmt();
-            methods.push_back(MethodDecl{mname.lexeme, std::move(mparams), ret_type, mbody, is_pub, false});
+            methods.push_back(MethodDecl{mname.lexeme, std::move(mparams), ret_type, ret_custom, mbody, is_pub, false});
         } else {
             advance();
         }
@@ -473,8 +633,10 @@ Stmt* Parser::parse_interface_decl() {
             }
             consume(TokenType::RPAREN, "Expected ')' after parameters.");
             DataType ret_type = DataType::VOID;
+            std::string ret_custom;
             if (match(TokenType::ARROW)) {
                 ret_type = parse_type();
+                ret_custom = last_type_name_;
             }
 
             Stmt* mbody = nullptr;
@@ -484,7 +646,7 @@ Stmt* Parser::parse_interface_decl() {
             } else {
                 consume(TokenType::SEMICOLON, "Expected ';' or '{' after interface method signature.");
             }
-            methods.push_back(MethodDecl{mname.lexeme, std::move(mparams), ret_type, mbody, true, false});
+            methods.push_back(MethodDecl{mname.lexeme, std::move(mparams), ret_type, ret_custom, mbody, true, false});
         } else {
             advance();
         }
@@ -945,7 +1107,7 @@ Stmt* Parser::parse_expr_stmt() {
         }
         if (std::holds_alternative<IndexExpr>(expr->data)) {
             auto& ie = std::get<IndexExpr>(expr->data);
-            return arena_.make<Stmt>(IndexAssignStmt{ie.object, ie.index, val, loc}, loc);
+            return arena_.make<Stmt>(IndexAssignStmt{ie.object, ie.index, val, loc, ie.indices}, loc);
         }
         return arena_.make<Stmt>(AssignStmt{"_tmp", val, loc}, loc);
     }
@@ -990,10 +1152,10 @@ Stmt* Parser::parse_expr_stmt() {
         }
         if (std::holds_alternative<IndexExpr>(expr->data)) {
             auto& ie = std::get<IndexExpr>(expr->data);
-            Expr* lhs = arena_.make<Expr>(IndexExpr{ie.object, ie.index, loc}, loc);
+            Expr* lhs = arena_.make<Expr>(IndexExpr{ie.object, ie.index, loc, ie.indices}, loc);
             Expr* combined = arena_.make<Expr>(BinaryExpr{b_op, lhs, val, loc}, loc);
             // Note: object and index expressions are evaluated twice.
-            return arena_.make<Stmt>(IndexAssignStmt{ie.object, ie.index, combined, loc}, loc);
+            return arena_.make<Stmt>(IndexAssignStmt{ie.object, ie.index, combined, loc, ie.indices}, loc);
         }
         throw CompilerException("[Parser Error] " + format_loc(loc)
                                 + " - Invalid compound assignment target.");
@@ -1165,6 +1327,8 @@ Expr* Parser::parse_prefix() {
         }
         case TokenType::TERNARY_LITERAL:
             return arena_.make<Expr>(TryteLiteralExpr{tok.tryte_val, loc}, loc);
+        case TokenType::LITERAL_TRIT_VEC:
+            return arena_.make<Expr>(TritVecLiteralExpr{tok.trit_vec_val, loc}, loc);
         case TokenType::KW_TRUE:
             return arena_.make<Expr>(BoolLiteralExpr{true, loc}, loc);
         case TokenType::KW_FALSE:
@@ -1248,11 +1412,25 @@ Expr* Parser::parse_prefix() {
             return arena_.make<Expr>(CallExpr{callee_name, {}, std::move(args), loc}, loc);
         }
 
-        // Parentheses: ( expr )
+        // Parentheses: ( expr ) or tuple literal ( expr1, expr2, ... )
         case TokenType::LPAREN: {
-            Expr* expr = parse_expression();
+            if (match(TokenType::RPAREN)) {
+                return arena_.make<Expr>(TupleLiteralExpr{{}, loc}, loc);
+            }
+            Expr* first = parse_expression();
+            if (match(TokenType::COMMA)) {
+                std::vector<Expr*> elements;
+                elements.push_back(first);
+                if (!check(TokenType::RPAREN)) {
+                    do {
+                        elements.push_back(parse_expression());
+                    } while (match(TokenType::COMMA));
+                }
+                consume(TokenType::RPAREN, "Expected ')' after tuple elements.");
+                return arena_.make<Expr>(TupleLiteralExpr{std::move(elements), loc}, loc);
+            }
             consume(TokenType::RPAREN, "Expected ')' after expression.");
-            return expr;
+            return first;
         }
 
         // Array literal [elem1, elem2, ...] — 2/3-element numeric triples are
@@ -1324,6 +1502,8 @@ Expr* Parser::parse_prefix() {
                 lam_ret = parse_type();
                 lam_ret_custom = last_type_name_;
             }
+            lam.return_type = lam_ret;
+            lam.return_custom_name = lam_ret_custom;
             if (match(TokenType::FAT_ARROW)) {
                 Expr* ret_val = parse_expression();
                 Stmt* ret = arena_.make<Stmt>(ReturnStmt{ret_val, loc}, loc);
@@ -1382,11 +1562,15 @@ Expr* Parser::parse_infix(Expr* left) {
         return arena_.make<Expr>(MemberAccessExpr{left, member_tok.lexeme, is_safe, loc}, loc);
     }
 
-    // Index access: left[index]
+    // Index access: left[index] or multi-dim left[r, c]
     if (op_tok.type == TokenType::LBRACKET) {
-        Expr* index_expr = parse_expression();
+        std::vector<Expr*> indices;
+        indices.push_back(parse_expression());
+        while (match(TokenType::COMMA)) {
+            indices.push_back(parse_expression());
+        }
         consume(TokenType::RBRACKET, "Expected ']' after index expression.");
-        return arena_.make<Expr>(IndexExpr{left, index_expr, loc}, loc);
+        return arena_.make<Expr>(IndexExpr{left, indices[0], loc, std::move(indices)}, loc);
     }
 
     // Function call: ident(arg1, ...) with optional turbofish ident::<T1, T2>(...)

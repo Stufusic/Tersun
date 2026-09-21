@@ -162,12 +162,27 @@ void LLVMEmitter::transpile_stmt(Stmt* stmt, std::ostringstream& oss, int indent
             transpile_expr(s.value, oss);
             oss << ";\n";
         }
+        else if constexpr (std::is_same_v<T, TupleDestructureStmt>) {
+            oss << pad << "auto [";
+            for (size_t i = 0; i < s.names.size(); ++i) {
+                if (i > 0) oss << ", ";
+                oss << s.names[i];
+            }
+            oss << "] = ";
+            transpile_expr(s.init, oss);
+            oss << ";\n";
+        }
         else if constexpr (std::is_same_v<T, IndexAssignStmt>) {
             oss << pad;
             transpile_expr(s.object, oss);
-            oss << "[";
-            transpile_expr(s.index, oss);
-            oss << "] = ";
+            if (!s.indices.empty()) {
+                for (Expr* idx : s.indices) {
+                    oss << "["; transpile_expr(idx, oss); oss << "]";
+                }
+            } else {
+                oss << "["; transpile_expr(s.index, oss); oss << "]";
+            }
+            oss << " = ";
             transpile_expr(s.value, oss);
             oss << ";\n";
         }
@@ -177,11 +192,17 @@ void LLVMEmitter::transpile_stmt(Stmt* stmt, std::ostringstream& oss, int indent
             oss << ";\n";
         }
         else if constexpr (std::is_same_v<T, BlockStmt>) {
-            oss << pad << "{\n";
-            for (Stmt* child : s.statements) {
-                transpile_stmt(child, oss, indent + 1);
+            if (s.is_transparent_scope) {
+                for (Stmt* child : s.statements) {
+                    transpile_stmt(child, oss, indent);
+                }
+            } else {
+                oss << pad << "{\n";
+                for (Stmt* child : s.statements) {
+                    transpile_stmt(child, oss, indent + 1);
+                }
+                oss << pad << "}\n";
             }
-            oss << pad << "}\n";
         }
         else if constexpr (std::is_same_v<T, IfStmt>) {
             oss << pad << "if (is_truthy(";
@@ -472,9 +493,13 @@ void LLVMEmitter::transpile_expr(Expr* expr, std::ostringstream& oss) {
         }
         else if constexpr (std::is_same_v<T, IndexExpr>) {
             if (e.object) transpile_expr(e.object, oss);
-            oss << "[";
-            if (e.index) transpile_expr(e.index, oss);
-            oss << "]";
+            if (!e.indices.empty()) {
+                for (Expr* idx : e.indices) {
+                    oss << "["; transpile_expr(idx, oss); oss << "]";
+                }
+            } else {
+                oss << "["; if (e.index) transpile_expr(e.index, oss); oss << "]";
+            }
         }
         else if constexpr (std::is_same_v<T, ArrayLiteralExpr>) {
             oss << "std::vector{";
@@ -483,6 +508,14 @@ void LLVMEmitter::transpile_expr(Expr* expr, std::ostringstream& oss) {
                 transpile_expr(e.elements[i], oss);
             }
             oss << "}";
+        }
+        else if constexpr (std::is_same_v<T, TupleLiteralExpr>) {
+            oss << "std::make_tuple(";
+            for (size_t i = 0; i < e.elements.size(); ++i) {
+                if (i > 0) oss << ", ";
+                transpile_expr(e.elements[i], oss);
+            }
+            oss << ")";
         }
         else if constexpr (std::is_same_v<T, UnaryExpr>) {
             if (e.op == UnaryOp::NEG) {
@@ -735,7 +768,13 @@ void LLVMEmitter::emit_llvm_global_decls(std::ostringstream& oss) {
     oss << "declare i16 @tersun_tryte_kleene_and(i16, i16)\n";
     oss << "declare i16 @tersun_tryte_kleene_or(i16, i16)\n";
     oss << "declare i16 @tersun_tryte_shl(i16, i64)\n";
-    oss << "declare i16 @tersun_tryte_shr(i16, i64)\n\n";
+    oss << "declare i16 @tersun_tryte_shr(i16, i64)\n";
+    oss << "declare i64 @tersun_relu(i64)\n";
+    oss << "declare i64 @tersun_squared_relu(i64)\n";
+    oss << "declare i64 @tersun_clamp(i64, i64, i64)\n";
+    oss << "declare i64 @tersun_scale_shift(i64, i64, i64)\n";
+    oss << "declare <8 x i32> @llvm.smax.v8i32(<8 x i32>, <8 x i32>) nounwind readnone\n";
+    oss << "declare <8 x i32> @llvm.smin.v8i32(<8 x i32>, <8 x i32>) nounwind readnone\n\n";
 
     oss << "declare i32 @setun2d_init(i32, i32, i8*)\n";
     oss << "declare i32 @setun2d_is_running()\n";
@@ -1411,6 +1450,22 @@ LLVMValue LLVMEmitter::emit_typed_expr(Expr* expr, std::ostringstream& oss) {
             }
             result = { arr_ptr, "%struct.TersunArray*", false };
         }
+        else if constexpr (std::is_same_v<T, TupleLiteralExpr>) {
+            size_t count = e.elements.size();
+            std::string arr_ptr = next_temp();
+            oss << "    " << arr_ptr << " = call %struct.TersunArray* @tersun_array_create(i64 " << std::max<size_t>(count, 8) << ", i64 8)\n";
+            for (Expr* elem : e.elements) {
+                LLVMValue v = emit_typed_expr(elem, oss);
+                std::string ival = v.val;
+                if (v.type == "i1") {
+                    std::string z = next_temp();
+                    oss << "    " << z << " = zext i1 " << v.val << " to i64\n";
+                    ival = z;
+                }
+                oss << "    call void @tersun_array_push_i64(%struct.TersunArray* " << arr_ptr << ", i64 " << ival << ")\n";
+            }
+            result = { arr_ptr, "%struct.TersunArray*", false };
+        }
         else if constexpr (std::is_same_v<T, IndexExpr>) {
             LLVMValue arr = emit_typed_expr(e.object, oss);
             LLVMValue idx = emit_typed_expr(e.index, oss);
@@ -1487,6 +1542,34 @@ LLVMValue LLVMEmitter::emit_typed_expr(Expr* expr, std::ostringstream& oss) {
                     oss << ok_lbl << ":\n";
                 }
                 result = { "0", "void", false };
+            }
+            else if (e.callee == "relu" && !e.args.empty()) {
+                LLVMValue v = emit_typed_expr(e.args[0], oss);
+                std::string t = next_temp();
+                oss << "    " << t << " = call i64 @tersun_relu(i64 " << v.val << ")\n";
+                result = { t, "i64", false };
+            }
+            else if (e.callee == "squared_relu" && !e.args.empty()) {
+                LLVMValue v = emit_typed_expr(e.args[0], oss);
+                std::string t = next_temp();
+                oss << "    " << t << " = call i64 @tersun_squared_relu(i64 " << v.val << ")\n";
+                result = { t, "i64", false };
+            }
+            else if (e.callee == "clamp" && e.args.size() >= 3) {
+                LLVMValue v = emit_typed_expr(e.args[0], oss);
+                LLVMValue min_v = emit_typed_expr(e.args[1], oss);
+                LLVMValue max_v = emit_typed_expr(e.args[2], oss);
+                std::string t = next_temp();
+                oss << "    " << t << " = call i64 @tersun_clamp(i64 " << v.val << ", i64 " << min_v.val << ", i64 " << max_v.val << ")\n";
+                result = { t, "i64", false };
+            }
+            else if (e.callee == "scale_shift" && e.args.size() >= 3) {
+                LLVMValue v = emit_typed_expr(e.args[0], oss);
+                LLVMValue scale = emit_typed_expr(e.args[1], oss);
+                LLVMValue shift = emit_typed_expr(e.args[2], oss);
+                std::string t = next_temp();
+                oss << "    " << t << " = call i64 @tersun_scale_shift(i64 " << v.val << ", i64 " << scale.val << ", i64 " << shift.val << ")\n";
+                result = { t, "i64", false };
             }
             else if (e.callee == "setun2d_init") {
                 LLVMValue w = emit_typed_expr(e.args[0], oss);
@@ -1724,6 +1807,18 @@ void LLVMEmitter::emit_llvm_stmt(Stmt* stmt, std::ostringstream& oss) {
                     oss << "    " << slot << " = getelementptr inbounds %struct." << struct_name << ", %struct." << struct_name << "* " << obj.val << ", i32 0, i32 " << f_idx << "\n";
                     oss << "    store " << f_type << " " << val.val << ", " << f_type << "* " << slot << ", align 8\n";
                 }
+            }
+        }
+        else if constexpr (std::is_same_v<T, TupleDestructureStmt>) {
+            LLVMValue tup = emit_typed_expr(s.init, oss);
+            for (size_t i = 0; i < s.names.size(); ++i) {
+                std::string t = next_temp();
+                oss << "    " << t << " = call i64 @tersun_array_get_i64(%struct.TersunArray* " << tup.val << ", i64 " << i << ")\n";
+                std::string var_ptr = "%" + s.names[i] + ".ptr";
+                oss << "    " << var_ptr << " = alloca i64, align 8\n";
+                oss << "    store i64 " << t << ", i64* " << var_ptr << ", align 8\n";
+                llvm_vars_[s.names[i]] = var_ptr;
+                llvm_var_types_[s.names[i]] = "i64";
             }
         }
         else if constexpr (std::is_same_v<T, IndexAssignStmt>) {
@@ -2058,7 +2153,7 @@ bool LLVMEmitter::compile_native(const Program& program, const std::string& outp
     cmd << "g++ -std=c++20 -O" << opt_level 
         << " -Iinclude -I\"../include\" -I\"Code/include\" -I\"Compiler/Code/include\" -I\"../Code/include\" -I\"../../Compiler/Code/include\""
         << home_inc << " \"" 
-        << temp_c_file << "\" -L. -L\"Code\" -L\"../Code\" -ltersun_rt -lgdi32 -luser32 -o \"" << output_path << "\"";
+        << temp_c_file << "\" -Lbuild -L\"build\" -L\"../build\" -L. -L\"Code\" -L\"../Code\" -ltersun_rt -lgdi32 -luser32 -o \"" << output_path << "\"";
 
     int ret = std::system(cmd.str().c_str());
     if (ret == 0) {
@@ -2084,7 +2179,7 @@ bool LLVMEmitter::compile_llvm_native(const Program& program, const std::string&
 
     // Try compiling with clang if available
     std::ostringstream clang_cmd;
-    clang_cmd << "clang -O" << opt_level << " \"" << ll_file << "\" -L. -L\"Code\" -L\"../Code\" -ltersun_rt -lgdi32 -luser32 -o \"" << output_path << "\" 2>nul";
+    clang_cmd << "clang -O" << opt_level << " \"" << ll_file << "\" -Lbuild -L\"build\" -L\"../build\" -L. -L\"Code\" -L\"../Code\" -ltersun_rt -lgdi32 -luser32 -o \"" << output_path << "\" 2>nul";
     int ret = std::system(clang_cmd.str().c_str());
 
     if (ret == 0) {
@@ -2095,6 +2190,433 @@ bool LLVMEmitter::compile_llvm_native(const Program& program, const std::string&
     // Fallback: If clang is not found, compile through GCC native pipeline while keeping the .ll file
     std::cout << "  -> [Note] Clang not found in PATH; LLVM IR exported to " << ll_file << "\n";
     return compile_native(program, output_path, opt_level);
+}
+
+// ============================================================================
+// Gate 7.3.3: TernaryContractionNode → LLVM Vector IR Lowering
+// Structural Vector IR bridge producing <8 x i32> SIMD with dynamic %M
+// ============================================================================
+
+std::string LLVMEmitter::emit_contraction_llvm_ir(
+    const compiler::TernaryContractionNode& node,
+    const compiler::ContractionSchedule& schedule
+) {
+    auto vir = compiler::TargetIndependentVectorIR::lower_from_node(node, schedule);
+    return emit_vector_ir_to_llvm(vir);
+}
+
+std::string LLVMEmitter::emit_vector_ir_to_llvm(
+    const compiler::TargetIndependentVectorIR& vir
+) {
+    using namespace compiler;
+    std::ostringstream ir;
+
+    std::string fn_name = vir.kernel_name.empty() ? "tersun_contraction_kernel" : vir.kernel_name;
+
+    // Module header
+    ir << "; ============================================================================\n";
+    ir << "; Tersun Gate 7.3.3: Lowered Ternary Contraction Kernel (Vector IR Bridge)\n";
+    ir << "; Function: " << fn_name << "\n";
+    ir << "; Dimensions: Static M=" << vir.static_m << ", N=" << vir.static_n << ", K=" << vir.static_k << "\n";
+    ir << "; Layout: " << weight_layout_name(vir.layout) << "\n";
+    ir << "; Vector width: " << vir.vector_width << " (<8 x i32> AVX2 Vector Loop Nest)\n";
+    ir << "; Epilogue chain: " << vir.epilogue_chain.size() << " stages\n";
+    ir << "; Generated by Tersun Unified AI Systems Compiler\n";
+    ir << "; ============================================================================\n\n";
+
+    ir << "target datalayout = \"e-m:w-i64:64-f80:128-n8:16:32:64-S128\"\n";
+    ir << "target triple = \"" << config_.triple << "\"\n\n";
+
+    // Declare vector intrinsics
+    ir << "; Vector intrinsic declarations\n";
+    ir << "declare <8 x i32> @llvm.x86.avx2.pmaxs.d(<8 x i32>, <8 x i32>)\n";
+    ir << "declare <8 x i32> @llvm.x86.avx2.pmins.d(<8 x i32>, <8 x i32>)\n\n";
+
+    // Helper function: apply_epilogue_vec (inline-able)
+    if (!vir.epilogue_chain.empty()) {
+        ir << "; Epilogue application function (vector, inlineable)\n";
+        ir << "define private <8 x i32> @apply_epilogue_vec(<8 x i32> %acc) #0 {\n";
+        ir << "entry:\n";
+
+        std::string cur_reg = "%acc";
+        int epi_idx = 0;
+
+        for (const auto& stage : vir.epilogue_chain) {
+            std::string next_reg = "%epi" + std::to_string(epi_idx);
+
+            switch (stage.op) {
+                case EpilogueOp::RELU: {
+                    ir << "  " << next_reg << " = call <8 x i32> @llvm.x86.avx2.pmaxs.d("
+                       << "<8 x i32> " << cur_reg << ", <8 x i32> zeroinitializer)\n";
+                    break;
+                }
+                case EpilogueOp::SQUARED_RELU: {
+                    std::string relu_tmp = "%relu_tmp" + std::to_string(epi_idx);
+                    ir << "  " << relu_tmp << " = call <8 x i32> @llvm.x86.avx2.pmaxs.d("
+                       << "<8 x i32> " << cur_reg << ", <8 x i32> zeroinitializer)\n";
+                    ir << "  " << next_reg << " = mul <8 x i32> " << relu_tmp << ", " << relu_tmp << "\n";
+                    break;
+                }
+                case EpilogueOp::CLAMP: {
+                    int32_t cmin = stage.payload.clamp_min;
+                    int32_t cmax = stage.payload.clamp_max;
+                    std::string clamp_lo = "%clamp_lo" + std::to_string(epi_idx);
+                    std::string vmin_str = "<i32 " + std::to_string(cmin) + ", i32 " + std::to_string(cmin) +
+                        ", i32 " + std::to_string(cmin) + ", i32 " + std::to_string(cmin) +
+                        ", i32 " + std::to_string(cmin) + ", i32 " + std::to_string(cmin) +
+                        ", i32 " + std::to_string(cmin) + ", i32 " + std::to_string(cmin) + ">";
+                    std::string vmax_str = "<i32 " + std::to_string(cmax) + ", i32 " + std::to_string(cmax) +
+                        ", i32 " + std::to_string(cmax) + ", i32 " + std::to_string(cmax) +
+                        ", i32 " + std::to_string(cmax) + ", i32 " + std::to_string(cmax) +
+                        ", i32 " + std::to_string(cmax) + ", i32 " + std::to_string(cmax) + ">";
+                    ir << "  " << clamp_lo << " = call <8 x i32> @llvm.x86.avx2.pmaxs.d("
+                       << "<8 x i32> " << cur_reg << ", <8 x i32> " << vmin_str << ")\n";
+                    ir << "  " << next_reg << " = call <8 x i32> @llvm.x86.avx2.pmins.d("
+                       << "<8 x i32> " << clamp_lo << ", <8 x i32> " << vmax_str << ")\n";
+                    break;
+                }
+                case EpilogueOp::SCALE_SHIFT: {
+                    int32_t sc = stage.payload.scale;
+                    int32_t sh = stage.payload.shift;
+                    std::string scaled = "%scaled" + std::to_string(epi_idx);
+                    std::string vscale_str = "<i32 " + std::to_string(sc) + ", i32 " + std::to_string(sc) +
+                        ", i32 " + std::to_string(sc) + ", i32 " + std::to_string(sc) +
+                        ", i32 " + std::to_string(sc) + ", i32 " + std::to_string(sc) +
+                        ", i32 " + std::to_string(sc) + ", i32 " + std::to_string(sc) + ">";
+                    ir << "  " << scaled << " = mul <8 x i32> " << cur_reg << ", " << vscale_str << "\n";
+                    if (sh > 0) {
+                        std::string vshift_str = "<i32 " + std::to_string(sh) + ", i32 " + std::to_string(sh) +
+                            ", i32 " + std::to_string(sh) + ", i32 " + std::to_string(sh) +
+                            ", i32 " + std::to_string(sh) + ", i32 " + std::to_string(sh) +
+                            ", i32 " + std::to_string(sh) + ", i32 " + std::to_string(sh) + ">";
+                        ir << "  " << next_reg << " = ashr <8 x i32> " << scaled << ", " << vshift_str << "\n";
+                    } else {
+                        ir << "  " << next_reg << " = add <8 x i32> " << scaled << ", zeroinitializer\n";
+                    }
+                    break;
+                }
+                case EpilogueOp::BIAS_ADD:
+                    ir << "  " << next_reg << " = add <8 x i32> " << cur_reg << ", zeroinitializer\n";
+                    break;
+            }
+            cur_reg = next_reg;
+            epi_idx++;
+        }
+
+        ir << "  ret <8 x i32> " << cur_reg << "\n";
+        ir << "}\n\n";
+
+        // Scalar fallback epilogue for remainder tail
+        ir << "; Epilogue application function (scalar tail fallback, inlineable)\n";
+        ir << "define private i32 @apply_epilogue_scalar(i32 %acc) #0 {\n";
+        ir << "entry:\n";
+        cur_reg = "%acc";
+        epi_idx = 0;
+        for (const auto& stage : vir.epilogue_chain) {
+            std::string next_reg = "%epi_sc" + std::to_string(epi_idx);
+            switch (stage.op) {
+                case EpilogueOp::RELU: {
+                    std::string cmp = "%rcmp" + std::to_string(epi_idx);
+                    ir << "  " << cmp << " = icmp sgt i32 " << cur_reg << ", 0\n";
+                    ir << "  " << next_reg << " = select i1 " << cmp << ", i32 " << cur_reg << ", i32 0\n";
+                    break;
+                }
+                case EpilogueOp::SQUARED_RELU: {
+                    std::string cmp = "%sqcmp" + std::to_string(epi_idx);
+                    std::string rtmp = "%sqrtmp" + std::to_string(epi_idx);
+                    ir << "  " << cmp << " = icmp sgt i32 " << cur_reg << ", 0\n";
+                    ir << "  " << rtmp << " = select i1 " << cmp << ", i32 " << cur_reg << ", i32 0\n";
+                    ir << "  " << next_reg << " = mul i32 " << rtmp << ", " << rtmp << "\n";
+                    break;
+                }
+                case EpilogueOp::CLAMP: {
+                    std::string cl_lo = "%cl_lo" + std::to_string(epi_idx);
+                    std::string ctmp = "%ctmp" + std::to_string(epi_idx);
+                    std::string cl_hi = "%cl_hi" + std::to_string(epi_idx);
+                    ir << "  " << cl_lo << " = icmp slt i32 " << cur_reg << ", " << stage.payload.clamp_min << "\n";
+                    ir << "  " << ctmp << " = select i1 " << cl_lo << ", i32 " << stage.payload.clamp_min << ", i32 " << cur_reg << "\n";
+                    ir << "  " << cl_hi << " = icmp sgt i32 " << ctmp << ", " << stage.payload.clamp_max << "\n";
+                    ir << "  " << next_reg << " = select i1 " << cl_hi << ", i32 " << stage.payload.clamp_max << ", i32 " << ctmp << "\n";
+                    break;
+                }
+                case EpilogueOp::SCALE_SHIFT: {
+                    std::string scld = "%scld" + std::to_string(epi_idx);
+                    ir << "  " << scld << " = mul i32 " << cur_reg << ", " << stage.payload.scale << "\n";
+                    if (stage.payload.shift > 0) {
+                        ir << "  " << next_reg << " = ashr i32 " << scld << ", " << stage.payload.shift << "\n";
+                    } else {
+                        next_reg = scld;
+                    }
+                    break;
+                }
+                case EpilogueOp::BIAS_ADD:
+                    next_reg = cur_reg;
+                    break;
+            }
+            cur_reg = next_reg;
+            epi_idx++;
+        }
+        ir << "  ret i32 " << cur_reg << "\n";
+        ir << "}\n\n";
+    }
+
+    // Main contraction kernel function with Vector IR loop nest
+    ir << "; Main contraction kernel (Vector IR Loop Nest with dynamic %M)\n";
+    ir << "define dso_local void @" << fn_name << "("
+       << "ptr noalias %A, ptr noalias readonly %B, ptr noalias readonly %bias, "
+       << "ptr noalias %Y, i64 %M, i64 %N, i64 %K) #1 {\n";
+    ir << "entry:\n";
+    ir << "  %m_cmp = icmp sgt i64 %M, 0\n";
+    ir << "  br i1 %m_cmp, label %m_loop_header, label %exit\n\n";
+
+    ir << "m_loop_header:\n";
+    ir << "  br label %m_loop\n\n";
+
+    ir << "m_loop:\n";
+    ir << "  %m = phi i64 [0, %m_loop_header], [%m_next, %m_loop_end]\n";
+    ir << "  %n_rem = urem i64 %N, 8\n";
+    ir << "  %n_vec_limit = sub i64 %N, %n_rem\n";
+    ir << "  %has_vec = icmp sgt i64 %n_vec_limit, 0\n";
+    ir << "  br i1 %has_vec, label %n_vec_loop_header, label %n_scalar_loop_header\n\n";
+
+    ir << "n_vec_loop_header:\n";
+    ir << "  br label %n_vec_loop\n\n";
+
+    ir << "n_vec_loop:\n";
+    ir << "  %n_vec = phi i64 [0, %n_vec_loop_header], [%n_vec_next, %n_vec_body_end]\n";
+    ir << "  ; Initialize vector accumulator from bias or zeros\n";
+    ir << "  %bias_null = icmp eq ptr %bias, null\n";
+    ir << "  br i1 %bias_null, label %bias_v_null, label %bias_v_load\n\n";
+
+    ir << "bias_v_null:\n";
+    ir << "  br label %k_v_header\n\n";
+
+    ir << "bias_v_load:\n";
+    ir << "  %bias_ptr_v = getelementptr i32, ptr %bias, i64 %n_vec\n";
+    ir << "  %bias_v_val = load <8 x i32>, ptr %bias_ptr_v, align 4\n";
+    ir << "  br label %k_v_header\n\n";
+
+    ir << "k_v_header:\n";
+    ir << "  %acc_v_init = phi <8 x i32> [zeroinitializer, %bias_v_null], [%bias_v_val, %bias_v_load]\n";
+    ir << "  %k_has = icmp sgt i64 %K, 0\n";
+    ir << "  br i1 %k_has, label %k_v_loop, label %k_v_exit\n\n";
+
+    ir << "k_v_loop:\n";
+    ir << "  %k_v = phi i64 [0, %k_v_header], [%k_v_next, %k_v_body]\n";
+    ir << "  %acc_v = phi <8 x i32> [%acc_v_init, %k_v_header], [%acc_v_next, %k_v_body]\n";
+    ir << "  br label %k_v_body\n\n";
+
+    ir << "k_v_body:\n";
+    ir << "  ; Broadcast A[m, k] to <8 x i32>\n";
+    ir << "  %mk_off = mul i64 %m, %K\n";
+    ir << "  %mk_idx_v = add i64 %mk_off, %k_v\n";
+    ir << "  %a_ptr_v = getelementptr i32, ptr %A, i64 %mk_idx_v\n";
+    ir << "  %a_s = load i32, ptr %a_ptr_v, align 4\n";
+    ir << "  %a_ins = insertelement <8 x i32> poison, i32 %a_s, i32 0\n";
+    ir << "  %a_bcast = shufflevector <8 x i32> %a_ins, <8 x i32> poison, <8 x i32> zeroinitializer\n";
+    ir << "  ; Vector load B[k, n_vec .. n_vec+7]\n";
+    ir << "  %kn_off = mul i64 %k_v, %N\n";
+    ir << "  %kn_idx_v = add i64 %kn_off, %n_vec\n";
+    ir << "  %b_ptr_v = getelementptr i8, ptr %B, i64 %kn_idx_v\n";
+    ir << "  %b_raw_v = load <8 x i8>, ptr %b_ptr_v, align 1\n";
+    ir << "  %b_ext_v = sext <8 x i8> %b_raw_v to <8 x i32>\n";
+    ir << "  ; Vector ternary selection & accumulation\n";
+    ir << "  %is_p = icmp eq <8 x i32> %b_ext_v, <i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1>\n";
+    ir << "  %is_n = icmp eq <8 x i32> %b_ext_v, <i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1>\n";
+    ir << "  %acc_add_v = add <8 x i32> %acc_v, %a_bcast\n";
+    ir << "  %acc_sub_v = sub <8 x i32> %acc_v, %a_bcast\n";
+    ir << "  %sel_p = select <8 x i1> %is_p, <8 x i32> %acc_add_v, <8 x i32> %acc_v\n";
+    ir << "  %acc_v_next = select <8 x i1> %is_n, <8 x i32> %acc_sub_v, <8 x i32> %sel_p\n";
+    ir << "  %k_v_next = add i64 %k_v, 1\n";
+    ir << "  %k_v_done = icmp sge i64 %k_v_next, %K\n";
+    ir << "  br i1 %k_v_done, label %k_v_exit, label %k_v_loop\n\n";
+
+    ir << "k_v_exit:\n";
+    ir << "  %acc_v_res = phi <8 x i32> [%acc_v_init, %k_v_header], [%acc_v_next, %k_v_body]\n";
+    if (!vir.epilogue_chain.empty()) {
+        ir << "  %acc_v_post = call <8 x i32> @apply_epilogue_vec(<8 x i32> %acc_v_res)\n";
+    } else {
+        ir << "  %acc_v_post = add <8 x i32> %acc_v_res, zeroinitializer\n";
+    }
+    ir << "  ; Vector store to Y[m, n_vec]\n";
+    ir << "  %mn_off = mul i64 %m, %N\n";
+    ir << "  %mn_idx_v = add i64 %mn_off, %n_vec\n";
+    ir << "  %y_ptr_v = getelementptr i32, ptr %Y, i64 %mn_idx_v\n";
+    ir << "  store <8 x i32> %acc_v_post, ptr %y_ptr_v, align 4\n";
+    ir << "  br label %n_vec_body_end\n\n";
+
+    ir << "n_vec_body_end:\n";
+    ir << "  %n_vec_next = add i64 %n_vec, 8\n";
+    ir << "  %n_vec_done = icmp sge i64 %n_vec_next, %n_vec_limit\n";
+    ir << "  br i1 %n_vec_done, label %n_vec_done_block, label %n_vec_loop\n\n";
+
+    ir << "n_vec_done_block:\n";
+    ir << "  %has_tail = icmp slt i64 %n_vec_limit, %N\n";
+    ir << "  br i1 %has_tail, label %n_scalar_loop_header, label %m_loop_end\n\n";
+
+    ir << "n_scalar_loop_header:\n";
+    ir << "  %n_sc_start = phi i64 [0, %m_loop], [%n_vec_limit, %n_vec_done_block]\n";
+    ir << "  br label %n_scalar_loop\n\n";
+
+    ir << "n_scalar_loop:\n";
+    ir << "  %n_sc = phi i64 [%n_sc_start, %n_scalar_loop_header], [%n_sc_next, %n_scalar_body_end]\n";
+    ir << "  ; Bias for scalar lane\n";
+    ir << "  %sc_bias_null = icmp eq ptr %bias, null\n";
+    ir << "  br i1 %sc_bias_null, label %sc_bias_0, label %sc_bias_load\n\n";
+
+    ir << "sc_bias_0:\n";
+    ir << "  br label %k_sc_header\n\n";
+
+    ir << "sc_bias_load:\n";
+    ir << "  %sc_b_ptr = getelementptr i32, ptr %bias, i64 %n_sc\n";
+    ir << "  %sc_b_val = load i32, ptr %sc_b_ptr, align 4\n";
+    ir << "  br label %k_sc_header\n\n";
+
+    ir << "k_sc_header:\n";
+    ir << "  %sc_acc_init = phi i32 [0, %sc_bias_0], [%sc_b_val, %sc_bias_load]\n";
+    ir << "  %k_sc_has = icmp sgt i64 %K, 0\n";
+    ir << "  br i1 %k_sc_has, label %k_sc_loop, label %k_sc_exit\n\n";
+
+    ir << "k_sc_loop:\n";
+    ir << "  %k_sc = phi i64 [0, %k_sc_header], [%k_sc_next, %k_sc_body]\n";
+    ir << "  %acc_sc = phi i32 [%sc_acc_init, %k_sc_header], [%acc_sc_next, %k_sc_body]\n";
+    ir << "  br label %k_sc_body\n\n";
+
+    ir << "k_sc_body:\n";
+    ir << "  %mk_sc_off = mul i64 %m, %K\n";
+    ir << "  %mk_sc_idx = add i64 %mk_sc_off, %k_sc\n";
+    ir << "  %a_sc_ptr = getelementptr i32, ptr %A, i64 %mk_sc_idx\n";
+    ir << "  %a_sc_val = load i32, ptr %a_sc_ptr, align 4\n";
+    ir << "  %kn_sc_off = mul i64 %k_sc, %N\n";
+    ir << "  %kn_sc_idx = add i64 %kn_sc_off, %n_sc\n";
+    ir << "  %b_sc_ptr = getelementptr i8, ptr %B, i64 %kn_sc_idx\n";
+    ir << "  %b_sc_val = load i8, ptr %b_sc_ptr, align 1\n";
+    ir << "  %b_sc_i32 = sext i8 %b_sc_val to i32\n";
+    ir << "  %sc_is_p = icmp eq i32 %b_sc_i32, 1\n";
+    ir << "  %sc_is_n = icmp eq i32 %b_sc_i32, -1\n";
+    ir << "  %acc_sc_add = add i32 %acc_sc, %a_sc_val\n";
+    ir << "  %acc_sc_sub = sub i32 %acc_sc, %a_sc_val\n";
+    ir << "  %sc_sel_p = select i1 %sc_is_p, i32 %acc_sc_add, i32 %acc_sc\n";
+    ir << "  %acc_sc_next = select i1 %sc_is_n, i32 %acc_sc_sub, i32 %sc_sel_p\n";
+    ir << "  %k_sc_next = add i64 %k_sc, 1\n";
+    ir << "  %k_sc_done = icmp sge i64 %k_sc_next, %K\n";
+    ir << "  br i1 %k_sc_done, label %k_sc_exit, label %k_sc_loop\n\n";
+
+    ir << "k_sc_exit:\n";
+    ir << "  %acc_sc_res = phi i32 [%sc_acc_init, %k_sc_header], [%acc_sc_next, %k_sc_body]\n";
+    if (!vir.epilogue_chain.empty()) {
+        ir << "  %acc_sc_post = call i32 @apply_epilogue_scalar(i32 %acc_sc_res)\n";
+    } else {
+        ir << "  %acc_sc_post = add i32 %acc_sc_res, 0\n";
+    }
+    ir << "  %mn_sc_off = mul i64 %m, %N\n";
+    ir << "  %mn_sc_idx = add i64 %mn_sc_off, %n_sc\n";
+    ir << "  %y_sc_ptr = getelementptr i32, ptr %Y, i64 %mn_sc_idx\n";
+    ir << "  store i32 %acc_sc_post, ptr %y_sc_ptr, align 4\n";
+    ir << "  br label %n_scalar_body_end\n\n";
+
+    ir << "n_scalar_body_end:\n";
+    ir << "  %n_sc_next = add i64 %n_sc, 1\n";
+    ir << "  %n_sc_done = icmp sge i64 %n_sc_next, %N\n";
+    ir << "  br i1 %n_sc_done, label %m_loop_end, label %n_scalar_loop\n\n";
+
+    ir << "m_loop_end:\n";
+    ir << "  %m_next = add i64 %m, 1\n";
+    ir << "  %m_done = icmp sge i64 %m_next, %M\n";
+    ir << "  br i1 %m_done, label %exit, label %m_loop\n\n";
+
+    ir << "exit:\n";
+    ir << "  ret void\n";
+    ir << "}\n\n";
+
+    // Function attributes
+    ir << "attributes #0 = { alwaysinline nounwind }\n";
+    ir << "attributes #1 = { nounwind \"target-features\"=\"+avx2\" }\n";
+
+    return ir.str();
+}
+
+bool LLVMEmitter::compile_contraction_standalone(
+    const compiler::TernaryContractionNode& node,
+    const compiler::ContractionSchedule& schedule,
+    const std::string& output_path,
+    int opt_level
+) {
+    auto vir = compiler::TargetIndependentVectorIR::lower_from_node(node, schedule);
+    std::string llvm_ir = emit_vector_ir_to_llvm(vir);
+
+    // Write .ll file
+    std::string ll_file = output_path + ".ll";
+    {
+        std::ofstream ofs(ll_file);
+        if (!ofs.is_open()) return false;
+        ofs << llvm_ir;
+    }
+    std::cout << "  -> [Gate 7.3.3] Contraction kernel LLVM IR written to " << ll_file << "\n";
+
+    // Try compiling with clang first if available
+    std::ostringstream clang_cmd;
+    clang_cmd << "clang -O" << opt_level << " -mavx2 \"" << ll_file << "\" -c -o \"" << output_path << ".obj\" 2>nul";
+    int ret = std::system(clang_cmd.str().c_str());
+
+    if (ret == 0) {
+        std::cout << "  -> [Gate 7.3.3] Contraction kernel compiled to " << output_path << ".obj via Clang\n";
+        return true;
+    }
+
+    // Emit standalone C++ driver and compile with host toolchain
+    std::string cpp_file = output_path + ".driver.cpp";
+    {
+        std::ofstream ofs(cpp_file);
+        if (ofs.is_open()) {
+            ofs << "// Standalone AOT Kernel Driver generated by Tersun Compiler (Gate 7.3.3)\n";
+            ofs << "#include <cstdint>\n#include <cstddef>\n#include <iostream>\n#include <vector>\n\n";
+            ofs << "extern \"C\" void " << vir.kernel_name << "(\n";
+            ofs << "    const int32_t* A, const int8_t* B, const int32_t* bias, int32_t* Y,\n";
+            ofs << "    int64_t M, int64_t N, int64_t K\n";
+            ofs << ") {\n";
+            ofs << "    for (int64_t m = 0; m < M; ++m) {\n";
+            ofs << "        for (int64_t n = 0; n < N; ++n) {\n";
+            ofs << "            int32_t acc = bias ? bias[n] : 0;\n";
+            ofs << "            for (int64_t k = 0; k < K; ++k) {\n";
+            ofs << "                int32_t a = A[m * K + k];\n";
+            ofs << "                int8_t b = B[k * N + n];\n";
+            ofs << "                if (b == 1) acc += a;\n";
+            ofs << "                else if (b == -1) acc -= a;\n";
+            ofs << "            }\n";
+            for (const auto& stage : vir.epilogue_chain) {
+                if (stage.op == compiler::EpilogueOp::RELU) {
+                    ofs << "            if (acc < 0) acc = 0;\n";
+                } else if (stage.op == compiler::EpilogueOp::SQUARED_RELU) {
+                    ofs << "            if (acc < 0) acc = 0; else acc = acc * acc;\n";
+                } else if (stage.op == compiler::EpilogueOp::CLAMP) {
+                    ofs << "            if (acc < " << stage.payload.clamp_min << ") acc = " << stage.payload.clamp_min << ";\n";
+                    ofs << "            if (acc > " << stage.payload.clamp_max << ") acc = " << stage.payload.clamp_max << ";\n";
+                } else if (stage.op == compiler::EpilogueOp::SCALE_SHIFT) {
+                    ofs << "            acc = (acc * " << stage.payload.scale << ") >> " << stage.payload.shift << ";\n";
+                }
+            }
+            ofs << "            Y[m * N + n] = acc;\n";
+            ofs << "        }\n";
+            ofs << "    }\n";
+            ofs << "}\n\n";
+            ofs << "int main() {\n";
+            ofs << "    std::cout << \"[Tersun Standalone AOT Binary] Kernel initialized.\\n\";\n";
+            ofs << "    return 0;\n";
+            ofs << "}\n";
+        }
+    }
+
+    std::ostringstream gcc_cmd;
+    gcc_cmd << "g++ -std=c++20 -O" << opt_level << " -mavx2 \"" << cpp_file << "\" -Lbuild -L\"build\" -L\"../build\" -L. -ltersun_rt -lgdi32 -luser32 -o \"" << output_path << ".exe\" 2>nul";
+    int gcc_ret = std::system(gcc_cmd.str().c_str());
+    if (gcc_ret == 0) {
+        std::cout << "  -> [Gate 7.3.3] Standalone kernel compiled to " << output_path << ".exe via GCC AOT\n";
+        return true;
+    }
+
+    std::cout << "  -> [Note] Compiler error; LLVM IR exported to " << ll_file << "\n";
+    return false;
 }
 
 } // namespace setun

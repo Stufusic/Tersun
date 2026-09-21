@@ -1,0 +1,49 @@
+{
+  "milestone": "G7.0",
+  "title": "Gate 6R.3 Frozen Baseline for Gate 7 Portable Compute Runtime",
+  "timestamp_utc": "2026-09-20 14:24:00Z",
+  "status": "FROZEN_AND_VERIFIED",
+  "baseline_commit": "133330b5fd9b5cf9b57948abf7de3361eb20b793",
+  "system_info": {
+    "os": "Windows 11 Pro 64-bit",
+    "cpu": "12th Gen Intel(R) Core(TM) i5-1245U",
+    "cores": 10,
+    "threads": 12,
+    "compiler": "GCC 15.2.0 C++20",
+    "flags": "-std=c++20 -O3 -mavx2 -mfma -fopenmp -DTERSUN_PIN_REGISTERS -Iinclude"
+  },
+  "verification_results": {
+    "cross_tier_differential_tests": {
+      "total": 33,
+      "passed": 33,
+      "failed": 0,
+      "rate_percent": 100.0,
+      "range": "ST-12.1 through ST-12.33",
+      "parity": "100% BIT-EXACT"
+    },
+    "bce_safety_tests": {
+      "total": 6,
+      "passed": 6,
+      "failed": 0,
+      "rate_percent": 100.0,
+      "type": "Positive and Negative Safety"
+    },
+    "canonical_workloads_median_ms": {
+      "W1_FIB": 85.42,
+      "W2_SIEVE": 26.43,
+      "W3_MATMUL": 139.70,
+      "W4_OBJECT": 73.28
+    },
+    "tersun_native_aot_median_ms": {
+      "W1_FIB": 2.51,
+      "W2_SIEVE": 1.95,
+      "W3_MATMUL": 3.50,
+      "W4_OBJECT": 0.52
+    }
+  },
+  "seals": {
+    "g6r3_interpreter_seal": "15adb6816042a49f378307daaeb08fa5c4944b985b29928564982142f55d6016",
+    "b8_register_pinning_seal": "ee855c1d6594855ae462e91a32dd1c6b9da57df34d55ede9f843a25d1df888c8",
+    "b6_superinstructions_seal": "08decbf37d72739297bdfd19a741996207e1603921080207e73805cda57dbfef"
+  }
+}

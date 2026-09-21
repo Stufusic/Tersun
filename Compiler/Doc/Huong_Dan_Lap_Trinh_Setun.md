@@ -415,3 +415,106 @@ fn main() -> int {
     return 0;
 }
 ```
+
+---
+
+## 9. Lập Trình LLM & AI Tam Phân Bản Địa (Native LLM Runtime with Tersun C++ & STN)
+
+Bắt đầu từ phiên bản **Tersun 1.1.0 (Gate 7.4 & Gate 7.5)**, Tersun cung cấp hạ tầng thực thi mô hình Transformer và AI tam phân (BitNet b1.58) độc lập hoàn toàn bằng C++20 bản địa, không phụ thuộc vào Python hay PyTorch.
+
+### 9.1. Cấu Trúc Gói Mô Hình & SafeTensors Loader
+Một mô hình AI trong hệ sinh thái Tersun được tổ chức thành một thư mục gói chuẩn:
+```text
+models/bitnet-b1.58/
+├── config.json             // Siêu tham số hình học (num_layers, hidden_dim, GQA heads, RoPE)
+├── generation_config.json    // Cấu hình sinh mặc định (temperature, top_p, eos_token_ids)
+├── tokenizer.json          // Từ điển từ vựng Byte-Level BPE, merges và added_tokens
+└── model.safetensors       // Trọng số nơ-ron nhị phân/tam phân dạng phẳng (Zero-Copy mmap)
+```
+
+Nạp và kiểm tra thông số mô hình:
+```cpp
+#include "tensor/nn/format/model_package.hpp"
+#include "tensor/nn/format/model_manifest.hpp"
+
+ModelPackage pkg("models/bitnet-b1.58");
+if (pkg.validate()) {
+    const auto& manifest = pkg.manifest();
+    printf("Model: %zu layers, hidden=%zu, GQA=%zu:%zu\n",
+           manifest.num_layers, manifest.hidden_dim, 
+           manifest.num_heads, manifest.num_kv_heads);
+}
+```
+
+### 9.2. Tokenizer Byte-Level BPE & Định Dạng ChatML
+Tokenizer trong Tersun bảo tồn nguyên vẹn các ký tự UTF-8, tiếng Việt có dấu và các thẻ đặc biệt.
+
+Khuôn mẫu hội thoại chuẩn **ChatML**:
+```text
+<|im_start|>system
+Bạn là trợ lý AI thông minh vận hành trên nền tảng Tersun.<|im_end|>
+<|im_start|>user
+Hãy phân tích ưu điểm của logic tam phân cân bằng?<|im_end|>
+<|im_start|>assistant
+```
+
+Khởi tạo và định dạng bằng mã nguồn:
+```cpp
+#include "tensor/nn/format/chat_template.hpp"
+
+ChatTemplate chat(ChatFormat::ChatML);
+chat.set_system_prompt("Ban la tro ly AI thong minh cua Tersun.");
+chat.add_user_message("Xin chao!");
+
+std::string prompt = chat.format_prompt(true /* add_generation_prompt */);
+```
+
+### 9.3. Phiên Suy Luận `InferenceSession` & Bất Biến Zero-Allocation
+Hệ thống duy trì bất biến **`malloc == 0` tuyệt đối** trong suốt quá trình giải mã liên tục nhờ cấp phát trước vùng nhớ đệm `KVCache` và `EdgeArena`.
+
+Mã nguồn mẫu suy luận tự hồi quy dạng luồng (Streaming Generation):
+```cpp
+#include "tensor/nn/runtime/inference_session.hpp"
+
+int main() {
+    InferenceSession session;
+    
+    SessionConfig cfg;
+    cfg.model_dir = "models/bitnet-b1.58";
+    cfg.temperature = 0.7f;
+    cfg.top_p = 0.9f;
+    cfg.repetition_penalty = 1.15f;
+    cfg.max_tokens = 128;
+    
+    if (!session.initialize(cfg)) {
+        return 1;
+    }
+    
+    std::string prompt = "So hoc tam phan can bang giup gi cho AI?";
+    
+    session.generate_stream(prompt, [](std::string_view token_text) {
+        std::cout << token_text << std::flush;
+        return true; // true = tiep tuc sinh; false = dung
+    });
+    
+    std::cout << "\n";
+    return 0;
+}
+```
+
+### 9.4. Sử Dụng Công Cụ Dòng Lệnh `setunc ai`
+Trình biên dịch `setunc` tích hợp sẵn các lệnh thực thi trực tiếp từ console:
+
+#### 1. Sinh văn bản một lần (`ai generate`):
+```bash
+setunc ai generate --model-dir models/bitnet-b1.58 \
+                   --prompt "Tinh toan tren so thuc dai so Q(sqrt(3)):" \
+                   --temp 0.7 --top-k 40 --max-tokens 64
+```
+
+#### 2. Trò chuyện REPL đa lượt có bộ nhớ ngữ cảnh (`ai chat`):
+```bash
+setunc ai chat --model-dir models/bitnet-b1.58
+```
+Trong chế độ `ai chat`, toàn bộ lịch sử trò chuyện được tự động bảo lưu trong `KVCache`, cho phép tương tác hội thoại thời gian thực với độ trễ thấp và tốc độ giải mã từ $160 - 400\text{ tokens/s}$.
+

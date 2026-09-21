@@ -463,6 +463,24 @@ inline int16_t tafpu_shr_c(int16_t a, int16_t b) {
     return tryte_shr_c(a, static_cast<int64_t>(b));
 }
 
+// Neural Epilogue primitives
+inline int64_t relu(int64_t x) { return x > 0 ? x : 0; }
+inline int32_t relu(int32_t x) { return x > 0 ? x : 0; }
+inline int64_t squared_relu(int64_t x) { int64_t r = x > 0 ? x : 0; return r * r; }
+inline int32_t squared_relu(int32_t x) { int32_t r = x > 0 ? x : 0; return r * r; }
+inline int64_t clamp(int64_t x, int64_t min_v, int64_t max_v) {
+    return x < min_v ? min_v : (x > max_v ? max_v : x);
+}
+inline int32_t clamp(int32_t x, int32_t min_v, int32_t max_v) {
+    return x < min_v ? min_v : (x > max_v ? max_v : x);
+}
+inline int64_t scale_shift(int64_t x, int64_t scale, int64_t shift) {
+    return (x * scale) >> shift;
+}
+inline int32_t scale_shift(int32_t x, int32_t scale, int32_t shift) {
+    return (x * scale) >> shift;
+}
+
 } // namespace runtime
 } // namespace setun
 
@@ -476,4 +494,8 @@ inline int16_t tersun_tryte_kleene_and(int16_t a, int16_t b) { return setun::run
 inline int16_t tersun_tryte_kleene_or(int16_t a, int16_t b) { return setun::runtime::tryte_kleene_or_c(a, b); }
 inline int16_t tersun_tryte_shl(int16_t a, int64_t k) { return setun::runtime::tryte_shl_c(a, k); }
 inline int16_t tersun_tryte_shr(int16_t a, int64_t k) { return setun::runtime::tryte_shr_c(a, k); }
+inline int64_t tersun_relu(int64_t x) { return setun::runtime::relu(x); }
+inline int64_t tersun_squared_relu(int64_t x) { return setun::runtime::squared_relu(x); }
+inline int64_t tersun_clamp(int64_t x, int64_t min_v, int64_t max_v) { return setun::runtime::clamp(x, min_v, max_v); }
+inline int64_t tersun_scale_shift(int64_t x, int64_t scale, int64_t shift) { return setun::runtime::scale_shift(x, scale, shift); }
 }

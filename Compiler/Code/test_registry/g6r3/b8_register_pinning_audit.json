@@ -1,0 +1,65 @@
+{
+  "milestone": "G6R.3",
+  "step": "G6R.3-B8",
+  "stage": "B8_Register_Pinning_Audit",
+  "timestamp_utc": "2026-09-20 12:35:29Z",
+  "mode": "pure_interpreter",
+  "assembly_audit": {
+    "variant_a_no_pin": {
+      "total_lines": 16823,
+      "push_instructions": 8,
+      "pop_instructions": 8,
+      "rsp_relative_accesses": 2939,
+      "rbp_relative_accesses": 231,
+      "total_stack_frame_accesses": 3170,
+      "r12_occurrences": 907,
+      "r13_occurrences": 309
+    },
+    "variant_b_pinned": {
+      "total_lines": 16691,
+      "push_instructions": 8,
+      "pop_instructions": 8,
+      "rsp_relative_accesses": 2724,
+      "rbp_relative_accesses": 10,
+      "total_stack_frame_accesses": 2734,
+      "r12_occurrences": 662,
+      "r13_occurrences": 1313
+    },
+    "spill_delta": -436
+  },
+  "workload_benchmarks": {
+    "W1_FIB": {
+      "variant_a_no_pin_ms": 126.707,
+      "variant_b_pinned_ms": 89.674,
+      "speedup_b_vs_a": 1.413,
+      "pct_delta": -29.23,
+      "bit_exact": true
+    },
+    "W2_SIEVE": {
+      "variant_a_no_pin_ms": 32.042,
+      "variant_b_pinned_ms": 31.712,
+      "speedup_b_vs_a": 1.01,
+      "pct_delta": -1.03,
+      "bit_exact": true
+    },
+    "W3_MATMUL": {
+      "variant_a_no_pin_ms": 162.308,
+      "variant_b_pinned_ms": 155.15,
+      "speedup_b_vs_a": 1.046,
+      "pct_delta": -4.41,
+      "bit_exact": true
+    },
+    "W4_OBJECT": {
+      "variant_a_no_pin_ms": 82.862,
+      "variant_b_pinned_ms": 89.488,
+      "speedup_b_vs_a": 0.926,
+      "pct_delta": 8.0,
+      "bit_exact": true
+    }
+  },
+  "architectural_decision": {
+    "decision": "ADOPT_PINNING",
+    "rationale": "Assembly audit reveals that explicit register pinning results in 2734 stack accesses vs 3170 in standard allocator (delta: -436). GCC's integrated register allocator efficiently allocates TOS and dispatch pointers without artificial constraints."
+  },
+  "seal_sha256": "ee855c1d6594855ae462e91a32dd1c6b9da57df34d55ede9f843a25d1df888c8"
+}

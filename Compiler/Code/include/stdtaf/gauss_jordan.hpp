@@ -15,11 +15,11 @@ namespace setun {
 // -----------------------------------------------------------------------------
 template <size_t N>
 inline std::optional<std::array<TAF_Register, N>> solve_gauss_jordan(
-    tmat<N, N> A,
-    std::array<TAF_Register, N> b
+    const tmat<N, N>& A,
+    const std::array<TAF_Register, N>& b
 ) {
-    // Create augmented matrix [A | b] of size N x (N + 1)
-    std::vector<std::vector<TAF_Register>> M(N, std::vector<TAF_Register>(N + 1));
+    // Create augmented matrix [A | b] of size N x (N + 1) without dynamic allocation
+    std::array<std::array<TAF_Register, N + 1>, N> M{};
     for (size_t r = 0; r < N; ++r) {
         for (size_t c = 0; c < N; ++c) {
             M[r][c] = A(r, c);
@@ -42,22 +42,13 @@ inline std::optional<std::array<TAF_Register, N>> solve_gauss_jordan(
             std::swap(M[col], M[pivot_row]);
         }
 
-        // Normalize pivot row: M[col] /= pivot
+        // Eliminate other rows (fraction-free elimination to prevent intermediate rounding error)
         TAF_Register pivot = M[col][col];
-        for (size_t c = col; c <= N; ++c) {
-            try {
-                M[col][c] = M[col][c] / pivot;
-            } catch (const IsotropicDivisionException&) {
-                return std::nullopt;
-            }
-        }
-
-        // Eliminate other rows
         for (size_t r = 0; r < N; ++r) {
             if (r != col && (M[r][col].a != 0 || M[r][col].b != 0)) {
                 TAF_Register factor = M[r][col];
-                for (size_t c = col; c <= N; ++c) {
-                    M[r][c] = M[r][c] - (factor * M[col][c]);
+                for (size_t c = 0; c <= N; ++c) {
+                    M[r][c] = (pivot * M[r][c]) - (factor * M[col][c]);
                 }
             }
         }
@@ -65,7 +56,13 @@ inline std::optional<std::array<TAF_Register, N>> solve_gauss_jordan(
 
     std::array<TAF_Register, N> x;
     for (size_t r = 0; r < N; ++r) {
-        x[r] = M[r][N];
+        try {
+            x[r] = M[r][N] / M[r][r];
+        } catch (const TafpuException&) {
+            return std::nullopt;
+        } catch (const std::exception&) {
+            return std::nullopt;
+        }
     }
     return x;
 }

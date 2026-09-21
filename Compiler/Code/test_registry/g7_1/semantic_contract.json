@@ -1,0 +1,63 @@
+{
+  "gate": "7.1",
+  "document_id": "CONTRACT-G7.1-SEMANTICS-20260921",
+  "status": "FROZEN_AND_SEALED",
+  "timestamp": "2026-09-21T03:30:00Z",
+  "packed_ternary_layout": {
+    "version": "v1",
+    "bits_per_trit": 2,
+    "trits_per_byte": 4,
+    "packing_order": "little_endian",
+    "encoding": {
+      "0": "00_2",
+      "+1": "01_2",
+      "-1": "10_2",
+      "reserved_padding": "11_2"
+    },
+    "padding_rule": "Tail elements beyond K within the byte boundary are masked and must not contribute to accumulation"
+  },
+  "integer_accumulation": {
+    "default_accumulator_type": "int32_t",
+    "safety_bound_formula": "max_abs_acc = K * max_abs(input) * max_abs(weight) + max_abs(bias) <= INT32_MAX",
+    "mnist_max_abs_acc": 101352,
+    "int32_max": 2147483647,
+    "overflow_behavior": "Mathematical proof guarantees no int32 overflow for canonical models. Models exceeding bound trigger int64_t contract."
+  },
+  "domains": {
+    "exact_domain": {
+      "rule": "100% bit-exact parity across all architectures",
+      "targets": [
+        "SafeTensors byte stream",
+        "PackedTernary weight layout",
+        "Integer accumulation (K2, K3, integer K5/K6)",
+        "ArgMax prediction class",
+        "Heap allocation count (strictly 0)"
+      ]
+    },
+    "tolerance_domain": {
+      "rule": "Bounding floating-point discrepancies if FP post-processing exists",
+      "absolute_tolerance": 1e-5,
+      "relative_tolerance": 1e-4
+    }
+  },
+  "endianness": {
+    "wire_format": "little_endian",
+    "supported_architectures": "Universal (automatic byte-level decode on any host endian)"
+  },
+  "edge_static_profile": {
+    "standard_budgets_bytes": {
+      "128k": 131072,
+      "256k": 262144,
+      "512k": 524288,
+      "1m": 1048576
+    },
+    "alignment_bytes": 64,
+    "error_model": "StatusCode::ArenaBudgetExceeded (101) - no C++ exceptions required in core runtime",
+    "steady_state_contract": {
+      "malloc": 0,
+      "free": 0,
+      "new": 0,
+      "delete": 0
+    }
+  }
+}

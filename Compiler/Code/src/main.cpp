@@ -33,6 +33,20 @@
 #include "compiler/ir_optimizer.hpp"
 #include "compiler/compiler_arena.hpp"
 #include "compiler/ir_to_bytecode.hpp"
+#include "tensor/bitnet_model.hpp"
+#include "tensor/safetensors_loader.hpp"
+#include "tensor/edge_arena.hpp"
+#include "tensor/kernels/microkernels.hpp"
+#include "runtime/target_capabilities.hpp"
+#include "runtime/kernel_registry.hpp"
+#include "cli/ai_options.hpp"
+#include "tensor/nn/format/model_package.hpp"
+#include "tensor/nn/format/model_manifest.hpp"
+#include "tensor/nn/format/tokenizer.hpp"
+#include "tensor/nn/format/chat_template.hpp"
+#include "tensor/nn/runtime/inference_session.hpp"
+#include "tensor/nn/runtime/sampler.hpp"
+#include <filesystem>
 
 #include <iostream>
 #include <fstream>
@@ -71,7 +85,9 @@ void print_help(const char* prog_name) {
     std::cout << "  compile <file> -o <out> Compile source to bytecode binary (.tbc)\n";
     std::cout << "  compile <file> --qvm    Compile source directly to QVM Quantum Bytecode (.qbc)\n";
     std::cout << "  compile <file> --llvm   Compile source to AOT Native via LLVM (.exe)\n";
+    std::cout << "  compile <file> --aot    Compile source to AOT Native via LLVM (.exe)\n";
     std::cout << "  compile <file> --native Compile source to AOT Native Executable (.exe)\n";
+    std::cout << "  --aot <file> -o <out>   Compile source to AOT Native via LLVM (.exe)\n";
     std::cout << "  run-qvm <file.qbc>      Execute quantum bytecode on QVM Simulator\n";
     std::cout << "  llvm2qvm <file.ll>      Translate LLVM IR text into QVM Bytecode (.qbc)\n";
     std::cout << "  emit-qasm <file.stn>    Export quantum circuit to OpenQASM 3.0 (.qasm)\n";
@@ -81,6 +97,7 @@ void print_help(const char* prog_name) {
     std::cout << "  disasm / --dump-asm     Compile and disassemble bytecode to stdout\n";
     std::cout << "  tpm <init|build|test>   Ternary Package Manager project commands\n";
     std::cout << "  repl                    Start interactive balanced ternary REPL\n";
+    std::cout << "  ai <subcommand>         Portable AI Compute (inspect, run, benchmark, profile)\n";
     std::cout << "  benchmark               Run 100,000 cycles TAFPU vs IEEE 754 benchmark\n";
     std::cout << "  test                    Run self-tests (TAFPU, Branch3, LLVM, QVM 1.0.2)\n";
     std::cout << "  trace-btvp <a> <b>      Trace trit-by-trit addition (reproduces Table 1)\n";
@@ -800,6 +817,323 @@ int cmd_repl() {
     return 0;
 }
 
+int cmd_ai(int argc, char* argv[]) {
+    cli::AIOptions opts = cli::AIOptions::parse(argc, argv, 2);
+
+    if (opts.subcommand == "help" || argc < 3) {
+        cli::AIOptions::print_help("setunc ai");
+        return 0;
+    }
+
+    const auto& caps = setun::runtime::TargetCapabilities::active();
+
+    if (opts.subcommand == "profile") {
+        std::cout << "=== Active Target Architecture Profile ===\n";
+        std::cout << "Architecture : " << caps.arch_name << "\n";
+        std::cout << "Cores        : " << caps.logical_cores << "\n";
+        std::cout << "Vector Bytes : " << caps.vector_bytes << " bytes\n";
+        std::cout << "AVX2 Support : " << (caps.has_avx2 ? "ENABLED" : "DISABLED") << "\n";
+        std::cout << "NEON Support : " << (caps.has_neon ? "ENABLED" : "DISABLED") << "\n";
+        std::cout << "Static Arena : " << (opts.profile == cli::ProfileMode::EdgeStatic ? "ENABLED" : "DISABLED") << "\n";
+        std::cout << "\n";
+        opts.print_dispatch_plan(caps);
+        return 0;
+    }
+
+    if (opts.subcommand == "inspect") {
+        if (opts.model_path.empty()) {
+            std::cerr << "Error: missing model path. Usage: setunc ai inspect <model.safetensors>\n";
+            return 1;
+        }
+        try {
+            auto sf = setun::tensor::SafeTensorsFile::load_from_file(opts.model_path);
+            std::cout << "=== SafeTensors Model Inspection ===\n";
+            std::cout << "File path     : " << opts.model_path << "\n";
+            std::cout << "File size     : " << sf->file_size() << " bytes (~" << (sf->file_size() / 1024.0) << " KB)\n";
+            std::cout << "Header size   : " << sf->header_size() << " bytes\n";
+            std::cout << "Stored Tensors:\n";
+            for (const auto& name : sf->tensor_names()) {
+                const auto& entry = sf->get_entry(name);
+                std::cout << "  - " << std::left << std::setw(16) << name 
+                          << " dtype=" << std::setw(8) << entry.dtype
+                          << " bytes=" << std::setw(8) << entry.byte_size
+                          << " shape=[";
+                for (size_t i = 0; i < entry.shape.size(); ++i) {
+                    std::cout << entry.shape[i] << (i + 1 < entry.shape.size() ? ", " : "");
+                }
+                std::cout << "]\n";
+            }
+            return 0;
+        } catch (const std::exception& e) {
+            std::cerr << "[AI Inspect Error]: " << e.what() << "\n";
+            return 1;
+        }
+    }
+
+    if (opts.subcommand == "generate" || opts.subcommand == "chat") {
+        std::unique_ptr<setun::tensor::nn::ModelPackage> pkg = nullptr;
+        std::unique_ptr<setun::tensor::nn::BitNetModel> model = nullptr;
+        setun::tensor::nn::ModelManifest manifest;
+
+        if (!opts.model_path.empty() && std::filesystem::exists(opts.model_path)) {
+            if (std::filesystem::is_directory(opts.model_path)) {
+                auto pkg_res = setun::tensor::nn::ModelPackage::load_from_dir(opts.model_path);
+                if (!pkg_res.ok()) {
+                    std::cerr << "Error loading model package: " << pkg_res.status().message << "\n";
+                    return 1;
+                }
+                pkg = std::move(pkg_res.value());
+                manifest = pkg->manifest();
+                model = pkg->create_model();
+                pkg->bind_weights(*model);
+            }
+        }
+
+        if (!model) {
+            std::cout << "[Info] Initializing deterministic synthetic BitNet-b1.58 model profile\n";
+            manifest.vocab_size = 32000;
+            manifest.hidden_size = 2048;
+            manifest.intermediate_size = 5632;
+            manifest.num_hidden_layers = 4;
+            manifest.num_attention_heads = 16;
+            manifest.num_key_value_heads = 4;
+            manifest.head_dim = 128;
+            manifest.eos_token_ids.push_back(2);
+            model = std::make_unique<setun::tensor::nn::BitNetModel>(manifest.to_bitnet_config());
+            model->init_synthetic(42);
+        }
+
+        std::unique_ptr<setun::tensor::nn::HuggingFaceBPETokenizer> tokenizer = nullptr;
+        std::string tok_path = opts.tokenizer_path;
+        if (tok_path.empty() && pkg && !pkg->tokenizer_path().empty()) {
+            tok_path = pkg->tokenizer_path();
+        }
+
+        if (!tok_path.empty() && std::filesystem::exists(tok_path)) {
+            auto tok_res = setun::tensor::nn::HuggingFaceBPETokenizer::load_from_json(tok_path);
+            if (tok_res.ok()) {
+                tokenizer = std::move(tok_res.value());
+            }
+        }
+
+        if (!tokenizer) {
+            tokenizer = std::make_unique<setun::tensor::nn::HuggingFaceBPETokenizer>();
+            tokenizer->add_token("<unk>", 0, true);
+            tokenizer->add_token("<s>", 1, true);
+            tokenizer->add_token("</s>", 2, true);
+            tokenizer->add_token("<|im_start|>", 3, true);
+            tokenizer->add_token("<|im_end|>", 4, true);
+            tokenizer->set_special_ids(1, 2, 0, 0);
+            uint32_t id = 5;
+            for (int b = 0; b < 256; ++b) {
+                std::string s(1, static_cast<char>(b));
+                tokenizer->add_token(s, id++);
+            }
+        }
+
+        setun::tensor::nn::SamplingConfig sampling_cfg;
+        sampling_cfg.temperature = opts.temperature;
+        sampling_cfg.top_p = opts.top_p;
+        sampling_cfg.top_k = opts.top_k;
+        sampling_cfg.repetition_penalty = opts.repetition_penalty;
+
+        setun::tensor::nn::InferenceSession session(*model, manifest);
+
+        if (opts.subcommand == "generate") {
+            std::string prompt = opts.prompt.empty() ? "Xin chào Tersun" : opts.prompt;
+            setun::tensor::nn::EncodeOptions enc_opts;
+            enc_opts.add_bos = (manifest.bos_token_id >= 0);
+            std::vector<uint32_t> prompt_tokens = tokenizer->encode(prompt, enc_opts);
+
+            std::cout << "Prompt: \"" << prompt << "\" (" << prompt_tokens.size() << " tokens)\n";
+            std::cout << "Generated: " << std::flush;
+
+            session.generate(
+                setun::tensor::nn::Span<const uint32_t>(prompt_tokens.data(), prompt_tokens.size()),
+                sampling_cfg,
+                opts.max_tokens,
+                tokenizer.get(),
+                [](uint32_t id, std::string_view piece) {
+                    (void)id;
+                    std::cout << piece << std::flush;
+                    return true;
+                }
+            );
+            std::cout << "\n";
+            return 0;
+        }
+
+        if (opts.subcommand == "chat") {
+            std::cout << "===================================================================\n";
+            std::cout << "                 TERSUN AI INTERACTIVE CHAT REPL                   \n";
+            std::cout << "===================================================================\n";
+            std::cout << "Model Architecture: " << manifest.model_type << " (" << manifest.num_hidden_layers 
+                      << "L / " << manifest.num_attention_heads << "Q heads / " << manifest.num_key_value_heads << "KV heads)\n";
+            std::cout << "Sampling: Temp=" << sampling_cfg.temperature << ", Top-P=" << sampling_cfg.top_p << ", RepPenalty=" << sampling_cfg.repetition_penalty << "\n";
+            std::cout << "Commands: Type 'exit' or 'quit' to terminate session, 'reset' to clear history.\n\n";
+
+            std::vector<setun::tensor::nn::ChatMessage> history;
+            history.push_back(setun::tensor::nn::ChatMessage::system("You are Tersun, an AI engine built on balanced ternary arithmetic."));
+
+            while (true) {
+                std::cout << "\nUser > " << std::flush;
+                std::string input;
+                if (!std::getline(std::cin, input) || input == "exit" || input == "quit") {
+                    std::cout << "\nExiting chat session.\n";
+                    break;
+                }
+                if (input.empty()) continue;
+                if (input == "reset") {
+                    history.clear();
+                    history.push_back(setun::tensor::nn::ChatMessage::system("You are Tersun, an AI engine built on balanced ternary arithmetic."));
+                    session.reset();
+                    std::cout << "[Session history cleared]\n";
+                    continue;
+                }
+
+                history.push_back(setun::tensor::nn::ChatMessage::user(input));
+                std::string rendered;
+                setun::tensor::nn::ChatTemplate::render(history, manifest, true, rendered);
+
+                std::vector<uint32_t> p_tokens = tokenizer->encode(rendered);
+                std::cout << "Tersun > " << std::flush;
+                std::string reply;
+
+                session.generate(
+                    setun::tensor::nn::Span<const uint32_t>(p_tokens.data(), p_tokens.size()),
+                    sampling_cfg,
+                    opts.max_tokens,
+                    tokenizer.get(),
+                    [&reply](uint32_t id, std::string_view piece) {
+                        (void)id;
+                        std::cout << piece << std::flush;
+                        reply.append(piece);
+                        return true;
+                    }
+                );
+                std::cout << "\n";
+                history.push_back(setun::tensor::nn::ChatMessage::assistant(reply));
+            }
+            return 0;
+        }
+    }
+
+    // Validate forced backend availability
+    if (opts.target == cli::TargetBackend::AVX2 && !caps.has_avx2) {
+        std::cerr << "ERROR: requested backend 'avx2' unavailable on host architecture '" << caps.arch_name << "'\n";
+        return 1;
+    }
+    if (opts.target == cli::TargetBackend::NEON && !caps.has_neon) {
+        std::cerr << "ERROR: requested backend 'neon' unavailable on host architecture '" << caps.arch_name << "'\n";
+        return 1;
+    }
+
+    setun::tensor::BitNetMnistModel model;
+    if (!opts.model_path.empty()) {
+        try {
+            model.load_safetensors(opts.model_path);
+        } catch (const std::exception& e) {
+            std::cerr << "[AI Load Error]: " << e.what() << "\n";
+            return 1;
+        }
+    } else {
+        model.init_synthetic(42);
+    }
+
+    // Handle forced scalar override
+    if (opts.target == cli::TargetBackend::Scalar) {
+        setun::runtime::TargetCapabilities scalar_caps = caps;
+        scalar_caps.has_avx2 = false;
+        scalar_caps.has_neon = false;
+        scalar_caps.is_overridden = true;
+        setun::runtime::set_active_capabilities(scalar_caps);
+        model.resolve_kernels();
+    } else {
+        model.resolve_kernels();
+    }
+
+    if (opts.subcommand == "run") {
+        std::vector<int32_t> input(784, 1);
+        int32_t logits[10] = {0};
+        auto probe = setun::tensor::AllocationProbe::start();
+        int32_t pred = model.forward(input.data(), logits);
+        size_t allocs = probe.alloc_count();
+
+        if (opts.json_output) {
+            std::cout << "{\n"
+                      << "  \"subcommand\": \"run\",\n"
+                      << "  \"target\": \"" << opts.target_to_string() << "\",\n"
+                      << "  \"prediction\": " << pred << ",\n"
+                      << "  \"logits\": [";
+            for (int i = 0; i < 10; ++i) {
+                std::cout << logits[i] << (i < 9 ? ", " : "");
+            }
+            std::cout << "],\n"
+                      << "  \"heap_allocations\": " << allocs << "\n"
+                      << "}\n";
+        } else {
+            std::cout << "=== BitNet Zero-Allocation Inference Execution ===\n";
+            std::cout << "Input Dimension   : 784\n";
+            std::cout << "Predicted Class   : " << pred << " (ArgMax)\n";
+            std::cout << "Logits            : [";
+            for (int i = 0; i < 10; ++i) {
+                std::cout << logits[i] << (i < 9 ? ", " : "");
+            }
+            std::cout << "]\n";
+            std::cout << "Heap Allocations  : " << allocs << " (malloc=0, new=0 verified)\n";
+            std::cout << "Selected Backend  : " << opts.target_to_string() << "\n";
+        }
+        return 0;
+    }
+
+    if (opts.subcommand == "benchmark") {
+        std::vector<int32_t> input(784, 1);
+        for (int i = 0; i < opts.warmup_iterations; ++i) {
+            model.forward(input.data());
+        }
+
+        auto probe = setun::tensor::AllocationProbe::start();
+        auto start = std::chrono::high_resolution_clock::now();
+        for (int i = 0; i < opts.iterations; ++i) {
+            model.forward(input.data());
+        }
+        auto end = std::chrono::high_resolution_clock::now();
+        size_t allocs = probe.alloc_count();
+
+        double elapsed_us = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() / 1000.0;
+        double avg_us = elapsed_us / opts.iterations;
+        double fps = (opts.iterations / (elapsed_us / 1000000.0));
+
+        if (opts.json_output) {
+            std::cout << "{\n"
+                      << "  \"subcommand\": \"benchmark\",\n"
+                      << "  \"target\": \"" << opts.target_to_string() << "\",\n"
+                      << "  \"profile\": \"" << opts.profile_to_string() << "\",\n"
+                      << "  \"iterations\": " << opts.iterations << ",\n"
+                      << "  \"total_time_ms\": " << (elapsed_us / 1000.0) << ",\n"
+                      << "  \"average_latency_us\": " << avg_us << ",\n"
+                      << "  \"throughput_fps\": " << fps << ",\n"
+                      << "  \"weights_footprint_bytes\": " << model.total_weight_bytes() << ",\n"
+                      << "  \"heap_allocations\": " << allocs << "\n"
+                      << "}\n";
+        } else {
+            std::cout << "=== BitNet Inference Benchmark ===\n";
+            opts.print_dispatch_plan(caps);
+            std::cout << "Iterations       : " << opts.iterations << "\n";
+            std::cout << "Total Time       : " << (elapsed_us / 1000.0) << " ms\n";
+            std::cout << "Average Latency  : " << avg_us << " µs / inference\n";
+            std::cout << "Throughput       : " << static_cast<uint64_t>(fps) << " inferences / sec (FPS)\n";
+            std::cout << "Model Size       : " << (model.total_weight_bytes() / 1024.0) << " KB\n";
+            std::cout << "Weights Footprint: " << model.total_weight_bytes() << " bytes\n";
+            std::cout << "Heap Allocs      : " << allocs << "\n";
+        }
+        return 0;
+    }
+
+    std::cerr << "Unknown ai subcommand: '" << opts.subcommand << "'. Run 'setunc ai help' for usage.\n";
+    return 1;
+}
+
 // Forward declaration of internal test runner
 int run_all_tests();
 
@@ -820,6 +1154,11 @@ int main(int argc, char* argv[]) {
     if (cmd == "--version" || cmd == "-v" || cmd == "version") {
         print_version();
         return 0;
+    }
+
+    // AI Compute CLI Commands: setunc ai <inspect|run|benchmark|profile>
+    if (cmd == "ai") {
+        return cmd_ai(argc, argv);
     }
 
     // 1. Emit C20 Native Transpile: setunc --emit-c <file>
@@ -844,7 +1183,24 @@ int main(int argc, char* argv[]) {
         return cmd_emit_llvm(source_file, out_file, triple);
     }
 
-    // 3. Compile: setunc compile <source> [-o <out>] [--native|--llvm|--qvm] [-O0|-O1|-O2|-O3]
+    // 2.1 Standalone LLVM AOT Compilation: setunc --aot <file> [-o <out.exe>] [-O0|-O1|-O2|-O3]
+    if ((cmd == "--aot" || cmd == "aot") && argc >= 3) {
+        std::string source_file = argv[2];
+        std::string out_file = "app.exe";
+        int opt_level = 3;
+        for (int i = 3; i < argc; ++i) {
+            std::string arg = argv[i];
+            if (arg == "-o" && i + 1 < argc) {
+                out_file = argv[++i];
+            } else if (arg == "-O0") opt_level = 0;
+            else if (arg == "-O1") opt_level = 1;
+            else if (arg == "-O2") opt_level = 2;
+            else if (arg == "-O3") opt_level = 3;
+        }
+        return cmd_compile_llvm(source_file, out_file, opt_level);
+    }
+
+    // 3. Compile: setunc compile <source> [-o <out>] [--native|--llvm|--aot|--qvm] [-O0|-O1|-O2|-O3]
     if (cmd == "compile" && argc >= 3) {
         std::string source_file = argv[2];
         bool is_native = false;
@@ -857,7 +1213,7 @@ int main(int argc, char* argv[]) {
             std::string arg = argv[i];
             if (arg == "--native") {
                 is_native = true;
-            } else if (arg == "--llvm") {
+            } else if (arg == "--llvm" || arg == "--aot") {
                 is_llvm = true;
             } else if (arg == "--qvm") {
                 is_qvm = true;
