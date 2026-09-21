@@ -2297,6 +2297,20 @@ int main() {
 
 ---
 
+### 17.5. PHÂN TÍCH TỪ NGUYÊN LÝ THỨ NHẤT: VẤN ĐỀ KIỂM TRA BIÊN MẢNG (BOUNDS CHECK PENALTY & CPU IPC)
+
+Trong ngôn ngữ lập trình an toàn như Setun, mọi truy xuất mảng `arr[i]` sinh ra điều kiện kiểm tra an toàn:
+$$\text{assert}(0 \le i < \text{arr.length})$$
+
+#### Hiện tượng sụt giảm IPC vi kiến trúc (The CPU Pipeline Stall):
+1. **Dự đoán nhánh rẽ thất bại (Branch Misprediction)**: Trong vi kiến trúc hiện đại, CPU thực thi suy đoán (speculative execution) qua đường ống lệnh sâu (15–20 stages). Lệnh kiểm tra biên `cmp index, len; jae throw_exception` hầu như $99.99\%$ là không nhảy. Tuy nhiên, khi lặp hàng triệu lần trong các thuật toán sàng lọc (như Sieve of Eratosthenes - Workload W2), các chỉ thị so sánh và rẽ nhánh liên tục làm tắc nghẽn bộ nạp lệnh (Fetch & Decode Unit).
+2. **Chi phí nạp lại con trỏ thô (Pointer Reloading)**: Khi con trỏ mảng và độ dài được đóng gói trong đối tượng heap, vi xử lý phải liên tục thực hiện nạp gián tiếp `mov rdx, [rcx + offset_ptr]` ở mỗi bước lặp, phá vỡ khả năng lưu trữ biến trong thanh ghi vật lý.
+3. **Lời giải kiến trúc từ nguyên lý thứ nhất**:
+   - **Range Propagation**: Nếu biến quy nạp chạy từ $0 \le i < N$, ta chỉ cần kiểm tra $N \le \text{arr.length}$ **đúng một lần duy nhất trước khi vòng lặp bắt đầu** (Preheader Guard).
+   - **Outermost Preheader Hoisting**: Nhấc hẳn con trỏ bộ nhớ thô ra ngoài toàn bộ các tầng vòng lặp lồng nhau, đưa vào một thanh ghi cố định duy nhất (ví dụ `R12`). Thân vòng lặp bên trong được rút gọn từ 3 lệnh kiểm tra phức tạp thành đúng 1 lệnh ghi bộ nhớ trực tiếp `mov [r12 + idx], val`, giúp thời gian chạy giảm từ $14.93\text{ ms} \to 3.75\text{ ms}$ (nhanh gấp $3.98\times$ - xem chi tiết tại [ADR-008](file:///d:/New%20PJ/Ternary/Compiler/Doc/adr/ADR-008-bounds-check-elimination-hoisting.md)).
+
+---
+
 ### 18. BRIDGE TO NEXT CHAPTER (Cầu Nối Sang Chương Sau)
 
 Ở Chương 13, chúng ta đã giải phẫu toàn diện **Kiến trúc Bố cục Bộ nhớ Vi mô của Máy ảo**: từ việc nén toàn bộ không gian giá trị vào **từ đơn 8-byte NaN-Boxing** đến cơ chế quản lý Heap tốc độ cao bằng **Handle 32-bit trong VMArena 256 MB**. Hệ thống giá trị của Tersun giờ đây đạt mật độ bộ nhớ cực đại và hoàn toàn miễn nhiễm với các lỗi tràn con trỏ.

@@ -70,6 +70,7 @@ private:
     void emit_expr(Expr* expr);
 
     void emit_var_decl(const VarDeclStmt& stmt);
+    void emit_tuple_destructure(const TupleDestructureStmt& stmt);
     void emit_assign(const AssignStmt& stmt);
     void emit_expr_stmt(const ExprStmt& stmt);
     void emit_block(const BlockStmt& stmt);
@@ -107,6 +108,8 @@ private:
     void emit_index(const IndexExpr& expr);
     void emit_comptime(const ComptimeExpr& expr);
     void emit_array_lit(const ArrayLiteralExpr& expr);
+    void emit_tuple_lit(const TupleLiteralExpr& expr);
+    void emit_trit_vec_lit(const TritVecLiteralExpr& expr);
     void emit_struct_decl(const StructDeclStmt& stmt);
     void emit_class_decl(const ClassDeclStmt& stmt);
 

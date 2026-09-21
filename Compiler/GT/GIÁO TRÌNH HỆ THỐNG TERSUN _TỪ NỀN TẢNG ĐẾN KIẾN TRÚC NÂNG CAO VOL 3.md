@@ -1548,6 +1548,21 @@ Kiến trúc Tersun JIT (Gate 5.7 & Gate 5.8) giải quyết bài toán qua 3 tr
 
 ---
 
+### 6. TIẾN HÓA LÊN TIER-2: THAY THẾ VÔ HƯỚNG (SRA) VÀ VECTOR HÓA SIMD AVX2
+
+Sau khi hoàn thiện cơ chế JIT Baseline và OSR, tầng **Tier-2 Optimizing JIT** của Tersun tiến hành hai bước biến đổi vi kiến trúc đột phá:
+
+#### 1. Mạng Phân Tích Thoát & Thay Thế Vô Hướng (Escape Analysis & SRA):
+- **Vấn đề sư phạm**: Khi một đối tượng nhỏ (như `Point3D` hoặc `Vector3`) được tạo trong vòng lặp lồng, việc cấp phát heap liên tục kích hoạt bộ gom rác GC và gây phân mảnh bộ nhớ.
+- **Giải pháp nguyên lý thứ nhất**: Xây dựng đồ thị phân tích thoát 4 mức (`NO_ESCAPE`, `ARG_ESCAPE`, `GLOBAL_ESCAPE`, `UNKNOWN`).
+- Nếu đối tượng thuộc `NO_ESCAPE` (không thoát ra ngoài hàm), JIT **xóa bỏ hoàn toàn lệnh cấp phát Heap**, phân rã các thuộc tính `obj.x, obj.y, obj.z` thành các biến thanh ghi vô hướng độc lập, cấp phát trực tiếp vào các thanh ghi CPU x86-64 vật lý (`R8..R10`). Cấp phát heap trong vòng lặp giảm về $0\text{ bytes}$, thời gian chạy giảm từ $15.33\text{ ms} \to 0.94\text{ ms}$ (nhanh gấp $16.3\times$ - xem chi tiết tại [ADR-007](file:///d:/New%20PJ/Ternary/Compiler/Doc/adr/ADR-007-scalar-replacement-of-aggregates.md)).
+
+#### 2. Vector Hóa Song Song SIMD AVX2:
+- Tự động nhận diện các vòng lặp bước nhảy đơn vị tuần tự liên tục (Stride-1 loops).
+- Phát sinh tiền tố mã hóa VEX AVX2 256-bit: `vpbroadcastq`, `vmovdqu`, `vpaddq`, `vpmuludq`, xử lý song song 4 phần tử $64$-bit mỗi chu kỳ đồng hồ. Tốc độ nhân ma trận đạt $4.88\text{ ms}$ (xem [ADR-009](file:///d:/New%20PJ/Ternary/Compiler/Doc/adr/ADR-009-avx2-simd-stride1-vectorization.md)).
+
+---
+
 # CHƯƠNG 24: CỖ MÁY LƯỢNG TỬ QVM ĐỘC LẬP, BIẾN ĐỔI BƯỚC NHẢY KHÔNG CẤP PHÁT & GIỚI HẠN PHẦN CỨNG THỰC TẾ (HARDWARE LIMITS BENCHMARK)
 ### *(Zero-Allocation Ground State, In-Place Bitwise Unitary Strides, Hilbert Space Scaling N=4..30, Born Rule Bitwise Collapse & Hardware Limits)*
 
@@ -1632,68 +1647,326 @@ Thời gian (ms)
 
 ---
 
+## PHẦN VII: TẦNG THỰC THI MÔ HÌNH NGÔN NGỮ LỚN BẢN ĐỊA & TỐI ƯU HÓA TÍNH TOÁN SONG SONG (NATIVE LLM RUNTIME & EXECUTION OPTIMIZATION)
+
+---
+
+<a id="ch25-llm-runtime"></a>
+# CHƯƠNG 25: KIẾN TRÚC LLM RUNTIME BẢN ĐỊA: TOKENIZER BYTE-LEVEL BPE, HỢP ĐỒNG SAMPLER 7 BƯỚC & STOPMATCHER KHÔNG CẤP PHÁT (GATE 7.4)
+### *(HuggingFace BPE Tokenizer, Added Tokens, Zero-Allocation Buffer API, Strict Sampling Contract & Stream Stop Matching)*
+
+---
+
+### 1. VẤN ĐỀ KỸ THUẬT (PROBLEM)
+Hầu hết các hệ thống suy luận LLM hiện đại đều phụ thuộc vào một chuỗi runtime nặng nề bằng Python hoặc các thư viện ngoài phức tạp (như HuggingFace Tokenizers, PyTorch C++ bindings). Khi tích hợp vào một compiler/runtime độc lập như Tersun:
+1. **Ô nhiễm bộ nhớ và độ trễ ngẫu nhiên**: Tokenizer thông thường sinh ra hàng loạt chuỗi ký tự tạm (`std::string`), cấp phát trên Heap gây phân mảnh bộ nhớ và kích hoạt GC ngoài ý muốn.
+2. **Sai lệch mã hóa Unicode & Tiếng Việt**: Byte-Level BPE của GPT-2/BitNet/LLaMA chia nhỏ các ký tự UTF-8 đa byte (như tiếng Việt có dấu, emoji) thành các chuỗi byte đơn lẻ rồi ánh xạ sang ký tự hiển thị an toàn. Nếu xử lý sai quy tắc byte-fallback, văn bản đầu ra sẽ bị lỗi font hoặc hỏng token.
+3. **Mập mờ trong hợp đồng lấy mẫu (Sampler Ambiguity)**: Các tham số như `repetition_penalty`, `presence_penalty`, và `frequency_penalty` thường bị cài đặt lẫn lộn, dẫn đến hành vi sinh không nhất quán giữa các mô hình.
+4. **Điểm nghẽn giải mã khi kiểm tra chuỗi dừng (Stop Sequences)**: Việc giải mã token thành văn bản UTF-8 ở mỗi bước chỉ để kiểm tra xem có chứa từ khóa dừng (như `<|im_end|>`) hay không sẽ hủy hoại tốc độ giải mã (TPOT).
+
+---
+
+### 2. GIẢI PHÁP KIẾN TRÚC TERSUN RUNTIME (GATE 7.4)
+
+Tersun thiết lập một tầng Model Runtime thuần C++20 độc lập nằm trong thư mục [`src/tensor/nn/`](file:///d:/New%20PJ/Ternary/Compiler/Code/src/tensor/nn/):
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                          TERSUN NATIVE LLM RUNTIME PIPELINE                            │
+└──────────────────────────────────────────┬─────────────────────────────────────────────┘
+                                           │
+       ┌───────────────────────────────────┼───────────────────────────────────┐
+       ▼                                   ▼                                   ▼
+┌──────────────┐                  ┌─────────────────┐                 ┌─────────────────┐
+│ ITokenizer   │                  │ ModelPackage    │                 │ Sampler & Stop  │
+│ Byte-Level   │                  │ SafeTensors     │                 │ 7-Stage Strict  │
+│ BPE (Zero-   │                  │ ModelManifest   │                 │ Token Stream    │
+│ Allocation)  │                  │ ChatTemplate    │                 │ Matcher         │
+└──────┬───────┘                  └────────┬────────┘                 └────────┬────────┘
+       │ [token_ids]                       │ [weights]                         │ [next_token]
+       └───────────────────────────────────┼───────────────────────────────────┘
+                                           ▼
+                       ┌──────────────────────────────────────┐
+                       │          InferenceSession            │
+                       │ KVCache (Rotating Ring Buffer)       │
+                       │ Zero-Allocation Hot-Path Execution   │
+                       └──────────────────────────────────────┘
+```
+
+#### 2.1. Byte-Level BPE & Hot-Path Zero-Allocation API
+Interface [`ITokenizer`](file:///d:/New%20PJ/Ternary/Compiler/Code/include/tensor/nn/format/tokenizer.hpp) cung cấp song song hai tầng API:
+- **Tầng tiện ích**: `encode(text, opts)`, `decode(tokens, opts)`.
+- **Tầng Hot-Path Không Cấp Phát**:
+  ```cpp
+  virtual size_t encode_into(std::string_view text, uint32_t* out_tokens, size_t max_tokens, const TokenizerOptions& opts) const = 0;
+  virtual size_t decode_into(const uint32_t* tokens, size_t num_tokens, char* out_buf, size_t max_bytes, const TokenizerOptions& opts) const = 0;
+  ```
+Lớp [`HuggingFaceBPETokenizer`](file:///d:/New%20PJ/Ternary/Compiler/Code/src/tensor/nn/format/tokenizer.cpp) tự động phân tích file `tokenizer.json` chuẩn HuggingFace, xây dựng bảng băm tra cứu BPE merges và mảng token đặc biệt (`added_tokens`), bảo tồn nguyên vẹn UTF-8 và ký tự tiếng Việt có dấu.
+
+#### 2.2. Hợp Đồng Lấy Mẫu 7 Bước Chuẩn Mực (Sampler Contract)
+Bộ lấy mẫu [`Sampler`](file:///d:/New%20PJ/Ternary/Compiler/Code/include/tensor/nn/runtime/sampler.hpp) thực thi đường ống tuần tự nghiêm ngặt:
+$$\text{Logits} \xrightarrow{\text{Step 1}} \text{Logit Masking} \xrightarrow{\text{Step 2}} \text{Repetition} \xrightarrow{\text{Step 3}} \text{Presence/Freq} \xrightarrow{\text{Step 4}} \text{Temperature} \xrightarrow{\text{Step 5}} \text{Top-K} \xrightarrow{\text{Step 6}} \text{Top-P} \xrightarrow{\text{Step 7}} \text{Multinomial/Greedy}$$
+
+- **Repetition Penalty**: Với mỗi token $t$ đã xuất hiện trong lịch sử:
+  $$\text{logit}_t = \begin{cases} \text{logit}_t / \alpha_{\text{rep}} & \text{nếu } \text{logit}_t > 0 \\ \text{logit}_t \times \alpha_{\text{rep}} & \text{nếu } \text{logit}_t \le 0 \end{cases}$$
+- **Presence Penalty**: Trừ trực tiếp một giá trị cố định nếu token đã xuất hiện: $\text{logit}_t \leftarrow \text{logit}_t - \alpha_{\text{pres}}$.
+- **Frequency Penalty**: Trừ tỉ lệ theo số lần xuất hiện: $\text{logit}_t \leftarrow \text{logit}_t - (\alpha_{\text{freq}} \times \text{count}_t)$.
+
+#### 2.3. Nhận Diện Điểm Dừng Trên Luồng Token (StopMatcher)
+Thay vì giải mã ngược ra chuỗi, [`StopMatcher`](file:///d:/New%20PJ/Ternary/Compiler/Code/include/tensor/nn/runtime/sampler.hpp) duy trì một cửa sổ trượt trực tiếp trên mảng `uint32_t token_id`. Khi một token mới được sinh ra:
+1. So khớp tức thì $O(1)$ với tập hợp `stop_token_ids` (ví dụ: EOS, `<|im_end|>`).
+2. So khớp hậu tố với các chuỗi con `stop_sequences` mà không cấp phát chuỗi tạm, triệt tiêu hoàn toàn chi phí kiểm tra dừng.
+
+---
+
+<a id="ch26-kv-cache"></a>
+# CHƯƠNG 26: QUẢN TRỊ BỘ NHỚ KV CACHE, BẤT BIẾN ZERO-ALLOCATION & BẰNG CHỨNG KHỬ PHÂN KỲ VI SAI (GATE 7.4)
+### *(Rotating KV Buffers, Differential Parity Verification, AllocationProbe & malloc == 0 Invariant)*
+
+---
+
+### 1. VẤN ĐỀ KỸ THUẬT (PROBLEM)
+Trong các mô hình Transformer tự hồi quy (Autoregressive Generation), tại mỗi bước sinh token thứ $t$, mô hình cần tính toán Attention giữa Query hiện tại $Q_t$ và toàn bộ các khóa/giá trị lịch sử $K_{1\dots t}, V_{1\dots t}$.
+Nếu tính toán lại từ đầu, độ phức tạp sẽ là $O(t^2)$ tại mỗi bước, khiến toàn bộ quá trình sinh có độ phức tạp $O(S^3)$.
+Cần sử dụng bộ nhớ đệm **KV Cache**, nhưng KV Cache đặt ra 2 thách thức sống còn:
+1. **Rủi ro rò rỉ và phân mảnh bộ nhớ**: Cấp phát lại bộ nhớ đệm theo từng bước giải mã sẽ dẫn đến gọi `malloc` hàng trăm lần mỗi giây, vi phạm cam kết thời gian thực.
+2. **Rủi ro sai lệch vi sai (Differential Drift)**: Nếu việc lưu trữ và trích xuất KV Cache bị lệch chỉ số (offset), giá trị Attention ở bước suy luận gia tăng (Incremental Decode) sẽ phân kỳ so với khi chạy trọn vẹn một lượt (Full Forward), dẫn đến mô hình sinh ra từ ngữ vô nghĩa.
+
+---
+
+### 2. THIẾT KẾ KIẾN TRÚC KV CACHE & BẰNG CHỨNG VI SAI
+
+#### 2.1. Bố Cục Bộ Nhớ Đệm Phân Khối Tuần Hoàn
+Lớp [`KVCache`](file:///d:/New%20PJ/Ternary/Compiler/Code/include/tensor/nn/memory/kv_cache.hpp) trong Tersun tổ chức bộ nhớ đệm liên tục theo định dạng:
+$$\text{Layout: } [H_{kv}, S_{\text{max}}, D]$$
+Trong đó $H_{kv}$ là số lượng KV heads, $S_{\text{max}}$ là chiều dài ngữ cảnh tối đa, và $D$ là số chiều của mỗi head. Bố cục này cho phép:
+- Đọc/ghi vector Key hoặc Value của một head cụ thể liên tục theo dòng nhớ (Stride-1 access).
+- Không yêu cầu hoán vị trục (Transpose) tốn kém trong vòng lặp Attention.
+
+#### 2.2. Bất Biến Khử Phân Kỳ Vi Sai (KV Cache Differential Parity Invariant)
+Tersun đặt ra hợp đồng bất biến tuyệt đối giữa hai chế độ thực thi:
+$$\mathbf{Hợp\ đồng:}\quad \text{Full Forward}(0 \dots S-1) \equiv \text{Prefill}(0 \dots P-1) + \sum_{t=P}^{S-1} \text{Incremental Decode}(t)$$
+
+Kiểm chứng tại [`tests/nn/test_kv_cache_parity.cpp`](file:///d:/New%20PJ/Ternary/Compiler/Code/tests/nn/test_kv_cache_parity.cpp):
+- So sánh từng phần tử logits giữa hai đường dẫn với $S=128, P=64$.
+- Kết quả đo đạc thực tế:
+  $$\max |\text{Logits}_{\text{full}} - \text{Logits}_{\text{incremental}}| = 0.000000 \quad (\text{Ngưỡng sai số cho phép } < 10^{-4})$$
+  $$\text{Argmax Token ID: } 112 \equiv 112 \quad (\text{Trùng khớp tuyệt đối 100\%})$$
+
+#### 2.3. Bất Biến Zero-Allocation (`malloc == 0`)
+Trong phiên suy luận [`InferenceSession`](file:///d:/New%20PJ/Ternary/Compiler/Code/src/tensor/nn/runtime/inference_session.cpp):
+- Toàn bộ vùng nhớ làm việc (`KVCache`, `ExecutionContext`, `Activation Arenas`) được cấp phát trước một lần duy nhất tại thời điểm khởi tạo (`init_session()`).
+- Sử dụng công cụ giám sát cấp phát `AllocationProbe` để theo dõi các lệnh gọi `malloc`/`free` trong vòng lặp giải mã:
+  $$\text{Prefill Phase: } \Delta\text{allocs} = 0 \quad | \quad \text{50 Steps Decode Phase: } \Delta\text{allocs} = 0$$
+  Chứng minh hệ thống đạt trạng thái **Zero-Heap Allocation** ở hot-path.
+
+---
+
+<a id="ch27-attention-ladder"></a>
+# CHƯƠNG 27: THANG TỐI ƯU HÓA ATTENTION 7 BẬC ($A_0 \to A_6$), VI NHÂN SIMD AVX2/FMA & HỢP ĐỒNG SỐ HỌC 3 TẦNG (GATE 7.5)
+### *(Online Softmax, 4-Chain FMA Unrolling, 2D Query-Key Tiling, GQA Parallelism & 3-Tier Numerical Contract)*
+
+---
+
+### 1. VẤN ĐỀ KỸ THUẬT (PROBLEM)
+Toán tử FlashAttention / Multi-Head Attention truyền thống tính toán qua 2 lượt:
+1. Tính toàn bộ ma trận điểm tương đồng $S = Q K^T / \sqrt{D} \in \mathbb{R}^{S \times S}$.
+2. Tìm $\max(S)$ trên mỗi hàng, tính $\exp(S_{ij} - m_i)$, cộng dồn $\sum$, chia chuẩn hóa và nhân với $V$.
+
+Phương pháp ngây thơ này gặp phải các điểm nghẽn nghiêm trọng:
+- **Tiêu tốn bộ nhớ khủng khiếp**: Khi $S = 2048$, ma trận $S \times S$ tiêu tốn $16\text{ MB}$ cho mỗi head. Với 20 heads, hệ thống cần hàng trăm megabytes chỉ để lưu điểm chú ý tạm thời.
+- **Thắt cổ chai băng thông bộ nhớ (Memory Bandwidth Bottleneck)**: Việc ghi và đọc lại ma trận $S \times S$ từ RAM tiêu tốn hầu hết chu kỳ xử lý của CPU.
+- **Độ lệch số học và phân kỳ**: Các thuật toán tích lũy SIMD nếu không kiểm soát thứ tự phép cộng có thể dẫn đến sai số làm tròn tích lũy, vi phạm hợp đồng suy luận nhất quán.
+
+---
+
+### 2. THANG TỐI ƯU HÓA ATTENTION 7 BẬC ($A_0 \to A_6$)
+
+Tersun xây dựng một lộ trình tối ưu hóa 7 bậc có thể kiểm chứng độc lập và đo đạc vi sai vi kiến trúc tại [`src/tensor/nn/ops/attention_kernels.cpp`](file:///d:/New%20PJ/Ternary/Compiler/Code/src/tensor/nn/ops/attention_kernels.cpp):
+
+```
+                                  ┌─────────────────────────────┐
+                                  │ A6: GQA Parallel Attention  │
+                                  │ (OpenMP KV-Reuse, 8.7x)     │
+                                  └──────────────┬──────────────┘
+                                                 │
+                                  ┌──────────────┴──────────────┐
+                                  │ A5: 2D Query-Key Tiled      │
+                                  │ (Bq x Bc Cache Tiling)      │
+                                  └──────────────┬──────────────┘
+                                                 │
+                                  ┌──────────────┴──────────────┐
+                                  │ A4: Fused Online SIMD       │
+                                  │ (Zero S x S scratchpad)     │
+                                  └──────────────┬──────────────┘
+                                                 │
+                   ┌─────────────────────────────┴─────────────────────────────┐
+                   ▼                                                           ▼
+    ┌─────────────────────────────┐                             ┌─────────────────────────────┐
+    │ A2: SIMD QK Dot-Product     │                             │ A3: SIMD PV Vector-Update   │
+    │ (4-Chain FMA Unrolling)     │                             │ (_mm256_fmadd_ps 16-wide)   │
+    └──────────────┬──────────────┘                             └──────────────┬──────────────┘
+                   │                                                           │
+                   └─────────────────────────────┬─────────────────────────────┘
+                                                 │
+                                  ┌──────────────┴──────────────┐
+                                  │ A1: Scalar Online Attention │
+                                  │ (FlashAttention Core Alg.)  │
+                                  └──────────────┬──────────────┘
+                                                 │
+                                  ┌──────────────┴──────────────┐
+                                  │ A0: Frozen Scalar Oracle    │
+                                  │ (2-Pass Safe Reference)     │
+                                  └─────────────────────────────┘
+```
+
+#### 2.1. Giải Thuật Online Softmax (Stage $A_1$)
+Thay vì tính toán 2 lượt, Online Softmax duy trì bộ ba trạng thái cho mỗi hàng:
+$$m_i \text{ (giá trị cực đại hiện tại)}, \quad l_i \text{ (tổng chuẩn hóa tích lũy)}, \quad O_i \text{ (véc-tơ đầu ra tích lũy)}$$
+Khi xử lý một khối Key/Value mới với điểm số cực đại cục bộ $\tilde{m}$:
+$$m_{\text{new}} = \max(m_i, \tilde{m}), \quad \alpha = \exp(m_i - m_{\text{new}}), \quad \beta = \exp(\tilde{m} - m_{\text{new}})$$
+$$l_{\text{new}} = \alpha \cdot l_i + \beta \cdot \tilde{l}, \quad O_{\text{new}} = \alpha \cdot O_i + \beta \cdot \tilde{P} V$$
+Loại bỏ hoàn toàn nhu cầu lưu trữ ma trận $S \times S$ ra bộ nhớ!
+
+#### 2.2. Vi Nhân SIMD AVX2 với 4 Chuỗi Tích Lũy FMA Song Song (Stage $A_2, A_3, A_4$)
+Tại [`vec_dot_product_avx2_4chain`](file:///d:/New%20PJ/Ternary/Compiler/Code/include/tensor/nn/ops/attention_kernels.hpp):
+- Độ trễ của lệnh FMA (`vfmadd213ps`) trên kiến trúc x86 là 4 chu kỳ CPU, thông lượng là 0.5 chu kỳ.
+- Bằng cách sử dụng đồng thời 4 thanh ghi tích lũy `__m256 acc0, acc1, acc2, acc3` và mở vòng lặp (unroll) 32 floats mỗi bước, vi nhân che giấu hoàn toàn độ trễ pipeline của phần cứng:
+  ```cpp
+  acc0 = _mm256_fmadd_ps(q0, k0, acc0);
+  acc1 = _mm256_fmadd_ps(q1, k1, acc1);
+  acc2 = _mm256_fmadd_ps(q2, k2, acc2);
+  acc3 = _mm256_fmadd_ps(q3, k3, acc3);
+  ```
+
+#### 2.3. Hỗ Trợ Dual-Stride (`k_head_stride`, `v_head_stride`)
+Để cùng một vi nhân có thể tính toán trên cả vùng nhớ kích hoạt liên tục trong Prefill (`stride = head_dim`) lẫn vùng nhớ phân mảnh theo head của `KVCache` (`stride = max_seq_len * head_dim`), toàn bộ vi nhân nhận thêm hai tham số bước nhảy `k_head_stride` và `v_head_stride`, loại bỏ hoàn toàn chi phí sao chép dữ liệu.
+
+#### 2.4. Hợp Đồng Số Học 3 Tầng (3-Tier Numerical Acceptance Contract)
+Mọi tối ưu hóa từ $A_1 \to A_6$ bắt buộc phải vượt qua bộ kiểm định vi sai nghiêm ngặt so với Scalar Oracle ($A_0$):
+1. **Tier 1 (Error Budget)**: $\max |A_i - A_0| \le 5.96 \times 10^{-7}$ (ngưỡng cho phép $< 10^{-4}$), Cosine Similarity $= 1.000000$.
+2. **Tier 2 (Structural Invariants)**: Tuyệt đối không xuất hiện NaN hoặc Inf; Causal Masking triệt tiêu hoàn toàn tam giác trên ($j > i \implies 0.000000$).
+3. **Tier 3 (Bitwise Parity)**: Khớp từng bit (`memcmp == 0`) giữa các lượt chạy với số luồng cố định.
+
+---
+
+<a id="ch28-parallel-bitlinear"></a>
+# CHƯƠNG 28: ĐIỀU PHỐI SONG SONG ĐỘC QUYỀN, SHAPE-AWARE BITLINEAR & ĐO ĐẠC ĐOẢN MẠCH TTFT/TPOT (GATE 7.5)
+### *(Single Owner of Parallelism, Dynamic WorkEstimate, Prefill Row-Parallel vs Decode Column-Parallel & Component Breakdown)*
+
+---
+
+### 1. VẤN ĐỀ KỸ THUẬT (PROBLEM)
+Khi áp dụng đa luồng (OpenMP) vào mạng nơ-ron Transformer:
+1. **Xung đột lồng luồng (Nested Thread Oversubscription)**: Nếu lớp Attention mở song song trên các heads, rồi bên trong vi nhân GEMM lại mở song song trên các cột, CPU sẽ bị tràn luồng (ví dụ: $8 \times 8 = 64$ luồng trên CPU 8 lõi), gây suy giảm nghiêm trọng hiệu năng do chi phí đổi ngữ cảnh (Context Switching).
+2. **Hình dạng tính toán không đối xứng giữa Prefill và Decode**:
+   - Trong pha **Prefill**: Kích thước batch $M = S \gg 1$ (ví dụ: $M = 512, 1024, 2048$). Đây là bài toán Compute-Bound (GEMM).
+   - Trong pha **Decode**: Kích thước batch $M = 1$. Đây là bài toán Memory-Bound (GEMV).
+   Áp dụng cùng một chiến lược song song hóa cho cả hai pha sẽ dẫn đến phân mảnh tải và nghẽn băng thông.
+
+---
+
+### 2. THIẾT KẾ ĐIỀU PHỐI SONG SONG ĐỘC QUYỀN (`ParallelPlanner`)
+
+Tersun đưa vào cơ chế **Single Owner of Parallelism** qua [`ParallelPlanner`](file:///d:/New%20PJ/Ternary/Compiler/Code/include/tensor/nn/runtime/parallel_planner.hpp):
+
+```cpp
+enum class ParallelDomain {
+    Serial,         // Dưới ngưỡng khối lượng công việc, chạy tuần tự không tạo luồng
+    Rows,           // Song song hóa theo hàng (Prefill GEMM M > 1)
+    Columns,        // Song song hóa theo cột (Decode GEMV M = 1)
+    Tiles,          // Song song hóa theo khối 2D
+    Heads,          // Song song hóa theo Attention Heads
+    GQAGroups       // Song song hóa theo nhóm GQA (KV head x Q group)
+};
+```
+
+- **Quy tắc phân vùng pha rời rạc (Disjoint Parallel Phases)**: Tuyệt đối không cho phép lồng luồng (`nested OpenMP == false`). Mọi toán tử trong lớp Transformer được quy hoạch tuần tự thành các pha song song độc lập.
+- **Ngưỡng khối lượng công việc (WorkEstimate Threshold)**: Chỉ kích hoạt song song hóa khi tổng số phép tính vượt ngưỡng $64\text{K FLOPs}$. Dưới ngưỡng này, chi phí khởi tạo luồng của hệ điều hành lớn hơn thời gian tính toán thực tế.
+
+---
+
+### 3. TỐI ƯU HÓA TUYẾN TÍNH SHAPE-AWARE `BitLinear`
+
+Toán tử [`BitLinear`](file:///d:/New%20PJ/Ternary/Compiler/Code/src/tensor/nn/ops/bit_linear.cpp) tự động phân luồng xử lý theo hình dạng $M$:
+- **Prefill ($M > 1$)**: Chia đều các hàng của tensor đầu vào qua các luồng OpenMP. Mỗi luồng sở hữu một vùng nhớ tạm thời riêng biệt (`Thread-Local Workspace Arena`), đảm bảo không có tranh chấp ghi dữ liệu.
+- **Decode ($M = 1$)**: Chia đều các cột (kênh đầu ra $N$) cho các luồng để tính toán tích vô hướng GEMV song song, tối ưu hóa tối đa việc nạp vector trọng số vào thanh ghi AVX2.
+- **Vector hóa toàn diện các toán tử phụ trợ**:
+  - `vec_absmax_avx2`: Quét tìm giá trị tuyệt đối lớn nhất bằng `_mm256_andnot_ps` và `_mm256_max_ps`.
+  - `vec_quantize_int8_avx2`: Lượng tử hóa Int8 bằng `_mm256_round_ps` và `_mm256_cvtps_epi32`.
+  - `vec_dequantize_f32_avx2`: Khôi phục Float32 và cộng bias bằng `_mm256_fmadd_ps`.
+
+---
+
+### 4. ĐO ĐẠC ĐOẢN MẠCH THỰC TẾ & BẰNG CHỨNG HIỆU NĂNG
+
+#### 4.1. Phân Tích Thành Phần Trong Một Lớp Transformer ($S=256$, hidden=2560)
+Kết quả đo đạc từ [`gate75_benchmark`](file:///d:/New%20PJ/Ternary/Compiler/Code/benchmarks/bench_llm_execution.cpp):
+```text
+Tổng thời gian 1 Layer: 1672.35 ms (Prefill Throughput: 153.1 tok/s)
+--------------------------------------------------------------------------------
+[1] Self-Attention (Stage A6) .....   30.02 ms ( 1.8% of layer time)  <-- Attention không còn là nút thắt!
+[2] QKV Projections ...............  219.74 ms (13.1% of layer time)
+[3] Output Projection .............  173.00 ms (10.3% of layer time)
+[4] FFN Projections (Gate/Up/Down)  1247.64 ms (74.6% of layer time)  <-- FFN chiếm phần lớn thời gian
+[5] RMSNorms + RoPE ...............    1.95 ms ( 0.1% of layer time)
+```
+
+#### 4.2. Chỉ Số TTFT & TPOT Chuẩn Mực
+| Chiều Dài Prompt ($S$) | TTFT (Time-To-First-Token) | Prefill Throughput | $\text{TPOT}_{\text{cold}}$ | $\text{TPOT}_{\text{warm}}$ (Ổn định) | Tốc Độ Decode |
+| :---: | :---: | :---: | :---: | :---: | :---: |
+| **$S = 16$** | 26.55 ms | 602.7 tok/s | 3.11 ms | **2.48 ms** | **403.7 tok/s** |
+| **$S = 64$** | 102.29 ms | 625.7 tok/s | 3.20 ms | **2.85 ms** | **351.2 tok/s** |
+| **$S = 256$** | 446.79 ms | 573.0 tok/s | 4.15 ms | **3.68 ms** | **271.7 tok/s** |
+| **$S = 512$** | 1016.85 ms | 503.5 tok/s | 6.42 ms | **5.21 ms** | **191.8 tok/s** |
+| **$S = 1024$** | 2567.36 ms | 398.9 tok/s | 8.65 ms | **6.17 ms** | **162.0 tok/s** |
+
+---
+
 ### 18. ĐẠI TỔNG KẾT TOÀN DIỆN & TỔNG LUẬN GIÁO TRÌNH (GRAND EPILOGUE: THE SYNTHESIS OF TERSUN)
 
-Trải qua **24 chương chuyên sâu** được tổ chức chặt chẽ thành **7 Phần lớn**, bạn đã hoàn thành một hành trình phi thường trong thế giới kỹ nghệ hệ thống máy tính hiện đại: từ khoảng trống giữa các ký tự con người và điện áp bán dẫn, đến một nền tảng điện toán độc lập hoàn chỉnh.
-
-Hãy nhìn lại toàn bộ bức tranh kiến trúc vĩ đại mà chúng ta đã cùng nhau dựng xây:
+Trải qua **28 chương chuyên sâu** được tổ chức chặt chẽ thành **7 Phần lớn**, bạn đã hoàn thành một hành trình phi thường trong thế giới kỹ nghệ hệ thống máy tính hiện đại: từ khoảng trống giữa các ký tự con người và điện áp bán dẫn, qua trình biên dịch SSA IR, máy ảo TVM, hạ mức LLVM AOT, cỗ máy lượng tử QVM, cho đến **tầng thực thi mô hình ngôn ngữ lớn (LLM Runtime) và vi nhân tối ưu hóa SIMD FlashAttention tối tân**:
 
 #### PHẦN I: BẢN CHẤT CỦA MỘT HỆ THỐNG NGÔN NGỮ LẬP TRÌNH (CHƯƠNG 1 – 3)
-Chúng ta đã bắt đầu từ những nguyên lý vật lý cơ bản: tại sao thông dịch trực tiếp trên cây AST lại thất bại thảm hại trước "bức tường bộ nhớ" (Memory Wall); tại sao cấu trúc máy tính truyền thống lại đối đầu giữa trình biên dịch mã máy và cỗ máy ảo; và tại sao số học tam phân cân bằng (Balanced Ternary) trên trường số đại số $Q(\sqrt{3})$ lại mang lại độ chính xác giải tích tuyệt đối $0\%$ sai số phân kỳ.
+Nguyên lý vật lý, sự sụp đổ của thông dịch AST trước Memory Wall, và tính ưu việt của số học tam phân cân bằng trên trường số đại số $\mathbb{Q}(\sqrt{3})$.
 
 #### PHẦN II: FRONTEND — TỪ KÝ TỰ ĐẾN CÂY CÚ PHÁP ĐÃ ĐỊNH KIỂU (CHƯƠNG 4 – 8)
-Chúng ta đã tự tay xây dựng:
-- Bộ phân tích từ tố **Lexer Không Cấp Phát Bộ Nhớ (Zero-Copy Tokenizer)** lướt trên bộ đệm nguồn với tốc độ hàng chục triệu tokens/giây (Chương 4).
-- Bộ phân tích cú pháp **Pratt Precedence Climber** kết hợp với bộ cấp phát vùng nhớ cố định **Arena Allocator** xây dựng cây AST bất biến không phân mảnh RAM (Chương 5).
-- Bộ phân tích ngữ nghĩa hai lượt và bảng ký hiệu phân tầng (Chương 6).
-- Hệ thống kiểu tĩnh mạnh mẽ với đa hình tham số và monomorphization không chi phí (Chương 7).
-- Động cơ chẩn đoán lỗi Panic-Mode tự phục hồi thông minh với Source Spans chính xác tới từng ký tự (Chương 8).
+Lexer Zero-Copy, Pratt Parser, Bảng ký hiệu đa tầng, Hệ thống kiểu tĩnh với Monomorphization, và bộ phục hồi lỗi Panic-Mode.
 
 #### PHẦN III: MÃ TRUNG GIAN (IR) & DẠNG CHUẨN SSA (CHƯƠNG 9 – 11)
-Chúng ta đã chuyển dịch AST trừu tượng thành toán học luồng dữ liệu:
-- Kiến trúc mã trung gian ba địa chỉ tuyến tính (3-Address Linear IR) giải phóng tư duy khỏi cấu trúc cây lồng nhau (Chương 9).
-- Dạng gán đơn duy nhất **SSA Form** với các nút $\phi$ và giải thuật Cytron Dominance Frontiers (Chương 10).
-- Đồ thị luồng điều khiển **Control Flow Graph (CFG)**, thuật toán phân vùng khối cơ bản Leaders, và phát hiện vòng lặp tự nhiên bằng cây thống trị Dominator Tree (Chương 11).
+Linear 3-Address IR, Dạng gán đơn duy nhất SSA với các nút $\phi$, đồ thị luồng điều khiển CFG và cây thống trị Dominator Tree.
 
 #### PHẦN IV: CỖ MÁY ẢO CỔ ĐIỂN TERSUN (TVM ENGINE) (CHƯƠNG 12 – 15)
-Chúng ta đã làm chủ trái tim của cỗ máy thông dịch:
-- Chu trình Fetch-Decode-Execute siêu tốc với kỹ thuật **Direct Threaded Code** và gộp siêu chỉ thị Superinstructions (Chương 12).
-- Hệ thống giá trị thống nhất 16-byte `VMValue` áp dụng NaN-Boxing và Tagged Unions tối ưu bộ nhớ đệm L1 (Chương 13).
-- Bộ thu dọn rác tam phân cân bằng **TriColorGC** với các màu trit $\{-1, 0, +1\}$ và rào cản ghi Write Barriers không dừng máy (Chương 14).
-- Ranh giới FFI hai chiều với C ABI, cấu trúc đại số `TAF_Register_C` 24-byte, và cầu nối đồ họa Zero-Copy Framebuffer trực tiếp vào phần cứng (Chương 15).
+Direct Threaded Code, NaN-Boxing 64-bit, Bộ thu dọn rác TriColorGC không dừng máy, và cầu nối FFI C ABI.
 
 #### PHẦN V: NATIVE AOT COMPILATION & LLVM BACKEND (CHƯƠNG 16 – 18)
-Chúng ta đã phá bỏ giới hạn của máy ảo để chạm tới tốc độ mã máy tối thượng:
-- Hạ mức AST sang văn bản chuẩn tắc **LLVM Intermediate Representation** thông qua mô hình Canonical Alloca và quy ước trả về cấu trúc `sret` (Chương 16).
-- Điều khiển đường ống tối ưu hóa LLVM đa tầng (`-O3`), kích hoạt các đèo **Mem2Reg**, **Loop Vectorizer** và **SLP Vectorizer** để tận dụng triệt để các thanh ghi vector 256-bit AVX2 và NEON, tăng tốc độ xử lý gấp $45.3\times$ (Chương 17).
-- Đóng gói mã máy thành file đối tượng PE/COFF và ELF, áp dụng giải thuật đại số tái định vị địa chỉ PC-Relative ($V = S + A - P$), và liên kết tĩnh với `libtersun_rt.a` để xuất xưởng file thực thi độc lập duy nhất siêu nhẹ dưới $90\text{ KB}$ với thời gian khởi động tức thì $0\text{ ms}$ (Chương 18).
+Hạ mức LLVM IR, tối ưu hóa đa tầng `-O3`, vector hóa AVX2/NEON, đóng gói file đối tượng PE/ELF và liên kết tĩnh siêu nhẹ dưới $90\text{ KB}$.
 
-#### PHẦN VI: HỆ THỐNG RUNTIME NÂNG CAO, ĐỒNG QUY & TÍCH HỢP HỆ ĐIỀU HÀNH (CHƯƠNG 19 – 22)
-Chúng ta đã hoàn thiện hệ sinh thái vận hành ở quy mô công nghiệp:
-- Hệ thống lập trình bất đồng bộ `async/await`, Sợi nhẹ Coroutines không ngăn xếp, và bộ lập lịch tam phân cân bằng `TriPriorityScheduler` bảo vệ thời gian thực $120\text{ FPS}$ tuyệt đối trên Lõi 0 chuyên dụng với hàng đợi phi khóa Dmitry Vyukov (Chương 19).
-- Mô hình đồng quy **Share-Nothing Actor Model** với quyền sở hữu di chuyển Zero-Copy $O(1)$ qua con trỏ độc quyền, miễn nhiễm $100\%$ với Data Races và Deadlocks (Chương 20).
-- Hệ thống đo đạc chu kỳ phần cứng `RDTSC` có rào cản tuần tự hóa, theo dõi từng vi sai trúng/trượt Inline Cache và xuất bản biểu đồ ngọn lửa Flamegraph với chi phí suy hao $< 0.34\%$ (Chương 21).
-- Trình quản lý gói TPM, Trình chủ ngôn ngữ LSP JSON-RPC thời gian thực, và bộ phát sinh phần cứng Verilog RTL đưa số học tam phân cân bằng chạm tới các mạch bán dẫn FPGA/ASIC vật lý (Chương 22).
+#### PHẦN VI: RUNTIME NÂNG CAO, ĐỒNG QUY & TÍCH HỢP HỆ ĐIỀU HÀNH (CHƯƠNG 19 – 24)
+Coroutines không ngăn xếp, Share-Nothing Actor Model, Vi đo đạc chu kỳ phần cứng `RDTSC`, JIT Compiler với On-Stack Replacement (OSR), và máy ảo lượng tử QVM mô phỏng $N=29$ Qubits ($536\text{M}$ amplitudes).
+
+#### PHẦN VII: TẦNG THỰC THI LLM BẢN ĐỊA & TỐI ƯU HÓA SONG SONG (CHƯƠNG 25 – 28)
+Hệ thống LLM Runtime thuần C++20: Byte-Level BPE Tokenizer không cấp phát, Hợp đồng Sampler 7 bước, Bố cục `KVCache` bất biến vi sai $\Delta = 0.0$, Thang Attention 7 bậc ($A_0 \to A_6$) với vi nhân AVX2 FMA 4 chuỗi tích lũy song song gia tốc $8.7\times$, Single Owner of Parallelism qua `ParallelPlanner`, Shape-Aware `BitLinear`, duy trì tuyệt đối bất biến `malloc == 0` và đạt tốc độ sinh lên tới $403\text{ tok/s}$.
 
 ---
 
 ### LỜI KẾT DÀNH CHO KỸ SƯ HỆ THỐNG
 
-Giờ đây, khi bạn nhìn vào bất kỳ dòng mã nguồn nào của hệ thống Tersun:
+Giờ đây, khi bạn nhìn vào bất kỳ dòng mã nguồn nào của hệ thống Tersun — từ một hàm toán học đại số đơn giản, một mạch lượng tử 29-qubit, cho đến một mô hình ngôn ngữ lớn hàng tỷ tham số:
 ```stn
-async fun compute_trajectory(p1: taf3, p2: taf3): taf3 {
-    let delta = p2 - p1;
-    return delta * [1, 1, 0];
+async fun generate_stream(prompt: string): string {
+    let session = InferenceSession::new("models/bitnet-b1.58");
+    return session.generate(prompt);
 }
 ```
 
 Bạn không còn nhìn nó như một người lập trình ứng dụng ngây thơ. Bạn nhìn thấy:
-- Chuỗi token phẳng lướt qua bộ nhớ đệm mà không tốn một lần gọi `malloc`.
-- Cây cú pháp AST nằm gọn gàng trong các khối nhớ liên tục $64\text{ KB}$ của Arena.
-- Biến đổi SSA với các giá trị bất biến và đồ thị luồng điều khiển CFG.
-- Các thanh ghi vector AVX2 nạp đồng thời 4 tọa độ đại số vào `%ymm0` trong một chu kỳ xung nhịp $0.22\text{ ns}$.
-- Hòm thư phi khóa nhận con trỏ thông điệp di chuyển quyền sở hữu độc quyền trong $4\text{ ns}$.
-- Và sâu bên dưới, các cổng logic bán dẫn tam phân cân bằng đang dao động điện áp trên các thanh ghi vi mạch vật lý.
+- Chuỗi byte UTF-8 được phân tích thành token IDs phẳng trong một lần lướt bộ đệm không cấp phát.
+- Bộ nhớ đệm KV Cache xoay vòng được định vị sẵn trên thanh ghi mà không tốn một lần gọi `malloc`.
+- Thuật toán Online Softmax triệt tiêu hoàn toàn việc lưu ma trận $S \times S$ ra RAM.
+- Các thanh ghi vector 256-bit `%ymm0` – `%ymm3` nạp đồng thời 32 floats mỗi chu kỳ xung nhịp $0.22\text{ ns}$ để tính tích vô hướng Attention.
+- `ParallelPlanner` phân phối khối lượng công việc cân bằng hoàn hảo qua các lõi CPU mà không xảy ra tranh chấp luồng.
+- Và toàn bộ hệ thống vận hành với tốc độ hàng trăm tokens mỗi giây, hoàn toàn độc lập, an toàn số học và có thể kiểm chứng toán học vi sai ở mọi cấp độ.
 
-Bạn đã làm chủ toàn bộ trục dọc của khoa học máy tính: **từ ký tự con người đến điện áp bán dẫn**.
-Chúc mừng bạn đã hoàn thành trọn vẹn kiệt tác **"GIÁO TRÌNH HỆ THỐNG TERSUN: TỪ NỀN TẢNG ĐẾN KIẾN TRÚC NÂNG CAO"**! Hãy mang tri thức hệ thống tối thượng này để kiến tạo nên những công trình điện toán vĩ đại tiếp theo của nhân loại!
+Bạn đã làm chủ toàn bộ trục dọc của khoa học máy tính: **từ ký tự con người, qua vi kiến trúc máy tính, đến trí tuệ nhân tạo thế hệ mới**.
+Chúc mừng bạn đã hoàn thành trọn vẹn kiệt tác **"GIÁO TRÌNH HỆ THỐNG TERSUN: TỪ NỀN TẢNG ĐẾN KIẾN TRÚC NÂNG CAO"**!

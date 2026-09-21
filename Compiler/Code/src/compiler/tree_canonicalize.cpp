@@ -16,6 +16,7 @@ bool TreeCanonicalizer::has_side_effects(const Expr* expr) {
                       std::is_same_v<T, BoolLiteralExpr> ||
                       std::is_same_v<T, IdentifierExpr> ||
                       std::is_same_v<T, LambdaExpr> ||
+                      std::is_same_v<T, TritVecLiteralExpr> ||
                       std::is_same_v<T, ComptimeExpr>) {
             return false;
         } else if constexpr (std::is_same_v<T, UnaryExpr>) {
@@ -31,6 +32,11 @@ bool TreeCanonicalizer::has_side_effects(const Expr* expr) {
         } else if constexpr (std::is_same_v<T, IndexExpr>) {
             return has_side_effects(node.object) || has_side_effects(node.index);
         } else if constexpr (std::is_same_v<T, ArrayLiteralExpr>) {
+            for (const auto* elem : node.elements) {
+                if (has_side_effects(elem)) return true;
+            }
+            return false;
+        } else if constexpr (std::is_same_v<T, TupleLiteralExpr>) {
             for (const auto* elem : node.elements) {
                 if (has_side_effects(elem)) return true;
             }
@@ -65,6 +71,7 @@ bool TreeCanonicalizer::may_trap(const Expr* expr) {
                       std::is_same_v<T, BoolLiteralExpr> ||
                       std::is_same_v<T, IdentifierExpr> ||
                       std::is_same_v<T, LambdaExpr> ||
+                      std::is_same_v<T, TritVecLiteralExpr> ||
                       std::is_same_v<T, ComptimeExpr>) {
             return false;
         } else if constexpr (std::is_same_v<T, BinaryExpr>) {
@@ -281,6 +288,11 @@ Expr* TreeCanonicalizer::canonicalize_expr(Expr* expr, ArenaAllocator& arena) {
                 el = canonicalize_expr(el, arena);
             }
             return expr;
+        } else if constexpr (std::is_same_v<T, TupleLiteralExpr>) {
+            for (auto*& el : node.elements) {
+                el = canonicalize_expr(el, arena);
+            }
+            return expr;
         }
         return expr;
     }, expr->data);
@@ -292,6 +304,10 @@ Stmt* TreeCanonicalizer::canonicalize_stmt(Stmt* stmt, ArenaAllocator& arena) {
     std::visit([&](auto& node) {
         using T = std::decay_t<decltype(node)>;
         if constexpr (std::is_same_v<T, VarDeclStmt>) {
+            if (node.init) {
+                node.init = canonicalize_expr(node.init, arena);
+            }
+        } else if constexpr (std::is_same_v<T, TupleDestructureStmt>) {
             if (node.init) {
                 node.init = canonicalize_expr(node.init, arena);
             }

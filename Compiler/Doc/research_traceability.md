@@ -158,6 +158,24 @@ Khác với tài liệu kỹ thuật thông thường chỉ mô tả trạng th�
    - Dữ liệu thực nghiệm đông kết: `Doc/artifacts/frozen_qvm_qft/qft_scaling_data.json`.
    - Quyết định kiến trúc: `Code/src/qvm/qvm.md`.
 
+### 2.11. Gate 6R.3: Hội Tụ Vi Kiến Trúc Trình Thông Dịch Thuần (Pure Interpreter Microarchitecture Convergence)
+1. **Hypothesis**: Loại bỏ hoàn toàn telemetry khỏi hot path, hợp nhất siêu lệnh dòng dữ liệu và ghim thanh ghi kiến trúc `%r12=ip, %r13=sp` sẽ giảm mạnh dispatch overhead và memory spill trong Tier-0 interpreter.
+2. **Context**: Giải quyết 32 điểm phản biện kiến trúc tại `Doc/G6r3rv`.
+3. **Implementation**:
+   - Tách biệt telemetry hot/cold (`#if !TERSUN_PROFILE`).
+   - Cài đặt Pass 1 Bytecode Optimizer (`Code/include/vm/opt_bytecode.hpp`) với `OP_ADD_LOCAL_IMM` và `OP_FUSED_DOT_STEP_I64`.
+   - Chuyên biệt hóa mảng phẳng `OP_GET_INDEX_ARRAY` với zero-allocation cho toán tử đại số TAFPU.
+   - Ghim thanh ghi kiến trúc `%r12` và `%r13` loại bỏ 436 lần truy cập stack frame RAM (`-DTERSUN_PIN_REGISTERS`).
+4. **Testing**: Toàn bộ 33/33 Cross-Tier Differential Tests (`ST-12.1..ST-12.33`) vượt qua với 100% bit-exact match.
+5. **Benchmark**:
+   - W1 (Fib 30): 103.65 ms $\to$ 87.97 ms (1.18x speedup).
+   - W2 (Sieve 1M): 32.46 ms $\to$ 27.99 ms (1.16x speedup).
+   - W3 (MatMul 128): 202.30 ms $\to$ 150.06 ms (1.35x speedup).
+   - W4 (Objects): 105.74 ms (bảo toàn tính đúng đắn).
+6. **Decisions & Cryptographic Seal**:
+   - Quyết định kiến trúc: `Doc/adr/ADR-011-interpreter-microarchitecture-convergence.md`.
+   - Chứng chỉ niêm phong pháp y: `Code/test_registry/g6r3/g6r3_interpreter.json` (SHA256: `15adb6816042a49f378307daaeb08fa5c4944b985b29928564982142f55d6016`).
+
 ---
 
 ## 3. Bảng Đối Sánh Hiệu Năng Đa Ngôn Ngữ Pháp Y (Multi-Language Forensics)

@@ -223,6 +223,8 @@ void VM::init_dispatch_table() {
     dispatch_table_[static_cast<uint8_t>(OpCode::OP_INVOKE_METHOD_IC)] = &VM::handle_invoke_method_ic;
     dispatch_table_[static_cast<uint8_t>(OpCode::OP_QUICK_GT_INT)] = &VM::handle_quick_gt_int;
     dispatch_table_[static_cast<uint8_t>(OpCode::OP_QUICK_GE_INT)] = &VM::handle_quick_ge_int;
+    dispatch_table_[static_cast<uint8_t>(OpCode::OP_ADD_LOCAL_IMM)] = &VM::handle_add_local_imm;
+    dispatch_table_[static_cast<uint8_t>(OpCode::OP_FUSED_DOT_STEP_I64)] = &VM::handle_fused_dot_step_i64;
     dispatch_table_[static_cast<uint8_t>(OpCode::OP_SET_INDEX)] = &VM::handle_set_index;
     dispatch_table_[static_cast<uint8_t>(OpCode::OP_NEW_ARRAY)] = &VM::handle_new_array;
     dispatch_table_[static_cast<uint8_t>(OpCode::OP_TRY)] = &VM::handle_try;
@@ -397,6 +399,8 @@ void VM::run_switch(const Chunk& chunk) {
                 case OpCode::OP_INVOKE_METHOD_IC: handle_invoke_method_ic(chunk); break;
                 case OpCode::OP_QUICK_GT_INT: handle_quick_gt_int(chunk); break;
                 case OpCode::OP_QUICK_GE_INT: handle_quick_ge_int(chunk); break;
+                case OpCode::OP_ADD_LOCAL_IMM: handle_add_local_imm(chunk); break;
+                case OpCode::OP_FUSED_DOT_STEP_I64: handle_fused_dot_step_i64(chunk); break;
                 case OpCode::OP_SET_INDEX: handle_set_index(chunk); break;
                 case OpCode::OP_NEW_ARRAY: handle_new_array(chunk); break;
                 case OpCode::OP_TRY: handle_try(chunk); break;
@@ -520,6 +524,8 @@ void VM::run_threaded(const Chunk& chunk) {
         OP_TARGET(OP_INVOKE_METHOD_IC);
         OP_TARGET(OP_QUICK_GT_INT);
         OP_TARGET(OP_QUICK_GE_INT);
+        OP_TARGET(OP_ADD_LOCAL_IMM);
+        OP_TARGET(OP_FUSED_DOT_STEP_I64);
         OP_TARGET(OP_SET_INDEX);
         OP_TARGET(OP_NEW_ARRAY);
         OP_TARGET(OP_TRY);
@@ -634,6 +640,8 @@ void VM::run_threaded(const Chunk& chunk) {
     WRAP_OP(OP_INVOKE_METHOD_IC, handle_invoke_method_ic(chunk));
     WRAP_OP(OP_QUICK_GT_INT, handle_quick_gt_int(chunk));
     WRAP_OP(OP_QUICK_GE_INT, handle_quick_ge_int(chunk));
+    WRAP_OP(OP_ADD_LOCAL_IMM, handle_add_local_imm(chunk));
+    WRAP_OP(OP_FUSED_DOT_STEP_I64, handle_fused_dot_step_i64(chunk));
     WRAP_OP(OP_SET_INDEX, handle_set_index(chunk));
     WRAP_OP(OP_NEW_ARRAY, handle_new_array(chunk));
     WRAP_OP(OP_TRY, handle_try(chunk));
@@ -705,8 +713,13 @@ void VM::run_optimized(OptimizedChunk& chunk) {
 
     size_t init_depth = stack_.size();
     uint8_t* code_base = chunk.code.data();
+#if defined(TERSUN_PIN_REGISTERS) && defined(__x86_64__)
+    register uint8_t* ip asm("r12") = code_base + ip_;
+    register VMValue* sp asm("r13") = stack_.data() + init_depth;
+#else
     uint8_t* ip = code_base + ip_;
     VMValue* sp = stack_.data() + init_depth;
+#endif
     VMValue* stack_end = stack_.data() + stack_.capacity();
     size_t toplevel_size = chunk.toplevel_frame_size;
     if (toplevel_size < 32) toplevel_size = 32;
@@ -827,6 +840,8 @@ void VM::run_optimized(OptimizedChunk& chunk) {
         OP_TARGET_C(OP_GET_FIELD_IC);
         OP_TARGET_C(OP_SET_FIELD_IC);
         OP_TARGET_C(OP_INVOKE_METHOD_IC);
+        OP_TARGET_C(OP_ADD_LOCAL_IMM);
+        OP_TARGET_C(OP_FUSED_DOT_STEP_I64);
 
         // Gate 6.0-D: Phase 4 Superinstruction Fusion Framework
         OP_TARGET_C(OP_STORE_LOCAL_POP);
@@ -2088,6 +2103,13 @@ void VM::run_optimized(OptimizedChunk& chunk) {
             } else {
                 PUSH_TOS(VMValue(""));
             }
+        } else if (target.is_tafpu()) {
+            TafpuNum num = target.as_tafpu();
+            int64_t i = idx_val.as_int();
+            if (i == 0) PUSH_TOS(VMValue(num.a));
+            else if (i == 1) PUSH_TOS(VMValue(num.b));
+            else if (i == 2) PUSH_TOS(VMValue(static_cast<int64_t>(num.s)));
+            else PUSH_TOS(VMValue(static_cast<int64_t>(0)));
         } else if (target.is_object()) {
             auto* vmo = target.payload()->obj.get();
             if (vmo) PUSH_TOS(vmo->get_field(idx_val.to_string()));
@@ -2651,6 +2673,86 @@ void VM::run_optimized(OptimizedChunk& chunk) {
             goto c_lbl_catch;
         }
         SYNC_FROM_VM();
+        DISPATCH_C();
+    }
+
+    c_lbl_OP_ADD_LOCAL_IMM: {
+        uint16_t src_slot = static_cast<uint16_t>(ip[0] | (ip[1] << 8));
+        int16_t  imm      = static_cast<int16_t>(ip[2] | (ip[3] << 8));
+        uint16_t dst_slot = static_cast<uint16_t>(ip[4] | (ip[5] << 8));
+        ip += 6;
+        size_t d_idx = local_base + dst_slot;
+        if (__builtin_expect(d_idx >= local_top_, 0)) {
+            local_top_ = d_idx + 8;
+            if (__builtin_expect(local_top_ + 64 >= locals_.size(), 0)) {
+                locals_.resize(locals_.size() * 2);
+            }
+        }
+        if (__builtin_expect(d_idx >= locals_.size(), 0)) locals_.resize(d_idx + 32);
+        const VMValue& vs = locals_[local_base + src_slot];
+        if (__builtin_expect(vs.is_immediate_int(), 1)) {
+            int64_t sum = vs.as_immediate_int_fast() + imm;
+            if (__builtin_expect(sum >= VMValue::MIN_INT48 && sum <= VMValue::MAX_INT48, 1)) {
+                locals_[d_idx] = VMValue::from_raw(VMValue::TAG_INT | (static_cast<uint64_t>(sum) & VMValue::PAYLOAD_MASK));
+                VM_RECORD_SUPER();
+                DISPATCH_C();
+            }
+        }
+        locals_[d_idx] = vs.add(VMValue(static_cast<int64_t>(imm)));
+        VM_RECORD_SUPER();
+        DISPATCH_C();
+    }
+
+    c_lbl_OP_FUSED_DOT_STEP_I64: {
+        uint16_t slot_C     = static_cast<uint16_t>(ip[0] | (ip[1] << 8));
+        uint16_t slot_c_idx = static_cast<uint16_t>(ip[2] | (ip[3] << 8));
+        uint16_t slot_a_val = static_cast<uint16_t>(ip[4] | (ip[5] << 8));
+        uint16_t slot_B     = static_cast<uint16_t>(ip[6] | (ip[7] << 8));
+        uint16_t slot_b_idx = static_cast<uint16_t>(ip[8] | (ip[9] << 8));
+        ip += 10;
+
+        const VMValue& vC     = locals_[local_base + slot_C];
+        const VMValue& vc_idx = locals_[local_base + slot_c_idx];
+        const VMValue& va_val = locals_[local_base + slot_a_val];
+        const VMValue& vB     = locals_[local_base + slot_B];
+        const VMValue& vb_idx = locals_[local_base + slot_b_idx];
+
+        if (__builtin_expect(vC.is_array() && vB.is_array() &&
+                            vc_idx.is_immediate_int() && vb_idx.is_immediate_int() &&
+                            va_val.is_immediate_int(), 1)) {
+            auto* arr_C = vC.payload()->arr.get();
+            auto* arr_B = vB.payload()->arr.get();
+            if (__builtin_expect(arr_C && arr_B &&
+                                arr_C->rep == ArrayRep::I64 && arr_B->rep == ArrayRep::I64, 1)) {
+                int64_t ci = vc_idx.as_immediate_int_fast();
+                int64_t bi = vb_idx.as_immediate_int_fast();
+                if (__builtin_expect(ci >= 0 && static_cast<size_t>(ci) < arr_C->size() &&
+                                    bi >= 0 && static_cast<size_t>(bi) < arr_B->size(), 1)) {
+                    int64_t a = va_val.as_immediate_int_fast();
+                    arr_C->i64_data[ci] += a * arr_B->i64_data[bi];
+                    VM_RECORD_SUPER();
+                    DISPATCH_C();
+                }
+            }
+        }
+        // Semantic fallback for general/polymorphic arrays or out-of-bounds
+        if (vC.is_array() && vB.is_array()) {
+            auto* arr_C = vC.payload()->arr.get();
+            auto* arr_B = vB.payload()->arr.get();
+            if (arr_C && arr_B) {
+                int64_t ci = vc_idx.as_int();
+                int64_t bi = vb_idx.as_int();
+                if (ci < 0) ci += arr_C->size();
+                if (bi < 0) bi += arr_B->size();
+                if (ci >= 0 && static_cast<size_t>(ci) < arr_C->size() &&
+                    bi >= 0 && static_cast<size_t>(bi) < arr_B->size()) {
+                    VMValue prod = va_val.mul(arr_B->get(static_cast<size_t>(bi)));
+                    VMValue sum = arr_C->get(static_cast<size_t>(ci)).add(prod);
+                    arr_C->set(static_cast<size_t>(ci), sum);
+                }
+            }
+        }
+        VM_RECORD_SUPER();
         DISPATCH_C();
     }
 
@@ -4626,6 +4728,73 @@ void VM::handle_quick_gt_int(const Chunk& chunk) {
 
 void VM::handle_quick_ge_int(const Chunk& chunk) {
     handle_ge(chunk);
+}
+
+void VM::handle_add_local_imm(const Chunk& chunk) {
+    uint16_t src_slot = static_cast<uint16_t>(read_int16(chunk));
+    int16_t imm = static_cast<int16_t>(read_int16(chunk));
+    uint16_t dst_slot = static_cast<uint16_t>(read_int16(chunk));
+    size_t base = call_stack_.empty() ? 0 : call_stack_.back().local_base;
+    size_t d_idx = base + dst_slot;
+    if (d_idx >= locals_.size()) locals_.resize(d_idx + 32);
+    const VMValue& vs = locals_[base + src_slot];
+    if (vs.is_immediate_int()) {
+        int64_t sum = vs.as_immediate_int_fast() + imm;
+        if (sum >= VMValue::MIN_INT48 && sum <= VMValue::MAX_INT48) {
+            locals_[d_idx] = VMValue::from_raw(VMValue::TAG_INT | (static_cast<uint64_t>(sum) & VMValue::PAYLOAD_MASK));
+            return;
+        }
+    }
+    locals_[d_idx] = vs.add(VMValue(static_cast<int64_t>(imm)));
+}
+
+void VM::handle_fused_dot_step_i64(const Chunk& chunk) {
+    uint16_t slot_C     = static_cast<uint16_t>(read_int16(chunk));
+    uint16_t slot_c_idx = static_cast<uint16_t>(read_int16(chunk));
+    uint16_t slot_a_val = static_cast<uint16_t>(read_int16(chunk));
+    uint16_t slot_B     = static_cast<uint16_t>(read_int16(chunk));
+    uint16_t slot_b_idx = static_cast<uint16_t>(read_int16(chunk));
+
+    size_t base = call_stack_.empty() ? 0 : call_stack_.back().local_base;
+    const VMValue& vC     = locals_[base + slot_C];
+    const VMValue& vc_idx = locals_[base + slot_c_idx];
+    const VMValue& va_val = locals_[base + slot_a_val];
+    const VMValue& vB     = locals_[base + slot_B];
+    const VMValue& vb_idx = locals_[base + slot_b_idx];
+
+    if (vC.is_array() && vB.is_array() &&
+        vc_idx.is_immediate_int() && vb_idx.is_immediate_int() &&
+        va_val.is_immediate_int()) {
+        auto* arr_C = vC.payload()->arr.get();
+        auto* arr_B = vB.payload()->arr.get();
+        if (arr_C && arr_B &&
+            arr_C->rep == ArrayRep::I64 && arr_B->rep == ArrayRep::I64) {
+            int64_t ci = vc_idx.as_immediate_int_fast();
+            int64_t bi = vb_idx.as_immediate_int_fast();
+            if (ci >= 0 && static_cast<size_t>(ci) < arr_C->size() &&
+                bi >= 0 && static_cast<size_t>(bi) < arr_B->size()) {
+                int64_t a = va_val.as_immediate_int_fast();
+                arr_C->i64_data[ci] += a * arr_B->i64_data[bi];
+                return;
+            }
+        }
+    }
+    if (vC.is_array() && vB.is_array()) {
+        auto* arr_C = vC.payload()->arr.get();
+        auto* arr_B = vB.payload()->arr.get();
+        if (arr_C && arr_B) {
+            int64_t ci = vc_idx.as_int();
+            int64_t bi = vb_idx.as_int();
+            if (ci < 0) ci += arr_C->size();
+            if (bi < 0) bi += arr_B->size();
+            if (ci >= 0 && static_cast<size_t>(ci) < arr_C->size() &&
+                bi >= 0 && static_cast<size_t>(bi) < arr_B->size()) {
+                VMValue prod = va_val.mul(arr_B->get(static_cast<size_t>(bi)));
+                VMValue sum = arr_C->get(static_cast<size_t>(ci)).add(prod);
+                arr_C->set(static_cast<size_t>(ci), sum);
+            }
+        }
+    }
 }
 
 void VM::handle_set_index(const Chunk&) {

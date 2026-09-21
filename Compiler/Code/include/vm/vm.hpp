@@ -248,6 +248,8 @@ private:
     void handle_invoke_method_ic(const Chunk& chunk);
     void handle_quick_gt_int(const Chunk& chunk);
     void handle_quick_ge_int(const Chunk& chunk);
+    void handle_add_local_imm(const Chunk& chunk);
+    void handle_fused_dot_step_i64(const Chunk& chunk);
     void handle_set_index(const Chunk& chunk);
     void handle_try(const Chunk& chunk);
     void handle_throw(const Chunk& chunk);

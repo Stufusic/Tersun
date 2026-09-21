@@ -22,7 +22,12 @@ enum class TypeKind {
     TMAT,
     TQUAT,
     ARRAY,
+    FIXED_ARRAY,
+    SLICE_VIEW,
+    TUPLE,
+    TENSOR_VIEW,
     STRUCT,
+    VALUE_STRUCT,
     CLASS,
     INTERFACE,
     ENUM,
@@ -61,8 +66,15 @@ struct Type : public std::enable_shared_from_this<Type> {
     TypeKind kind{TypeKind::UNKNOWN};
     std::string name; // Name for Struct, Class, Enum, Generic param ("T"), etc.
 
-    // For Array<T>
+    // For Array<T>, FixedArray [T; N], Slice &[T], TensorView<T, Rank>
     TypePtr element_type{nullptr};
+    size_t fixed_size{0};
+    size_t rank{0};
+    bool is_value_struct{false};
+    bool is_mut_slice{false};
+
+    // For Tuple (T1, T2, ...)
+    std::vector<TypePtr> tuple_elements;
 
     // For Struct / Class / Interface
     std::string super_name;
@@ -96,7 +108,13 @@ struct Type : public std::enable_shared_from_this<Type> {
     static TypePtr make_unknown();
 
     static TypePtr make_array(TypePtr elem_type);
+    static TypePtr make_fixed_array(TypePtr elem_type, size_t size);
+    static TypePtr make_slice(TypePtr elem_type);
+    static TypePtr make_mut_slice(TypePtr elem_type);
+    static TypePtr make_tuple(const std::vector<TypePtr>& elements);
+    static TypePtr make_tensor_view(TypePtr elem_type, size_t rank = 2);
     static TypePtr make_struct(const std::string& name);
+    static TypePtr make_value_struct(const std::string& name);
     static TypePtr make_class(const std::string& name, const std::string& super = "");
     static TypePtr make_interface(const std::string& name);
     static TypePtr make_enum(const std::string& name);

@@ -1,0 +1,25 @@
+{
+  "gate": "7.1",
+  "sprint": "Sprint 5 - Edge Static Profile",
+  "status": "VERIFIED_AND_SEALED",
+  "timestamp": "2026-09-21T03:32:00Z",
+  "edge_budgets": {
+    "128kb": "PASS",
+    "256kb": "PASS",
+    "512kb": "PASS",
+    "1mb": "PASS",
+    "fail_fast_on_exceeded": "PASS"
+  },
+  "metrics": {
+    "minimum_passing_budget_bytes": 131072,
+    "peak_arena_usage_bytes": 624,
+    "headroom_bytes": 130448,
+    "steady_state_iterations": 50000,
+    "steady_state_heap_allocations": 0,
+    "steady_state_latency_us": 39.7957,
+    "steady_state_fps": 25128.3,
+    "arena_start_used_bytes": 568,
+    "arena_end_used_bytes": 568,
+    "arena_invariant_delta": 0
+  }
+}

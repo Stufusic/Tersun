@@ -13,8 +13,10 @@
 
 # Local verification scratch space
 scratch/
+test_debug.cpp
+out.txt
 
-# OS noise
+# OS noise & editor
 Thumbs.db
 Desktop.ini
 *.tmp
@@ -22,3 +24,19 @@ Desktop.ini
 .zcode/
 Code/test_err.txt
 Code/test_out.txt
+Code/test_stderr.txt
+Code/test_stdout.txt
+Code/out_switch.txt
+
+# Review & internal working plans (excluded from v1.0.3 release branch)
+Doc/G6r3rv
+Doc/g7 plan.md
+Doc/g7rv.md
+Doc/rv g7.1.md
+Doc/rv JIIT.md
+Doc/rv newg6.md
+Doc/rv5.9.md
+Doc/G6.2.md
+Doc/gate6(advanced).md
+Doc/chêck g6new.md
+Doc/g6r/forensics_plan.md

@@ -1,0 +1,22 @@
+// Pure Tersun (.stn) RMSNorm Kernel with Mutable Slice Output
+// Computes out[i] = (x[i] * gamma[i] * scale_inv_sqrt) >> shift
+// Zero heap allocations in steady-state inference loop.
+
+fn rmsnorm(
+    x: &[int],
+    gamma: &[int],
+    out: &mut [int],
+    n: int,
+    scale_inv_sqrt: int,
+    shift: int
+) -> void {
+    let mut i: int = 0;
+    while (i < n) {
+        let val: int = x[i];
+        let g: int = gamma[i];
+        let scaled: int = val * g * scale_inv_sqrt;
+        let res: int = scaled >> shift;
+        out[i] = res;
+        i = i + 1;
+    }
+}

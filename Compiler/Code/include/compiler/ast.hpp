@@ -17,6 +17,7 @@ enum class DataType {
     VOID,
     INT,
     TRYTE,
+    TRIT,
     TAF3,
     BOOL,
     FLOAT,
@@ -59,6 +60,11 @@ struct FloatLiteralExpr {
 
 struct StringLiteralExpr {
     std::string value;
+    SourceLocation loc;
+};
+
+struct TritVecLiteralExpr {
+    std::vector<int8_t> trits;
     SourceLocation loc;
 };
 
@@ -174,6 +180,12 @@ struct IndexExpr {
     Expr* object{nullptr};
     Expr* index{nullptr};
     SourceLocation loc;
+    std::vector<Expr*> indices{};
+};
+
+struct TupleLiteralExpr {
+    std::vector<Expr*> elements;
+    SourceLocation loc;
 };
 
 struct ComptimeExpr {
@@ -199,8 +211,10 @@ struct Parameter {
 struct LambdaExpr {
     std::vector<Parameter> params;
     DataType return_type{DataType::VOID};
+    std::string return_custom_name{};
     Stmt* body{nullptr};     // BlockStmt (the => form wraps a return)
     SourceLocation loc;
+    TypePtr resolved_ret_type{nullptr};
 };
 
 using ExprData = std::variant<
@@ -221,8 +235,10 @@ using ExprData = std::variant<
     IndexExpr,
     ComptimeExpr,
     ArrayLiteralExpr,
+    TritVecLiteralExpr,
     AmbiguousTripleExpr,
-    LambdaExpr
+    LambdaExpr,
+    TupleLiteralExpr
 >;
 
 struct Expr {
@@ -266,6 +282,15 @@ struct IndexAssignStmt {
     Expr* index{nullptr};
     Expr* value{nullptr};
     SourceLocation loc;
+    std::vector<Expr*> indices{};
+};
+
+struct TupleDestructureStmt {
+    std::vector<std::string> names;
+    Expr* init{nullptr};
+    bool is_const{false};
+    SourceLocation loc;
+    std::vector<TypePtr> resolved_types{};
 };
 
 struct ExprStmt {
@@ -276,6 +301,7 @@ struct ExprStmt {
 struct BlockStmt {
     std::vector<Stmt*> statements;
     SourceLocation loc;
+    bool is_transparent_scope{false};
 };
 
 struct IfStmt {
@@ -366,6 +392,7 @@ struct MethodDecl {
     std::string name;
     std::vector<Parameter> params;
     DataType return_type{DataType::VOID};
+    std::string return_custom_name{};
     Stmt* body{nullptr};
     bool is_pub{true};
     bool is_static{false};
@@ -434,6 +461,7 @@ using StmtData = std::variant<
     AssignStmt,
     MemberAssignStmt,
     IndexAssignStmt,
+    TupleDestructureStmt,
     ExprStmt,
     BlockStmt,
     IfStmt,
@@ -470,6 +498,7 @@ inline std::string_view data_type_name(DataType type) {
         case DataType::VOID: return "void";
         case DataType::INT: return "int";
         case DataType::TRYTE: return "tryte";
+        case DataType::TRIT: return "trit";
         case DataType::TAF3: return "taf3";
         case DataType::BOOL: return "bool";
         case DataType::FLOAT: return "float";

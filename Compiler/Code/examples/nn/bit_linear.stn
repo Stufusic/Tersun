@@ -1,0 +1,20 @@
+// Tersun 1.0.3 Native BitLinear Kernel
+// Pure Tersun implementation of Multiplication-Free Linear Layer (W1.58A8)
+// Zero-allocation steady state using mutable output slice &mut [int]
+
+fn bit_linear_gemv(
+    x: &[int],
+    w: &[trit],
+    bias: &[int],
+    out: &mut [int],
+    rows: int,
+    cols: int
+) {
+    let mut r = 0;
+    while (r < rows) {
+        let w_row = slice(w, r * cols, cols);
+        let b = bias[r];
+        out[r] = ternary_dot(x, w_row, b);
+        r = r + 1;
+    }
+}

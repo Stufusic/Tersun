@@ -96,12 +96,9 @@ void test_part4_verilog_rtl_emission() {
 
 // Module 6 - Test Case 4: Gauss-Jordan Solver, TST & TPM Manifest
 void test_part4_stdtaf_and_tpm() {
-    std::cout << "  [Test] Module 6 - Test Case 4: Gauss-Jordan Linear Solver & Ternary Search Tree...\n";
+    std::cout << "  [Test] Module 6 - Test Case 4: Gauss-Jordan Linear Solver & Ternary Search Tree..." << std::endl;
 
     // 1. Gauss-Jordan 2x2 System:
-    //  2*x + 1*y = 5
-    //  1*x + 3*y = 5
-    // Solution: x = 2, y = 1
     tmat<2, 2> A;
     A(0, 0) = TAF_Register(2, 0, 0);
     A(0, 1) = TAF_Register(1, 0, 0);
@@ -113,7 +110,7 @@ void test_part4_stdtaf_and_tpm() {
     assert(sol.has_value());
     assert((*sol)[0].a == 2 && (*sol)[0].b == 0);
     assert((*sol)[1].a == 1 && (*sol)[1].b == 0);
-    std::cout << "    -> Gauss-Jordan Exact Solution: x = " << (*sol)[0].to_string(false) << ", y = " << (*sol)[1].to_string(false) << "\n";
+    std::cout << "    -> Gauss-Jordan Exact Solution: x = " << (*sol)[0].to_string(false) << ", y = " << (*sol)[1].to_string(false) << std::endl;
 
     // 2. Ternary Search Tree (TST)
     TernarySearchTree<int> tst;
@@ -134,7 +131,7 @@ void test_part4_stdtaf_and_tpm() {
     assert(parsed.name == "quantum_sim");
     assert(parsed.version == "2.0.0");
 
-    std::cout << "    -> PASSED: Gauss-Jordan solver, TST symbol table, and TPM Package Manager verified!\n";
+    std::cout << "    -> PASSED: Gauss-Jordan solver, TST symbol table, and TPM Package Manager verified!" << std::endl;
 }
 
 } // namespace setun

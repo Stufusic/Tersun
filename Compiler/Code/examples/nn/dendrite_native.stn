@@ -1,0 +1,23 @@
+// Tersun 1.0.3 Native Dendritic Adder Kernel
+// Pure Tersun implementation demonstrating zero-allocation ternary dot products.
+
+// 1. Explicit Loop & 3-Way Branch (Naive Implementation)
+fn dendrite_naive(x: &[int], w: &[trit], bias: int) -> int {
+    let mut acc: int = bias;
+    let n = len(x);
+    let mut i = 0;
+    while i < n {
+        branch (w[i]) {
+            case +1: acc = acc + x[i];
+            case  0: { }
+            case -1: acc = acc - x[i];
+        }
+        i = i + 1;
+    }
+    return acc;
+}
+
+// 2. High-Level Algebraic Dot Product (Canonical Implementation)
+fn dendrite_canonical(x: &[int], w: &[trit], bias: int) -> int {
+    return ternary_dot(x, w, bias);
+}

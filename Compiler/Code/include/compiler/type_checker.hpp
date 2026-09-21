@@ -25,6 +25,25 @@ struct ScopedSymbol {
     SourceLocation loc;
 };
 
+struct MemoryFacts {
+    std::unordered_set<std::string> disjoint_pairs;
+    std::unordered_set<std::string> readonly_vars;
+    std::unordered_set<std::string> unique_mut_vars;
+
+    static std::string make_pair_key(const std::string& a, const std::string& b) {
+        return (a < b) ? (a + "::" + b) : (b + "::" + a);
+    }
+
+    bool are_disjoint(const std::string& a, const std::string& b) const {
+        if (a == b) return false;
+        return disjoint_pairs.count(make_pair_key(a, b)) > 0;
+    }
+
+    void add_disjoint(const std::string& a, const std::string& b) {
+        disjoint_pairs.insert(make_pair_key(a, b));
+    }
+};
+
 class TypeChecker {
 public:
     TypeChecker();
@@ -37,8 +56,12 @@ public:
 
     std::string format_diagnostics(const std::string& source_code = "") const;
 
+    TypePtr resolve_type_syntax(std::string_view syntax);
     TypePtr resolve_type_from_data_type(DataType dt, const std::string& type_name = "");
     TypePtr get_type_definition(const std::string& name) const;
+
+    const MemoryFacts& memory_facts() const { return memory_facts_; }
+    MemoryFacts& memory_facts() { return memory_facts_; }
 
 private:
     void init_builtins();
@@ -58,6 +81,7 @@ private:
     // AST visitors
     void check_stmt(Stmt* stmt);
     void check_var_decl(VarDeclStmt& stmt);
+    void check_tuple_destructure(TupleDestructureStmt& stmt);
     void check_assign(AssignStmt& stmt);
     void check_member_assign(MemberAssignStmt& stmt);
     void check_index_assign(IndexAssignStmt& stmt);
@@ -82,6 +106,7 @@ private:
     TypePtr check_method_call(MethodCallExpr& expr);
     TypePtr check_index(IndexExpr& expr);
     TypePtr check_array_lit(ArrayLiteralExpr& expr);
+    TypePtr check_tuple_literal(TupleLiteralExpr& expr);
 
     void check_match_exhaustiveness(const MatchStmt& stmt, TypePtr cond_type);
 
@@ -99,6 +124,8 @@ private:
     std::vector<std::unordered_map<std::string, ScopedSymbol>> scopes_;
     std::unordered_map<std::string, TypePtr> type_defs_;
     std::unordered_map<std::string, TypePtr> functions_;
+
+    MemoryFacts memory_facts_;
 
     // Aliased imports: `import "x.stn" as gui;` makes gui.fn(...) a function call
     std::unordered_set<std::string> import_aliases_;

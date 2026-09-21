@@ -34,7 +34,7 @@ static void assert_test(bool cond, const std::string& msg) {
 // Locate a .stn probe script relative to the invocation CWD (same policy as
 // the 1.0.3 core-semantics suite).
 static std::string find_q_probe(const std::string& name) {
-    const char* prefixes[] = {"tests/stn/", "Code/tests/stn/", "../Code/tests/stn/"};
+    const char* prefixes[] = {"tests/stn/", "Code/tests/stn/", "../Code/tests/stn/", "../tests/stn/", "../../tests/stn/"};
     for (const char* p : prefixes) {
         std::string candidate = std::string(p) + name;
         std::ifstream f(candidate);

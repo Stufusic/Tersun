@@ -107,7 +107,10 @@ public:
             case OpCode::OP_CALL_INDIRECT:
                 return 2;
             case OpCode::OP_BRANCH_3:
+            case OpCode::OP_ADD_LOCAL_IMM:
                 return 7;
+            case OpCode::OP_FUSED_DOT_STEP_I64:
+                return 11;
             case OpCode::OP_PUSH_TAFPU:
                 return 21;
             default:
@@ -207,110 +210,247 @@ public:
             }
 
             // ----------------------------------------------------------------
-            // Pattern: Gate 6.0-D Fused Multiply-Add (OP_FUSED_MUL_ADD_I64/F64/TAFPU)
-            // Pattern A: LOAD_LOCAL a (3B) + LOAD_LOCAL b (3B) + MUL (1B) + LOAD_LOCAL c (3B) + ADD (1B) + STORE_LOCAL d (3B) + POP (1B) = 15B
-            // Pattern B: LOAD_LOCAL c (3B) + LOAD_LOCAL a (3B) + LOAD_LOCAL b (3B) + MUL (1B) + ADD (1B) + STORE_LOCAL d (3B) + POP (1B) = 15B
+            // Pattern: Gate 6R.3-B6 Fused Dot-Product Step (OP_FUSED_DOT_STEP_I64)
+            // MatMul core loop: C[c_idx] += a_val * B[b_idx]
+            // LOAD_LOCAL C (3B) + LOAD_LOCAL c_idx (3B) + LOAD_LOCAL C (3B) + LOAD_LOCAL c_idx (3B)
+            // + OP_GET_INDEX (1B) + LOAD_LOCAL a_val (3B) + LOAD_LOCAL B (3B) + LOAD_LOCAL b_idx (3B)
+            // + OP_GET_INDEX (1B) + OP_MUL (1B) + OP_ADD (1B) + OP_SET_INDEX (1B) [+ OP_POP (1B)]
+            // = 26B or 27B
             // ----------------------------------------------------------------
-            if (flags.enable_superinstructions && ip + 15 <= src.code.size()) {
+            if (flags.enable_superinstructions && ip + 26 <= src.code.size()) {
+                if (op == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
+                    src.code[ip + 3] == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
+                    src.code[ip + 6] == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
+                    src.code[ip + 9] == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
+                    (src.code[ip + 12] == static_cast<uint8_t>(OpCode::OP_GET_INDEX) ||
+                     src.code[ip + 12] == static_cast<uint8_t>(OpCode::OP_GET_INDEX_ARRAY)))
+                {
+                    uint16_t slot_C1 = static_cast<uint16_t>(src.code[ip + 1] | (src.code[ip + 2] << 8));
+                    uint16_t slot_ci1 = static_cast<uint16_t>(src.code[ip + 4] | (src.code[ip + 5] << 8));
+                    uint16_t slot_C2 = static_cast<uint16_t>(src.code[ip + 7] | (src.code[ip + 8] << 8));
+                    uint16_t slot_ci2 = static_cast<uint16_t>(src.code[ip + 10] | (src.code[ip + 11] << 8));
+
+                    if (slot_C1 == slot_C2 && slot_ci1 == slot_ci2) {
+                        uint16_t slot_a = 0, slot_B = 0, slot_bi = 0;
+                        bool matched = false;
+
+                        // Case A: a_val * B[b_idx]
+                        if (src.code[ip + 13] == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
+                            src.code[ip + 16] == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
+                            src.code[ip + 19] == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
+                            (src.code[ip + 22] == static_cast<uint8_t>(OpCode::OP_GET_INDEX) ||
+                             src.code[ip + 22] == static_cast<uint8_t>(OpCode::OP_GET_INDEX_ARRAY)) &&
+                            src.code[ip + 23] == static_cast<uint8_t>(OpCode::OP_MUL) &&
+                            src.code[ip + 24] == static_cast<uint8_t>(OpCode::OP_ADD) &&
+                            (src.code[ip + 25] == static_cast<uint8_t>(OpCode::OP_SET_INDEX) ||
+                             src.code[ip + 25] == static_cast<uint8_t>(OpCode::OP_SET_INDEX_ARRAY)))
+                        {
+                            slot_a  = static_cast<uint16_t>(src.code[ip + 14] | (src.code[ip + 15] << 8));
+                            slot_B  = static_cast<uint16_t>(src.code[ip + 17] | (src.code[ip + 18] << 8));
+                            slot_bi = static_cast<uint16_t>(src.code[ip + 20] | (src.code[ip + 21] << 8));
+                            matched = true;
+                        }
+                        // Case B: B[b_idx] * a_val
+                        else if (src.code[ip + 13] == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
+                                 src.code[ip + 16] == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
+                                 (src.code[ip + 19] == static_cast<uint8_t>(OpCode::OP_GET_INDEX) ||
+                                  src.code[ip + 19] == static_cast<uint8_t>(OpCode::OP_GET_INDEX_ARRAY)) &&
+                                 src.code[ip + 20] == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
+                                 src.code[ip + 23] == static_cast<uint8_t>(OpCode::OP_MUL) &&
+                                 src.code[ip + 24] == static_cast<uint8_t>(OpCode::OP_ADD) &&
+                                 (src.code[ip + 25] == static_cast<uint8_t>(OpCode::OP_SET_INDEX) ||
+                                  src.code[ip + 25] == static_cast<uint8_t>(OpCode::OP_SET_INDEX_ARRAY)))
+                        {
+                            slot_B  = static_cast<uint16_t>(src.code[ip + 14] | (src.code[ip + 15] << 8));
+                            slot_bi = static_cast<uint16_t>(src.code[ip + 17] | (src.code[ip + 18] << 8));
+                            slot_a  = static_cast<uint16_t>(src.code[ip + 21] | (src.code[ip + 22] << 8));
+                            matched = true;
+                        }
+
+                        if (matched) {
+                            size_t match_len = 26;
+                            if (ip + 27 <= src.code.size() && src.code[ip + 26] == static_cast<uint8_t>(OpCode::OP_POP)) {
+                                match_len = 27;
+                            }
+                            if (SuperInstructionRegistry::can_fuse_range(src, ip, ip + match_len, jump_targets)) {
+                                opt.write_opcode(OpCode::OP_FUSED_DOT_STEP_I64, line);
+                                opt.write_int16(static_cast<int16_t>(slot_C1), line);
+                                opt.write_int16(static_cast<int16_t>(slot_ci1), line);
+                                opt.write_int16(static_cast<int16_t>(slot_a), line);
+                                opt.write_int16(static_cast<int16_t>(slot_B), line);
+                                opt.write_int16(static_cast<int16_t>(slot_bi), line);
+                                for (size_t k = orig_ip; k < orig_ip + match_len; ++k) pc_map[k] = opt_ip;
+                                SuperInstructionRegistry::telemetry().total_fusions++;
+                                ip += match_len;
+                                continue;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ----------------------------------------------------------------
+            // Pattern: Gate 6.0-D Fused Multiply-Add (OP_FUSED_MUL_ADD_I64/F64/TAFPU)
+            // Pattern A: LOAD_LOCAL a (3B) + LOAD_LOCAL b (3B) + MUL (1B) + LOAD_LOCAL c (3B) + ADD (1B) + STORE_LOCAL d (3B) [+ POP (1B)] = 14B or 15B
+            // Pattern B: LOAD_LOCAL c (3B) + LOAD_LOCAL a (3B) + LOAD_LOCAL b (3B) + MUL (1B) + ADD (1B) + STORE_LOCAL d (3B) [+ POP (1B)] = 14B or 15B
+            // ----------------------------------------------------------------
+            if (flags.enable_superinstructions && ip + 14 <= src.code.size()) {
                 if (op == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
                     src.code[ip + 3] == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
                     src.code[ip + 6] == static_cast<uint8_t>(OpCode::OP_MUL) &&
                     src.code[ip + 7] == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
                     src.code[ip + 10] == static_cast<uint8_t>(OpCode::OP_ADD) &&
-                    src.code[ip + 11] == static_cast<uint8_t>(OpCode::OP_STORE_LOCAL) &&
-                    src.code[ip + 14] == static_cast<uint8_t>(OpCode::OP_POP) &&
-                    SuperInstructionRegistry::can_fuse_range(src, ip, ip + 15, jump_targets))
+                    src.code[ip + 11] == static_cast<uint8_t>(OpCode::OP_STORE_LOCAL))
                 {
-                    uint16_t slotA = static_cast<uint16_t>(src.code[ip + 1] | (src.code[ip + 2] << 8));
-                    uint16_t slotB = static_cast<uint16_t>(src.code[ip + 4] | (src.code[ip + 5] << 8));
-                    uint16_t slotC = static_cast<uint16_t>(src.code[ip + 8] | (src.code[ip + 9] << 8));
-                    uint16_t slotD = static_cast<uint16_t>(src.code[ip + 12] | (src.code[ip + 13] << 8));
-                    opt.write_opcode(OpCode::OP_FUSED_MUL_ADD_I64, line);
-                    opt.write_int16(static_cast<int16_t>(slotA), line);
-                    opt.write_int16(static_cast<int16_t>(slotB), line);
-                    opt.write_int16(static_cast<int16_t>(slotC), line);
-                    opt.write_int16(static_cast<int16_t>(slotD), line);
-                    for (size_t k = orig_ip; k < orig_ip + 15; ++k) pc_map[k] = opt_ip;
-                    SuperInstructionRegistry::telemetry().mul_add_fused++;
-                    SuperInstructionRegistry::telemetry().total_fusions++;
-                    ip += 15;
-                    continue;
+                    size_t match_len = 14;
+                    if (ip + 15 <= src.code.size() && src.code[ip + 14] == static_cast<uint8_t>(OpCode::OP_POP)) {
+                        match_len = 15;
+                    }
+                    if (SuperInstructionRegistry::can_fuse_range(src, ip, ip + match_len, jump_targets)) {
+                        uint16_t slotA = static_cast<uint16_t>(src.code[ip + 1] | (src.code[ip + 2] << 8));
+                        uint16_t slotB = static_cast<uint16_t>(src.code[ip + 4] | (src.code[ip + 5] << 8));
+                        uint16_t slotC = static_cast<uint16_t>(src.code[ip + 8] | (src.code[ip + 9] << 8));
+                        uint16_t slotD = static_cast<uint16_t>(src.code[ip + 12] | (src.code[ip + 13] << 8));
+                        opt.write_opcode(OpCode::OP_FUSED_MUL_ADD_I64, line);
+                        opt.write_int16(static_cast<int16_t>(slotA), line);
+                        opt.write_int16(static_cast<int16_t>(slotB), line);
+                        opt.write_int16(static_cast<int16_t>(slotC), line);
+                        opt.write_int16(static_cast<int16_t>(slotD), line);
+                        for (size_t k = orig_ip; k < orig_ip + match_len; ++k) pc_map[k] = opt_ip;
+                        SuperInstructionRegistry::telemetry().mul_add_fused++;
+                        SuperInstructionRegistry::telemetry().total_fusions++;
+                        ip += match_len;
+                        continue;
+                    }
                 }
                 if (op == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
                     src.code[ip + 3] == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
                     src.code[ip + 6] == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
                     src.code[ip + 9] == static_cast<uint8_t>(OpCode::OP_MUL) &&
                     src.code[ip + 10] == static_cast<uint8_t>(OpCode::OP_ADD) &&
-                    src.code[ip + 11] == static_cast<uint8_t>(OpCode::OP_STORE_LOCAL) &&
-                    src.code[ip + 14] == static_cast<uint8_t>(OpCode::OP_POP) &&
-                    SuperInstructionRegistry::can_fuse_range(src, ip, ip + 15, jump_targets))
+                    src.code[ip + 11] == static_cast<uint8_t>(OpCode::OP_STORE_LOCAL))
                 {
-                    uint16_t slotC = static_cast<uint16_t>(src.code[ip + 1] | (src.code[ip + 2] << 8));
-                    uint16_t slotA = static_cast<uint16_t>(src.code[ip + 4] | (src.code[ip + 5] << 8));
-                    uint16_t slotB = static_cast<uint16_t>(src.code[ip + 7] | (src.code[ip + 8] << 8));
-                    uint16_t slotD = static_cast<uint16_t>(src.code[ip + 12] | (src.code[ip + 13] << 8));
-                    opt.write_opcode(OpCode::OP_FUSED_MUL_ADD_I64, line);
-                    opt.write_int16(static_cast<int16_t>(slotA), line);
-                    opt.write_int16(static_cast<int16_t>(slotB), line);
-                    opt.write_int16(static_cast<int16_t>(slotC), line);
-                    opt.write_int16(static_cast<int16_t>(slotD), line);
-                    for (size_t k = orig_ip; k < orig_ip + 15; ++k) pc_map[k] = opt_ip;
-                    SuperInstructionRegistry::telemetry().mul_add_fused++;
-                    SuperInstructionRegistry::telemetry().total_fusions++;
-                    ip += 15;
-                    continue;
+                    size_t match_len = 14;
+                    if (ip + 15 <= src.code.size() && src.code[ip + 14] == static_cast<uint8_t>(OpCode::OP_POP)) {
+                        match_len = 15;
+                    }
+                    if (SuperInstructionRegistry::can_fuse_range(src, ip, ip + match_len, jump_targets)) {
+                        uint16_t slotC = static_cast<uint16_t>(src.code[ip + 1] | (src.code[ip + 2] << 8));
+                        uint16_t slotA = static_cast<uint16_t>(src.code[ip + 4] | (src.code[ip + 5] << 8));
+                        uint16_t slotB = static_cast<uint16_t>(src.code[ip + 7] | (src.code[ip + 8] << 8));
+                        uint16_t slotD = static_cast<uint16_t>(src.code[ip + 12] | (src.code[ip + 13] << 8));
+                        opt.write_opcode(OpCode::OP_FUSED_MUL_ADD_I64, line);
+                        opt.write_int16(static_cast<int16_t>(slotA), line);
+                        opt.write_int16(static_cast<int16_t>(slotB), line);
+                        opt.write_int16(static_cast<int16_t>(slotC), line);
+                        opt.write_int16(static_cast<int16_t>(slotD), line);
+                        for (size_t k = orig_ip; k < orig_ip + match_len; ++k) pc_map[k] = opt_ip;
+                        SuperInstructionRegistry::telemetry().mul_add_fused++;
+                        SuperInstructionRegistry::telemetry().total_fusions++;
+                        ip += match_len;
+                        continue;
+                    }
                 }
             }
 
             // ----------------------------------------------------------------
             // Pattern: Gate 6.0-D Fused Add Local Local Store (OP_FUSED_ADD_LOCAL_LOCAL_STORE)
-            // LOAD_LOCAL a (3B) + LOAD_LOCAL b (3B) + ADD (1B) + STORE_LOCAL d (3B) + POP (1B) = 11B
+            // LOAD_LOCAL a (3B) + LOAD_LOCAL b (3B) + ADD (1B) + STORE_LOCAL d (3B) [+ POP (1B)] = 10B or 11B
             // ----------------------------------------------------------------
-            if (flags.enable_superinstructions && ip + 11 <= src.code.size() &&
+            if (flags.enable_superinstructions && ip + 10 <= src.code.size() &&
                 op == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
                 src.code[ip + 3] == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
                 src.code[ip + 6] == static_cast<uint8_t>(OpCode::OP_ADD) &&
-                src.code[ip + 7] == static_cast<uint8_t>(OpCode::OP_STORE_LOCAL) &&
-                src.code[ip + 10] == static_cast<uint8_t>(OpCode::OP_POP) &&
-                SuperInstructionRegistry::can_fuse_range(src, ip, ip + 11, jump_targets))
+                src.code[ip + 7] == static_cast<uint8_t>(OpCode::OP_STORE_LOCAL))
             {
-                uint16_t slotA = static_cast<uint16_t>(src.code[ip + 1] | (src.code[ip + 2] << 8));
-                uint16_t slotB = static_cast<uint16_t>(src.code[ip + 4] | (src.code[ip + 5] << 8));
-                uint16_t slotD = static_cast<uint16_t>(src.code[ip + 8] | (src.code[ip + 9] << 8));
-                opt.write_opcode(OpCode::OP_FUSED_ADD_LOCAL_LOCAL_STORE, line);
-                opt.write_int16(static_cast<int16_t>(slotA), line);
-                opt.write_int16(static_cast<int16_t>(slotB), line);
-                opt.write_int16(static_cast<int16_t>(slotD), line);
-                for (size_t k = orig_ip; k < orig_ip + 11; ++k) pc_map[k] = opt_ip;
-                SuperInstructionRegistry::telemetry().add_local_store_fused++;
-                SuperInstructionRegistry::telemetry().total_fusions++;
-                ip += 11;
-                continue;
+                size_t match_len = 10;
+                if (ip + 11 <= src.code.size() && src.code[ip + 10] == static_cast<uint8_t>(OpCode::OP_POP)) {
+                    match_len = 11;
+                }
+                if (SuperInstructionRegistry::can_fuse_range(src, ip, ip + match_len, jump_targets)) {
+                    uint16_t slotA = static_cast<uint16_t>(src.code[ip + 1] | (src.code[ip + 2] << 8));
+                    uint16_t slotB = static_cast<uint16_t>(src.code[ip + 4] | (src.code[ip + 5] << 8));
+                    uint16_t slotD = static_cast<uint16_t>(src.code[ip + 8] | (src.code[ip + 9] << 8));
+                    opt.write_opcode(OpCode::OP_FUSED_ADD_LOCAL_LOCAL_STORE, line);
+                    opt.write_int16(static_cast<int16_t>(slotA), line);
+                    opt.write_int16(static_cast<int16_t>(slotB), line);
+                    opt.write_int16(static_cast<int16_t>(slotD), line);
+                    for (size_t k = orig_ip; k < orig_ip + match_len; ++k) pc_map[k] = opt_ip;
+                    SuperInstructionRegistry::telemetry().add_local_store_fused++;
+                    SuperInstructionRegistry::telemetry().total_fusions++;
+                    ip += match_len;
+                    continue;
+                }
             }
 
             // ----------------------------------------------------------------
-            // Pattern: Tier A In-place Increment (OP_INCR_LOCAL_IMM)
-            // OP_LOAD_LOCAL slot (3B) + OP_PUSH_INT val (9B) + OP_ADD (1B) + OP_STORE_LOCAL slot (3B) = 16B
+            // Pattern: Tier A In-place & Copy Increment (OP_INCR_LOCAL_IMM / OP_ADD_LOCAL_IMM)
+            // LOAD slot (3B) + PUSH_INT imm (9B) + ADD/SUB (1B) + STORE slot (3B) [+ POP (1B)] = 16B or 17B
+            // PUSH_INT imm (9B) + LOAD slot (3B) + ADD (1B) + STORE slot (3B) [+ POP (1B)] = 16B or 17B
             // ----------------------------------------------------------------
-            if (flags.enable_locals && ip + 16 <= src.code.size() &&
-                op == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
-                src.code[ip + 3] == static_cast<uint8_t>(OpCode::OP_PUSH_INT) &&
-                src.code[ip + 12] == static_cast<uint8_t>(OpCode::OP_ADD) &&
-                src.code[ip + 13] == static_cast<uint8_t>(OpCode::OP_STORE_LOCAL))
-            {
-                uint16_t slot1 = static_cast<uint16_t>(src.code[ip + 1] | (src.code[ip + 2] << 8));
-                uint16_t slot2 = static_cast<uint16_t>(src.code[ip + 14] | (src.code[ip + 15] << 8));
-                if (slot1 == slot2) {
-                    int64_t imm = 0;
-                    std::memcpy(&imm, &src.code[ip + 4], 8);
-                    if (imm >= -32768 && imm <= 32767) {
-                        opt.write_opcode(OpCode::OP_INCR_LOCAL_IMM, line);
-                        opt.write_int16(static_cast<int16_t>(slot1), line);
-                        opt.write_int16(static_cast<int16_t>(imm), line);
+            if (flags.enable_locals && ip + 16 <= src.code.size()) {
+                if (op == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
+                    src.code[ip + 3] == static_cast<uint8_t>(OpCode::OP_PUSH_INT) &&
+                    (src.code[ip + 12] == static_cast<uint8_t>(OpCode::OP_ADD) ||
+                     src.code[ip + 12] == static_cast<uint8_t>(OpCode::OP_SUB)) &&
+                    src.code[ip + 13] == static_cast<uint8_t>(OpCode::OP_STORE_LOCAL))
+                {
+                    size_t match_len = 16;
+                    if (ip + 17 <= src.code.size() && src.code[ip + 16] == static_cast<uint8_t>(OpCode::OP_POP)) {
+                        match_len = 17;
+                    }
+                    if (SuperInstructionRegistry::can_fuse_range(src, ip, ip + match_len, jump_targets)) {
+                        uint16_t slot1 = static_cast<uint16_t>(src.code[ip + 1] | (src.code[ip + 2] << 8));
+                        uint16_t slot2 = static_cast<uint16_t>(src.code[ip + 14] | (src.code[ip + 15] << 8));
+                        int64_t imm = 0;
+                        std::memcpy(&imm, &src.code[ip + 4], 8);
+                        if (src.code[ip + 12] == static_cast<uint8_t>(OpCode::OP_SUB)) imm = -imm;
 
-                        for (size_t k = orig_ip; k < orig_ip + 16; ++k) pc_map[k] = opt_ip;
-                        ip += 16;
-                        continue;
+                        if (imm >= -32768 && imm <= 32767) {
+                            if (slot1 == slot2) {
+                                opt.write_opcode(OpCode::OP_INCR_LOCAL_IMM, line);
+                                opt.write_int16(static_cast<int16_t>(slot1), line);
+                                opt.write_int16(static_cast<int16_t>(imm), line);
+                            } else {
+                                opt.write_opcode(OpCode::OP_ADD_LOCAL_IMM, line);
+                                opt.write_int16(static_cast<int16_t>(slot1), line);
+                                opt.write_int16(static_cast<int16_t>(imm), line);
+                                opt.write_int16(static_cast<int16_t>(slot2), line);
+                            }
+                            for (size_t k = orig_ip; k < orig_ip + match_len; ++k) pc_map[k] = opt_ip;
+                            ip += match_len;
+                            continue;
+                        }
+                    }
+                } else if (op == static_cast<uint8_t>(OpCode::OP_PUSH_INT) &&
+                           src.code[ip + 9] == static_cast<uint8_t>(OpCode::OP_LOAD_LOCAL) &&
+                           src.code[ip + 12] == static_cast<uint8_t>(OpCode::OP_ADD) &&
+                           src.code[ip + 13] == static_cast<uint8_t>(OpCode::OP_STORE_LOCAL))
+                {
+                    size_t match_len = 16;
+                    if (ip + 17 <= src.code.size() && src.code[ip + 16] == static_cast<uint8_t>(OpCode::OP_POP)) {
+                        match_len = 17;
+                    }
+                    if (SuperInstructionRegistry::can_fuse_range(src, ip, ip + match_len, jump_targets)) {
+                        uint16_t slot1 = static_cast<uint16_t>(src.code[ip + 10] | (src.code[ip + 11] << 8));
+                        uint16_t slot2 = static_cast<uint16_t>(src.code[ip + 14] | (src.code[ip + 15] << 8));
+                        int64_t imm = 0;
+                        std::memcpy(&imm, &src.code[ip + 1], 8);
+                        if (imm >= -32768 && imm <= 32767) {
+                            if (slot1 == slot2) {
+                                opt.write_opcode(OpCode::OP_INCR_LOCAL_IMM, line);
+                                opt.write_int16(static_cast<int16_t>(slot1), line);
+                                opt.write_int16(static_cast<int16_t>(imm), line);
+                            } else {
+                                opt.write_opcode(OpCode::OP_ADD_LOCAL_IMM, line);
+                                opt.write_int16(static_cast<int16_t>(slot1), line);
+                                opt.write_int16(static_cast<int16_t>(imm), line);
+                                opt.write_int16(static_cast<int16_t>(slot2), line);
+                            }
+                            for (size_t k = orig_ip; k < orig_ip + match_len; ++k) pc_map[k] = opt_ip;
+                            ip += match_len;
+                            continue;
+                        }
                     }
                 }
             }
@@ -427,6 +567,24 @@ public:
             }
 
             // ----------------------------------------------------------------
+            // Pattern: Tier B Flat Array Indexing Fastpaths (OP_GET_INDEX_ARRAY / OP_SET_INDEX_ARRAY)
+            // ----------------------------------------------------------------
+            if (flags.enable_array_indexing) {
+                if (op == static_cast<uint8_t>(OpCode::OP_GET_INDEX)) {
+                    opt.write_opcode(OpCode::OP_GET_INDEX_ARRAY, line);
+                    for (size_t k = orig_ip; k < orig_ip + 1; ++k) pc_map[k] = opt_ip;
+                    ip += 1;
+                    continue;
+                }
+                if (op == static_cast<uint8_t>(OpCode::OP_SET_INDEX)) {
+                    opt.write_opcode(OpCode::OP_SET_INDEX_ARRAY, line);
+                    for (size_t k = orig_ip; k < orig_ip + 1; ++k) pc_map[k] = opt_ip;
+                    ip += 1;
+                    continue;
+                }
+            }
+
+            // ----------------------------------------------------------------
             // Standard Opcode Copy with Relative Jump Recording
             // ----------------------------------------------------------------
             size_t inst_len = canonical_inst_len(op);
@@ -534,7 +692,10 @@ public:
                 case OpCode::OP_CALL_INDIRECT:
                     return 2;
                 case OpCode::OP_BRANCH_3:
+                case OpCode::OP_ADD_LOCAL_IMM:
                     return 7;
+                case OpCode::OP_FUSED_DOT_STEP_I64:
+                    return 11;
                 case OpCode::OP_PUSH_TAFPU:
                     return 21;
                 case OpCode::OP_INCR_LOCAL_IMM:
@@ -666,6 +827,28 @@ public:
                         update_slot(s);
                         update_slot(stop_s);
                         update_slot(step_s);
+                    }
+                    break;
+                case OpCode::OP_ADD_LOCAL_IMM:
+                    if (scan_ip + 6 < opt.code.size()) {
+                        uint16_t src_s = static_cast<uint16_t>(opt.code[scan_ip + 1] | (opt.code[scan_ip + 2] << 8));
+                        uint16_t dst_s = static_cast<uint16_t>(opt.code[scan_ip + 5] | (opt.code[scan_ip + 6] << 8));
+                        update_slot(src_s);
+                        update_slot(dst_s);
+                    }
+                    break;
+                case OpCode::OP_FUSED_DOT_STEP_I64:
+                    if (scan_ip + 10 < opt.code.size()) {
+                        uint16_t sc = static_cast<uint16_t>(opt.code[scan_ip + 1] | (opt.code[scan_ip + 2] << 8));
+                        uint16_t sci = static_cast<uint16_t>(opt.code[scan_ip + 3] | (opt.code[scan_ip + 4] << 8));
+                        uint16_t sa = static_cast<uint16_t>(opt.code[scan_ip + 5] | (opt.code[scan_ip + 6] << 8));
+                        uint16_t sb = static_cast<uint16_t>(opt.code[scan_ip + 7] | (opt.code[scan_ip + 8] << 8));
+                        uint16_t sbi = static_cast<uint16_t>(opt.code[scan_ip + 9] | (opt.code[scan_ip + 10] << 8));
+                        update_slot(sc);
+                        update_slot(sci);
+                        update_slot(sa);
+                        update_slot(sb);
+                        update_slot(sbi);
                     }
                     break;
                 default:

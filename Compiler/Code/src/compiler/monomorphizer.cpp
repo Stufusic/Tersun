@@ -183,9 +183,15 @@ void Monomorphizer::process_program(Program& program) {
         } else if (std::holds_alternative<IndexExpr>(expr->data)) {
             auto& ie = std::get<IndexExpr>(expr->data);
             self(self, ie.object);
-            self(self, ie.index);
+            if (!ie.indices.empty()) {
+                for (Expr* idx : ie.indices) self(self, idx);
+            } else {
+                self(self, ie.index);
+            }
         } else if (std::holds_alternative<ArrayLiteralExpr>(expr->data)) {
             for (Expr* el : std::get<ArrayLiteralExpr>(expr->data).elements) self(self, el);
+        } else if (std::holds_alternative<TupleLiteralExpr>(expr->data)) {
+            for (Expr* el : std::get<TupleLiteralExpr>(expr->data).elements) self(self, el);
         } else if (std::holds_alternative<AmbiguousTripleExpr>(expr->data)) {
             for (Expr* el : std::get<AmbiguousTripleExpr>(expr->data).elements) self(self, el);
         } else if (std::holds_alternative<TafpuConstructExpr>(expr->data)) {
@@ -207,6 +213,8 @@ void Monomorphizer::process_program(Program& program) {
             visit_expr(visit_expr, std::get<ExprStmt>(stmt->data).expr);
         } else if (std::holds_alternative<VarDeclStmt>(stmt->data)) {
             visit_expr(visit_expr, std::get<VarDeclStmt>(stmt->data).init);
+        } else if (std::holds_alternative<TupleDestructureStmt>(stmt->data)) {
+            visit_expr(visit_expr, std::get<TupleDestructureStmt>(stmt->data).init);
         } else if (std::holds_alternative<AssignStmt>(stmt->data)) {
             visit_expr(visit_expr, std::get<AssignStmt>(stmt->data).value);
         } else if (std::holds_alternative<BlockStmt>(stmt->data)) {
@@ -248,7 +256,11 @@ void Monomorphizer::process_program(Program& program) {
         } else if (std::holds_alternative<IndexAssignStmt>(stmt->data)) {
             auto& ia = std::get<IndexAssignStmt>(stmt->data);
             visit_expr(visit_expr, ia.object);
-            visit_expr(visit_expr, ia.index);
+            if (!ia.indices.empty()) {
+                for (Expr* idx : ia.indices) visit_expr(visit_expr, idx);
+            } else {
+                visit_expr(visit_expr, ia.index);
+            }
             visit_expr(visit_expr, ia.value);
         } else if (std::holds_alternative<ReturnStmt>(stmt->data)) {
             visit_expr(visit_expr, std::get<ReturnStmt>(stmt->data).value);

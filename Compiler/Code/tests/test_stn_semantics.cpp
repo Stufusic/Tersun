@@ -32,7 +32,7 @@ std::string read_file_str(const std::string& path) {
 
 // Test scripts live in Code/tests/stn; be tolerant of the invocation CWD.
 std::string find_script(const std::string& name) {
-    const char* prefixes[] = {"tests/stn/", "Code/tests/stn/", "../Code/tests/stn/"};
+    const char* prefixes[] = {"tests/stn/", "Code/tests/stn/", "../Code/tests/stn/", "../tests/stn/", "../../tests/stn/"};
     for (const char* p : prefixes) {
         std::string candidate = std::string(p) + name;
         std::ifstream f(candidate);
@@ -262,20 +262,35 @@ void test_stn_generics() {
 } // namespace
 
 void test_stn_semantics_suite() {
+    std::cout << "    [SEMANTICS] ctor_autoinit..." << std::endl;
     test_stn_ctor_autoinit();
+    std::cout << "    [SEMANTICS] strings_arrays..." << std::endl;
     test_stn_strings_arrays();
+    std::cout << "    [SEMANTICS] logic_ops..." << std::endl;
     test_stn_logic_ops();
+    std::cout << "    [SEMANTICS] modules_ok..." << std::endl;
     test_stn_modules_ok();
+    std::cout << "    [SEMANTICS] fs_roundtrip..." << std::endl;
     test_stn_fs_roundtrip();
+    std::cout << "    [SEMANTICS] negative_compile..." << std::endl;
     test_stn_negative_compile();
+    std::cout << "    [SEMANTICS] loops..." << std::endl;
     test_stn_loops();
+    std::cout << "    [SEMANTICS] taf3_syntax..." << std::endl;
     test_stn_taf3_syntax();
+    std::cout << "    [SEMANTICS] fstring..." << std::endl;
     test_stn_fstring();
+    std::cout << "    [SEMANTICS] compound_assign..." << std::endl;
     test_stn_compound_assign();
+    std::cout << "    [SEMANTICS] unicode..." << std::endl;
     test_stn_unicode();
+    std::cout << "    [SEMANTICS] forward_call..." << std::endl;
     test_stn_forward_call();
+    std::cout << "    [SEMANTICS] closures..." << std::endl;
     test_stn_closures();
+    std::cout << "    [SEMANTICS] interfaces..." << std::endl;
     test_stn_interfaces();
+    std::cout << "    [SEMANTICS] generics..." << std::endl;
     test_stn_generics();
 }
 

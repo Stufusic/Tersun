@@ -3,6 +3,15 @@
 
 ---
 
+> [!NOTE]
+> ### 🧭 Tersun Living Architecture & Engineering Links (AKS v1.0.3)
+> Bản giáo trình này liên kết trực tiếp với kiến trúc thực tế của Tersun tại commit `133330b5fd9b5cf9b57948abf7de3361eb20b793`:
+> - **Bản đồ kiến trúc tổng quan:** [Doc/architecture_overview.md](file:///d:/New%20PJ/Ternary/Compiler/Doc/architecture_overview.md)
+> - **Hệ thống quyết định kiến trúc:** [ADR-001 .. ADR-009](file:///d:/New%20PJ/Ternary/Compiler/Doc/adr/ADR-001-nan-boxing-64bit-value.md)
+> - **Tài liệu kỹ thuật hệ thống tương ứng:** [Code/src/vm/vm.md](file:///d:/New%20PJ/Ternary/Compiler/Code/src/vm/vm.md) | [Code/src/compiler/compiler.md](file:///d:/New%20PJ/Ternary/Compiler/Code/src/compiler/compiler.md) | [Code/src/tafpu/tafpu.md](file:///d:/New%20PJ/Ternary/Compiler/Code/src/tafpu/tafpu.md) | [Code/src/kernel/kernel.md](file:///d:/New%20PJ/Ternary/Compiler/Code/src/kernel/kernel.md) | [Code/src/hardware/hardware.md](file:///d:/New%20PJ/Ternary/Compiler/Code/src/hardware/hardware.md)
+
+---
+
 # I. TRIẾT LÝ GIÁO DỤC & PHƯƠNG PHÁP HỌC (Educational Philosophy)
 
 Giáo trình này được thiết kế dựa trên một nguyên lý sư phạm cốt lõi: **Không học thuộc kiến trúc có sẵn — Tái khám phá kiến trúc thông qua áp lực kỹ thuật (Engineering Discovery Driven by Bottlenecks).**

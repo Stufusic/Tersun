@@ -1,0 +1,29 @@
+{
+  "k0_decode": {
+    "scalar_ms": 7.06,
+    "avx2_ms": 58.53,
+    "speedup": 0.12
+  },
+  "k2_dot": {
+    "scalar_ms": 64.15,
+    "avx2_ms": 34.95,
+    "speedup": 1.84
+  },
+  "k3_gemv": {
+    "scalar_ms": 557.86,
+    "avx2_ms": 344.99,
+    "speedup": 1.62
+  },
+  "k5_gemm_bias": {
+    "scalar_ms": 531.13,
+    "avx2_ms": 346.27,
+    "speedup": 1.53
+  },
+  "k6_fused": {
+    "scalar_ms": 547.2,
+    "avx2_ms": 327.52,
+    "speedup": 1.67
+  },
+  "timestamp": "2026-09-20T20:43:34Z",
+  "workload": "BitNet MNIST 1.58-bit Layer Dimensions (M=1, N=128, K=784)"
+}
